@@ -1,3 +1,3 @@
 # ABAP_PROJECTS
 Repository for projects based on ABAP programming language
-This is Project Number One. In this project we will....
+In this project we will create a custom SM30 Console.
