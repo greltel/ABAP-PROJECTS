@@ -2,89 +2,1146 @@
 *& Report  Z_SM30
 *& Description : Console for Custom SM30
 *&---------------------------------------------------------------------*
-*& Created   by: GDRAKOS DVALOUXIS 
+*& Created   by: DVALOUXIS AND GDRAKOS
 *&
 *&---------------------------------------------------------------------*
-REPORT Z_SM30
+REPORT z_sm30 NO STANDARD PAGE HEADING.
 
-TABLES:
+TABLES:dd02l,sscrfields.
 
 TYPE-POOLS: slis.  " SLIS contains all the ALV data types
+DATA upload_table TYPE dd02l-tabname.
 
 *************************************************************************
-* **   Global References for Classes                                    **
+* **   Global References for Classes
 * ************************************************************************
-
-
-* ************************************************************************
-* **   Global Data Declarations                                                **
-* ************************************************************************
-
+CLASS: lcl_zsm30          DEFINITION DEFERRED,
+       lcl_event_receiver DEFINITION DEFERRED.
 
 * ************************************************************************
-* **   ALV DATA                                             **
+* **   Global Data Declarations
 * ************************************************************************
+DATA:lr_table     TYPE REF TO data,
+     gv_db_exists TYPE flag VALUE 'X'.
+TYPES: ty_table TYPE STANDARD TABLE OF mara.
+*Generic Field Symbol
+FIELD-SYMBOLS: <fs_table>     TYPE STANDARD TABLE,
+               <fs_structure> TYPE any.
 
+"Data for Excel Upload
+DATA:lr_table_upload    TYPE REF TO data.
+FIELD-SYMBOLS: <fs_table_upload>  TYPE STANDARD TABLE.
 
+DATA: tab_name       TYPE c LENGTH 30,
+      filename       TYPE rlgrap-filename,
+      fcat           TYPE lvc_t_fcat,
+      fcat_structure LIKE LINE OF  fcat.
+
+* ************************************************************************
+* **   ALV DATA
+* ************************************************************************
+DATA: gt_fieldcat          TYPE lvc_t_fcat,
+      cc_container         TYPE REF TO cl_gui_custom_container,
+      go_alv_grid_0100     TYPE REF TO cl_gui_alv_grid,
+      gv_edit_flag         TYPE boolean,
+      gv_flag              TYPE boolean VALUE 'X',
+      "ALV HEADER DATA
+      gr_docking_container TYPE REF TO cl_gui_docking_container,
+      gr_document          TYPE REF TO cl_dd_document,
+      line_header          TYPE sdydo_text_element,
+      gt_exclude           TYPE ui_functions,
+      gs_exclude           LIKE LINE OF gt_exclude,
+      gr_event_handler     TYPE REF TO lcl_event_receiver.
+
+FIELD-SYMBOLS: <fcat> TYPE lvc_s_fcat.
 
 *----------------------------------------------------------------------*
-*       CLASS class1 DEFINITION
+*       CLASS LCL_EVENT_RECEIVER DEFINITION
 *----------------------------------------------------------------------*
+CLASS lcl_event_receiver DEFINITION.
 
+  PUBLIC SECTION.
+
+    DATA:t_cells_changed_from_inside TYPE lvc_t_modi,
+         t_current_rows              TYPE lvc_t_row,
+         initial                     TYPE c LENGTH 1,
+         inserted_rows               TYPE ty_table,
+         deleted_rows                TYPE ty_table.
+
+    METHODS:
+
+      "DATA CHANGED METHODS
+      handle_data_changed FOR EVENT data_changed OF cl_gui_alv_grid IMPORTING er_data_changed,
+      get_inserted_rows EXPORTING inserted_rows TYPE ty_table,
+      get_deleted_rows EXPORTING deleted_rows TYPE ty_table,
+      refresh_delta_tables,
+      set_table_is_initial,
+      set_table_is_not_initial,
+      table_is_initial RETURNING VALUE(initial) TYPE char01,
+
+      "USER COMMAND METHODS
+      handle_user_command FOR EVENT user_command OF cl_gui_alv_grid IMPORTING e_ucomm.
+
+  PRIVATE SECTION.
+
+    DATA: error_in_data TYPE c LENGTH 1,
+          initial_table TYPE c LENGTH 1.
+
+    METHODS:
+
+      check_double_entries IMPORTING pr_data_changed TYPE REF TO cl_alv_changed_data_protocol,
+      update_delta_tables IMPORTING pr_data_changed TYPE REF TO cl_alv_changed_data_protocol,
+      perform_semantic_checks IMPORTING pr_data_changed TYPE REF TO cl_alv_changed_data_protocol,
+
+      get_cell_values
+        IMPORTING
+          row_id          TYPE int4
+          pr_data_changed TYPE REF TO cl_alv_changed_data_protocol
+        EXPORTING
+          key             TYPE mara.
+
+
+ENDCLASS.
+*----------------------------------------------------------------------*
+*       CLASS LCL_EVENT_RECEIVER IMPLEMENTATION
+*----------------------------------------------------------------------*
+CLASS lcl_event_receiver IMPLEMENTATION.
+**------------------------------------------------------
+  METHOD handle_user_command.
+*   force PAI processing with user function as ok_code
+    cl_gui_cfw=>set_new_ok_code( e_ucomm ).
+  ENDMETHOD.
+
+**------------------------------------------------------
+  METHOD get_inserted_rows.
+    inserted_rows = me->inserted_rows.
+  ENDMETHOD.
+**------------------------------------------------------
+  METHOD get_deleted_rows.
+    deleted_rows = me->deleted_rows.
+  ENDMETHOD.
+**------------------------------------------------------
+  METHOD refresh_delta_tables.
+    CLEAR me->inserted_rows[].
+    CLEAR me->deleted_rows[].
+  ENDMETHOD.
+**------------------------------------------------------
+  METHOD set_table_is_initial.
+    initial_table = 'X'.
+  ENDMETHOD.
+*------------------------------------------------------
+  METHOD set_table_is_not_initial.
+    initial_table = space.
+  ENDMETHOD.
+*------------------------------------------------------
+  METHOD table_is_initial.
+    IF initial_table = 'X'.
+      initial = 'X'.
+    ELSE.
+      initial = space.
+    ENDIF.
+  ENDMETHOD.
+**------------------------------------------------------
+  METHOD handle_data_changed.
+
+    error_in_data = space.
+
+    CALL METHOD check_double_entries( er_data_changed ).
+    CALL METHOD update_delta_tables( er_data_changed ).
+    CALL METHOD perform_semantic_checks( er_data_changed ).
+
+    IF error_in_data = 'X'.
+      CALL METHOD er_data_changed->display_protocol.
+    ENDIF.
+
+  ENDMETHOD.
+*------------------------------------------------------
+  METHOD check_double_entries.
+    DATA: lt_good_cells TYPE lvc_t_modi,
+          ls_good       TYPE lvc_s_modi,
+          l_del_row     TYPE lvc_s_moce,
+          l_reentered   TYPE c.
+
+    FIELD-SYMBOLS: <l_key>         TYPE ANY,
+                   <ls_key> TYPE ANY,
+                   <ls_mats> TYPE ANY,
+                   <ls_outtab> TYPE ANY.
+
+    "Field Symbol Assignment
+
+
+
+
+
+
+    "----------------------
+
+    LOOP AT pr_data_changed->mt_good_cells INTO ls_good.
+      CASE ls_good-fieldname.
+        WHEN 'MATNR'.
+          CALL METHOD pr_data_changed->get_cell_value
+            EXPORTING
+              i_row_id    = ls_good-row_id     " Row ID
+              i_fieldname = ls_good-fieldname  " Field Name
+            IMPORTING
+              e_value     = <l_key>.  " Cell Content .
+
+          READ TABLE lt_good_cells WITH KEY value = <l_key> TRANSPORTING NO FIELDS.
+          IF sy-subrc EQ 0.
+            CALL METHOD pr_data_changed->add_protocol_entry
+              EXPORTING
+                i_msgid     = '0K'
+                i_msgno     = '000'
+                i_msgty     = 'E'
+                i_msgv1     = 'kako'
+                i_fieldname = ls_good-fieldname
+                i_row_id    = ls_good-row_id.
+
+            error_in_data = 'X'.
+          ELSE.
+            ls_good-value = <l_key>.
+            APPEND ls_good TO lt_good_cells.
+          ENDIF.
+      ENDCASE.
+    ENDLOOP.
+*
+**    * Check if any new entries already exist in gt_outtab.
+** At this point, lt_good_cells contains only lines with
+** FIELDNAME = 'FLDATE'.
+*    LOOP AT lt_good_cells INTO ls_good.
+*      l_matnr = ls_good-value.      "flightdate, see above
+*      READ TABLE gt_output WITH KEY
+*                    matnr = l_matnr
+*                    TRANSPORTING NO FIELDS.
+*      IF sy-subrc = 0.
+** Check if this entry was deleted before, i.e. it is in the table
+** of deleted rows. If so, the entry does not exist twice. The user
+** has deleted a line and then reentered it.
+*        l_reentered = space.
+*        LOOP AT pr_data_changed->mt_deleted_rows INTO l_del_row.
+*          READ TABLE gt_output INTO ls_outtab INDEX l_del_row-row_id.
+*          IF sy-subrc NE 0.
+*            MESSAGE i000(0k) WITH 'xazo'.
+*          ELSEIF ls_outtab-matnr EQ ls_good-value.
+*            l_reentered = 'X'.
+*          ENDIF.
+*        ENDLOOP.
+*
+*        IF l_reentered NE 'X'.
+*          CALL METHOD pr_data_changed->add_protocol_entry
+*            EXPORTING
+*              i_msgid     = '0K'
+*              i_msgno     = '000'
+*              i_msgty     = 'E'
+*              i_msgv1     = 'yparxei'
+*              i_fieldname = ls_good-fieldname
+*              i_row_id    = ls_good-row_id.
+*          error_in_data = 'X'.
+*        ENDIF.
+*      ENDIF.
+*    ENDLOOP.
+
+  ENDMETHOD.
+*------------------------------------------------------
+  METHOD get_cell_values.
+
+    CALL METHOD pr_data_changed->get_cell_value
+      EXPORTING
+        i_row_id    = row_id
+        i_fieldname = 'MATNR'
+      IMPORTING
+        e_value     = key-matnr.
+
+    IF sy-subrc NE 0.
+      MESSAGE i000(0k) WITH 'Internal error when inserting a row'.
+    ENDIF.
+
+  ENDMETHOD.
+*------------------------------------------------------
+  METHOD perform_semantic_checks.
+*    data: ls_good     type lvc_s_modi,
+*          l_planetype type s_planetye,
+*          l_seatsmax  type s_seatsmax.
+*
+*    loop at pr_data_changed->mt_good_cells into ls_good.
+*      case ls_good-fieldname.
+*        when 'PLANETYPE'.
+*          call method pr_data_changed->get_cell_value
+*            exporting
+*              i_row_id    = ls_good-row_id
+*              i_fieldname = ls_good-fieldname
+*            importing
+*              e_value     = l_planetype.
+*
+*          select single seatsmax from saplane into l_seatsmax
+*                        where planetype = l_planetype.
+*
+*          if sy-subrc ne 0.
+*            call method pr_data_changed->add_protocol_entry
+*              exporting
+*                i_msgid     = '0K'
+*                i_msgno     = '000'
+*                i_msgty     = 'E'
+*                i_msgv1     = text-m02
+*                i_fieldname = ls_good-fieldname
+*                i_row_id    = ls_good-row_id.
+*
+*            error_in_data = 'X'.
+*          else.
+*
+*            call method pr_data_changed->modify_cell
+*              exporting
+*                i_row_id    = ls_good-row_id
+*                i_fieldname = 'SEATSMAX'
+*                i_value     = l_seatsmax.
+*          endif.
+*      endcase.
+*    endloop.
+  ENDMETHOD.
+**------------------------------------------------------
+  METHOD update_delta_tables.
+*    DATA: l_ins_row TYPE lvc_s_moce,
+*          l_del_row TYPE lvc_s_moce,
+*          ls_key    TYPE zmerimna_mats,
+*          ls_mats   TYPE zmerimna_mats,
+*          ls_outtab LIKE LINE OF gt_output.
+*
+** §6.Use protocol attributes MT_DELETED_ROWS and MT_INSERTED_ROWS
+**    to remember which lines where deleted or inserted. Save this
+**    information in your internal tables.
+**..........
+** deleted rows
+**.............
+*    LOOP AT pr_data_changed->mt_deleted_rows INTO l_del_row.
+*      READ TABLE gt_output INTO ls_outtab INDEX l_del_row-row_id.
+*      IF sy-subrc NE 0.
+*        MESSAGE i000(0k) WITH 'Internal error when deleting a row'.
+*      ELSE.
+*        MOVE-CORRESPONDING ls_outtab TO ls_mats.
+** It should no be possible that the same line is deleted twice,
+** so we just add the new key line to 'deleted_rows'.
+*        APPEND ls_mats TO deleted_rows.
+** If this line was inserted just before it is deleted:
+*        DELETE me->inserted_rows
+*             WHERE matnr = ls_outtab-matnr.
+*      ENDIF.
+*    ENDLOOP.
+**..........
+** inserted rows
+** At this point ALV has not added new lines
+** to gt_outtab, so you can not access their values
+** by reading gt_outtab.
+** Table MT_GOOD_CELLS holds new values that can be
+** referenced using the ROW_ID.
+**..........
+*    IF me->table_is_initial( ) EQ 'X'.
+** No flights were selected initially. This is the first new line.
+*      CALL METHOD get_cell_values
+*        EXPORTING
+*          row_id          = 1
+*          pr_data_changed = pr_data_changed
+*        IMPORTING
+*          key             = ls_key.
+*
+*      APPEND ls_key TO inserted_rows.
+*      CALL METHOD me->set_table_is_not_initial.
+*    ENDIF.
+*
+*    LOOP AT pr_data_changed->mt_inserted_rows INTO l_ins_row.
+*      CALL METHOD get_cell_values
+*        EXPORTING
+*          row_id          = l_ins_row-row_id
+*          pr_data_changed = pr_data_changed
+*        IMPORTING
+*          key             = ls_key.
+**      READ TABLE gt_outtab INTO ls_outtab INDEX l_ins_row-row_id.
+*
+** Just insert the new row regardless if the input is wrong
+*      APPEND ls_key TO inserted_rows.
+*    ENDLOOP.
+  ENDMETHOD.
+
+ENDCLASS.
+*----------------------------------------------------------------------*
+*       CLASS LCL_ZSM30 DEFINITION
+*----------------------------------------------------------------------*
+CLASS lcl_zsm30 DEFINITION.
+
+ENDCLASS.
 
 *----------------------------------------------------------------------*
-*       CLASS class1 IMPLEMENTATION
+*       CLASS LCL_ZSM30 IMPLEMENTATION
 *----------------------------------------------------------------------*
+CLASS lcl_zsm30 IMPLEMENTATION.
 
-
+ENDCLASS.
 
 *&---------------------------------------------------------------------*
 *& SELECTION SCREEN DESIGN
 *&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME  TITLE title1.
+PARAMETERS: p_table TYPE dd02l-tabname DEFAULT 'ZCUSTOMERS' MODIF ID sc1 MATCHCODE OBJECT s_issr_dd02l.
+SELECTION-SCREEN END OF BLOCK b1.
 
+SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME  TITLE title2.
+PARAMETERS:         rb_displ RADIOBUTTON GROUP gr1 DEFAULT 'X',
+                    rb_edit  RADIOBUTTON GROUP gr1.
+SELECTION-SCREEN END OF BLOCK b2.
 
+SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME  TITLE title3.
+SELECTION-SCREEN: PUSHBUTTON /2(40) button1 USER-COMMAND but1,
+                  PUSHBUTTON /2(40) button2 USER-COMMAND but2.
+SELECTION-SCREEN END OF BLOCK b3.
 *&---------------------------------------------------------------------*
 *& INITIALIZATION OF SELECTION SCREEN ELEMENTS
 *&---------------------------------------------------------------------*
 INITIALIZATION.
 
+  PERFORM initialization.
 
 *&---------------------------------------------------------------------*
 *& AT SELECTION SCREEN MODIFICATION
 *&---------------------------------------------------------------------*
 AT SELECTION-SCREEN OUTPUT.
 
-  PERFORM modify_screen.
-
 *&---------------------------------------------------------------------*
 *& AT SELECTION SCREEN VALIDATIONS
 *&---------------------------------------------------------------------*
-*AT SELECTION-SCREEN ON
+AT SELECTION-SCREEN ON p_table.
 
+  IF p_table IS INITIAL.
+    MESSAGE 'Please provide the database table name' TYPE 'E' DISPLAY LIKE 'I'.
+  ENDIF.
 
 *&---------------------------------------------------------------------*
 *& AT SELECTION SCREEN ON VALUE REQUESTS (F4)
 *&---------------------------------------------------------------------*
-*AT SELECTION-SCREEN ON VALUE-REQUEST FOR
+*AT SELECTION-SCREEN ON VALUE-REQUEST FOR.
+
 
 *&---------------------------------------------------------------------*
 *& AT SELECTION SCREEN Actions
 *&---------------------------------------------------------------------*
-
 AT SELECTION-SCREEN.
+  CASE sscrfields.
+    WHEN 'BUT1'.
+      PERFORM check_table_request.
+    WHEN 'BUT2'.
+      SET PARAMETER ID 'DTB' FIELD p_table.
+      SUBMIT rswbo010 WITH p_part EQ 'X' VIA SELECTION-SCREEN
+      AND RETURN.
+  ENDCASE.
 
 *&---------------------------------------------------------------------*
 *& EXECUTABLE CODE
 *&---------------------------------------------------------------------*
 START-OF-SELECTION.
 
-
+  PERFORM table_check_if_db_tab USING p_table.
+  PERFORM authorization_check.
+  PERFORM get_data.
+  PERFORM display_data.
 
 END-OF-SELECTION.
-
-
 *&---------------------------------------------------------------------*
 *& SUBROUTINE CREATION
 *&---------------------------------------------------------------------*
+FORM initialization.
+
+  title1 = 'Table Selection'.
+  title2 = 'Table Options'.
+  title3 = 'Transport Request Options'.
+  button1 = 'Transport Request Check'.
+  button2 = 'Include Object in Transport Request'.
+
+ENDFORM.
+
+FORM authorization_check.
+
+*  AUTHORITY-CHECK OBJECT ''
+*     ID 'ACTVT' DUMMY
+*     ID '' FIELD p_table.
+*
+*  IF sy-subrc NE 0.
+*    MESSAGE 'Authorization required to use the Program' TYPE 'E' DISPLAY LIKE 'I'.
+*  ENDIF.
+
+ENDFORM.
+
+FORM check_table_request.
+
+  TYPES : BEGIN OF ty_request ,
+            trkorr     TYPE e070-trkorr,
+            strkorr    TYPE e070-strkorr,
+            trstatus   TYPE e070-trstatus,
+            korrdev    TYPE e070-korrdev,
+            object     TYPE e071-object,
+            devclass   TYPE tadir-devclass,
+            srcsystem  TYPE tadir-srcsystem,
+            created_on TYPE tadir-created_on,
+            as4user    TYPE e070-as4user,
+            as4date    TYPE e070-as4date,
+            as4time    TYPE  e070-as4time,
+            as4text    TYPE e07t-as4text,
+            client     TYPE e070c-client,
+            tarclient  TYPE e070c-tarclient,
+          END OF ty_request.
+
+  DATA:lt_request TYPE STANDARD TABLE OF ty_request.
 
 
+  cl_progress_indicator=>progress_indicate(
+    EXPORTING
+       i_text               = |Searching Transport Requests of table { p_table }|
+       i_output_immediately = abap_true ).
+
+  IF p_table IS NOT INITIAL.
+
+    SELECT *
+ FROM e070 AS a
+ LEFT OUTER JOIN e071 AS b
+ ON a~trkorr = b~trkorr
+ LEFT OUTER JOIN e07t AS c
+ ON a~trkorr = c~trkorr
+ LEFT OUTER JOIN e070c AS d
+ ON a~trkorr = d~trkorr
+ LEFT OUTER JOIN tadir AS e
+ ON b~obj_name = e~obj_name
+ INTO CORRESPONDING FIELDS OF TABLE @lt_request
+ WHERE b~obj_name EQ @p_table.
+
+    IF sy-subrc EQ 0.
+      PERFORM display_requests USING lt_request.
+    ELSE.
+      MESSAGE 'Table does not exist in Transport Request' TYPE 'I'.
+    ENDIF.
+  ELSE.
+    MESSAGE 'Please write the preferred Table' TYPE 'I'.
+  ENDIF.
+
+ENDFORM.
+
+FORM display_requests USING table_request.
+
+
+  DATA: alv_table      TYPE REF TO cl_salv_table,
+        lr_popup_table TYPE REF TO data,
+        message        TYPE REF TO cx_salv_msg,
+        lr_functions   TYPE REF TO cl_salv_functions_list,
+        lr_selections  TYPE REF TO cl_salv_selections.
+
+  TRY.
+      cl_salv_table=>factory(
+      IMPORTING
+        r_salv_table = alv_table
+      CHANGING
+        t_table      = table_request ).
+    CATCH cx_salv_msg INTO message.
+      " error handling
+  ENDTRY.
+
+  lr_functions = alv_table->get_functions( ).
+  lr_functions->set_all( 'X' ).
+
+  IF alv_table IS BOUND.
+    alv_table->set_screen_popup(
+      start_column = 1
+      end_column  = 80
+      start_line  = 1
+      end_line    = 10 ).
+
+    lr_selections = alv_table->get_selections( ).
+    lr_selections->set_selection_mode( if_salv_c_selection_mode=>row_column ).
+
+    alv_table->display( ).
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form Table Check IF DB TAB
+*&---------------------------------------------------------------------*
+FORM table_check_if_db_tab USING table_name.
+
+  DATA: lt_ddtypes TYPE STANDARD TABLE OF ddtypes.
+  DATA: ls_ddtypes LIKE LINE OF lt_ddtypes.
+  DATA: ls_getstate TYPE ddtypeget.
+
+  CLEAR gv_db_exists.
+  CLEAR ls_ddtypes.
+  CLEAR ls_getstate.
+
+  ls_ddtypes-typename =  table_name.
+  APPEND ls_ddtypes TO lt_ddtypes.
+  CALL FUNCTION 'DD_TYPEINFO_GET'
+    EXPORTING
+      getstate    = ls_getstate
+    TABLES
+      ddtypes_tab = lt_ddtypes[].
+
+  READ TABLE lt_ddtypes INTO ls_ddtypes INDEX 1.
+
+  IF sy-subrc = 0 AND ls_ddtypes-typekind = 'S'.
+    gv_db_exists = 'X'.
+  ELSE.
+    MESSAGE 'Table is not a Database Table' TYPE 'I'.
+    LEAVE SCREEN.
+  ENDIF.
+
+ENDFORM.
+
+FORM get_data.
+
+*Field Symbol Assignment based on Selection Screen Input
+  CREATE DATA lr_table TYPE TABLE OF (p_table).
+  ASSIGN lr_table->* TO <fs_table>.
+
+  IF sy-subrc EQ 0.
+    SELECT * FROM (p_table) INTO TABLE <fs_table>.
+  ELSE.
+    MESSAGE 'Error while retrieving the DATA' TYPE 'I'.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+
+ENDFORM.
+
+FORM display_data.
+
+  IF rb_displ EQ 'X'.
+    gv_edit_flag = 'X'.
+  ELSE.
+    gv_edit_flag = ''.
+  ENDIF.
+
+  CALL SCREEN 100.
+
+ENDFORM.
+
+FORM display_alv.
+
+  PERFORM field_catalog.
+  PERFORM prepare_header.
+  PERFORM exclude_status.
+
+  IF rb_edit EQ 'X' AND gv_flag EQ 'X'.
+    LOOP AT gt_fieldcat ASSIGNING <fcat>.
+      <fcat>-edit = abap_true.
+    ENDLOOP.
+    gv_flag = space.
+  ENDIF.
+
+  IF cc_container IS NOT INITIAL.
+    CALL METHOD cc_container->free.
+    CLEAR cc_container.
+  ENDIF.
+
+
+  CREATE OBJECT cc_container
+    EXPORTING
+      container_name              = 'CC_CONTAINER'
+      parent                      = cl_gui_container=>screen0 " use entire dynpro
+    EXCEPTIONS
+      cntl_error                  = 1
+      cntl_system_error           = 2
+      create_error                = 3
+      lifetime_error              = 4
+      lifetime_dynpro_dynpro_link = 5
+      OTHERS                      = 6.
+
+  IF sy-subrc EQ 0.
+
+    CREATE OBJECT go_alv_grid_0100
+      EXPORTING
+        i_parent          = cc_container
+      EXCEPTIONS
+        error_cntl_create = 1
+        error_cntl_init   = 2
+        error_cntl_link   = 3
+        error_dp_create   = 4
+        OTHERS            = 5.
+
+    IF sy-subrc EQ 0.
+
+      go_alv_grid_0100->set_table_for_first_display(
+         EXPORTING
+           it_toolbar_excluding          = gt_exclude
+         CHANGING
+           it_outtab                     = <fs_table>
+           it_fieldcatalog               = gt_fieldcat
+         EXCEPTIONS
+           invalid_parameter_combination = 1
+           program_error                 = 2
+           too_many_lines                = 3
+           OTHERS                        = 4
+              ).
+      IF sy-subrc EQ 0.
+
+        PERFORM event_handling.
+
+      ENDIF.
+    ENDIF.
+  ENDIF.
+
+ENDFORM.
+
+FORM field_catalog.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+*     i_buffer_active        = i_buffer_active    " Buffer active
+      i_structure_name       = p_table " Structure name (structure, table, view)
+*     i_client_never_display = 'X' " Hide client fields
+      i_bypassing_buffer     = abap_true    " Ignore buffer while reading
+*     i_internal_tabname     = i_internal_tabname    " Table Name
+    CHANGING
+      ct_fieldcat            = gt_fieldcat    " Field Catalog with Field Descriptions
+    EXCEPTIONS
+      inconsistent_interface = 1
+      program_error          = 2
+      OTHERS                 = 3.
+
+
+ENDFORM.
+
+FORM event_handling.
+
+
+  IF gr_event_handler IS NOT BOUND.
+    CREATE OBJECT gr_event_handler.
+    SET HANDLER gr_event_handler->handle_data_changed FOR go_alv_grid_0100.
+    SET HANDLER gr_event_handler->handle_user_command FOR go_alv_grid_0100.
+  ENDIF.
+
+*  CALL METHOD go_alv_grid_0100->register_edit_event
+*    EXPORTING
+*      i_event_id = cl_gui_alv_grid=>mc_evt_modified.
+*
+*  CALL METHOD go_alv_grid_0100->register_edit_event
+*    EXPORTING
+*      i_event_id = cl_gui_alv_grid=>mc_evt_enter.
+
+
+
+ENDFORM.
+
+FORM exclude_status.
+
+  CLEAR: gt_exclude, gs_exclude.
+
+  gs_exclude = cl_gui_alv_grid=>mc_fc_loc_insert_row.
+  APPEND gs_exclude TO gt_exclude.
+
+  CLEAR: gs_exclude.
+  gs_exclude = cl_gui_alv_grid=>mc_fc_loc_copy_row.
+  APPEND gs_exclude TO gt_exclude.
+
+  CLEAR: gs_exclude.
+  gs_exclude = cl_gui_alv_grid=>mc_fc_loc_copy.
+  APPEND gs_exclude TO gt_exclude.
+
+
+ENDFORM.
+
+FORM prepare_header .
+
+  DATA: lv_number_lines TYPE c LENGTH 12,
+        lv_date         TYPE c LENGTH 14,
+        lv_time         TYPE string.
+
+  IF gr_docking_container IS NOT BOUND.
+
+    CREATE OBJECT gr_docking_container
+      EXPORTING
+        repid = sy-repid
+        dynnr = '0100'
+        ratio = 12
+        side  = gr_docking_container->dock_at_top.
+
+    CREATE OBJECT gr_document.
+
+    CALL FUNCTION 'CONVERT_DATE_TO_EXTERNAL'
+      EXPORTING
+        date_internal = sy-datum
+      IMPORTING
+        date_external = lv_date.
+
+    PERFORM add_line USING 'Date : ' lv_date.
+
+    CALL METHOD cl_abap_timefm=>conv_time_int_to_ext
+      EXPORTING
+        time_int = sy-uzeit
+      IMPORTING
+        time_ext = lv_time.
+
+    PERFORM add_line USING 'Time : ' lv_time.
+    PERFORM add_line USING 'Username : ' sy-uname.
+
+    DESCRIBE TABLE <fs_table> LINES DATA(lv_lines).
+    lv_number_lines = lv_lines.
+    PERFORM add_line USING 'Number of Entries : '  lv_number_lines.
+
+
+    CALL METHOD gr_document->display_document
+      EXPORTING
+        parent = gr_docking_container.
+
+  ENDIF.
+
+ENDFORM. " PREPARE_HEADER
+
+FORM add_line USING text1 text2.
+
+  CLEAR line_header.
+  CONCATENATE text1 text2
+  INTO line_header RESPECTING BLANKS.
+
+  CALL METHOD gr_document->add_text
+    EXPORTING
+      text         = line_header
+      sap_fontsize = cl_dd_document=>medium
+      sap_emphasis = cl_dd_document=>strong.
+
+  CALL METHOD gr_document->new_line.
+
+ENDFORM. "add_line
+
+FORM database_update.
+
+  "POPUP Answer
+  DATA: lv_answer          TYPE c LENGTH 1,
+        lv_data_consistent TYPE c.
+
+  "Check Consistency of Data to be Saved
+  CLEAR lv_data_consistent.
+  PERFORM check_data CHANGING lv_data_consistent.
+
+  IF lv_data_consistent EQ 'X'.
+
+    CLEAR lv_answer.
+    CALL FUNCTION 'POPUP_WITH_2_BUTTONS_TO_CHOOSE'
+      EXPORTING
+        diagnosetext1 = 'Database Table will be Updated'
+        diagnosetext2 = 'Do you wish to continue?'
+        textline1     = space
+        textline2     = space
+        text_option1  = 'Yes'
+        text_option2  = 'No'
+        titel         = 'Message'
+      IMPORTING
+        answer        = lv_answer.
+    CASE lv_answer.
+      WHEN '1'.
+        PERFORM update_table.
+      WHEN '2'.
+        MESSAGE 'Update Cancelled by the User' TYPE 'I'.
+    ENDCASE.
+
+  ENDIF.
+
+ENDFORM.
+
+FORM check_data USING lv_check.
+
+
+  CALL METHOD go_alv_grid_0100->check_changed_data
+    IMPORTING
+      e_valid = lv_check.
+
+ENDFORM.
+
+FORM update_table.
+
+  DATA: lv_message TYPE c LENGTH 120.
+
+*  UPDATE p_table FROM TABLE <fs_table>.
+
+  IF sy-subrc EQ 0.
+
+    CLEAR lv_message.
+    CONCATENATE 'Table' space p_table ' updated succesfully' INTO lv_message.
+    MESSAGE lv_message TYPE 'I' DISPLAY LIKE 'S'.
+
+  ELSE.
+
+    MESSAGE ' Error while updating the database table' TYPE 'I' DISPLAY LIKE 'E'.
+
+  ENDIF.
+
+ENDFORM.
+
+FORM display_popup_alv.
+
+
+  DATA: alv            TYPE REF TO cl_salv_table,
+        lr_popup_table TYPE REF TO data,
+        message        TYPE REF TO cx_salv_msg,
+        lr_functions   TYPE REF TO cl_salv_functions_list,
+        lr_selections  TYPE REF TO cl_salv_selections.
+  FIELD-SYMBOLS: <fs_table_popup>    TYPE STANDARD TABLE.
+
+*Field Symbol Assignment based on Selection Screen Input
+  CREATE DATA lr_popup_table TYPE TABLE OF (tab_name).
+  ASSIGN lr_popup_table->* TO <fs_table_popup>.
+
+  IF sy-subrc EQ 0.
+    SELECT * FROM (tab_name) INTO TABLE <fs_table_popup>.
+  ELSE.
+    MESSAGE 'Error while retrieving the DATA' TYPE 'I'.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+  TRY.
+      cl_salv_table=>factory(
+      IMPORTING
+        r_salv_table = alv
+      CHANGING
+        t_table      = <fs_table_popup> ).
+
+
+    CATCH cx_salv_msg INTO message.
+      " error handling
+  ENDTRY.
+
+  lr_functions = alv->get_functions( ).
+  lr_functions->set_all( 'X' ).
+
+  IF alv IS BOUND.
+    alv->set_screen_popup(
+      start_column = 1
+      end_column  = 100
+      start_line  = 1
+      end_line    = 20 ).
+
+    lr_selections = alv->get_selections( ).
+    lr_selections->set_selection_mode( if_salv_c_selection_mode=>row_column ).
+
+    alv->display( ).
+  ENDIF.
+
+ENDFORM.
+
+FORM enable_disable_edit.
+
+
+  IF gv_edit_flag EQ 'X'.
+
+    LOOP AT gt_fieldcat ASSIGNING <fcat>.
+      <fcat>-edit = abap_true.
+    ENDLOOP.
+    gv_edit_flag = space.
+  ELSE.
+
+    LOOP AT gt_fieldcat ASSIGNING <fcat>.
+      <fcat>-edit = abap_false.
+    ENDLOOP.
+    gv_edit_flag = 'X'.
+  ENDIF.
+
+  go_alv_grid_0100->refresh_table_display( ).
+
+ENDFORM.
+
+*---------------------------------------------------------------------*
+* Form get_data_from_excel
+*---------------------------------------------------------------------*
+FORM get_data_from_excel .
+
+  DATA: it_raw   TYPE truxs_t_text_data.
+
+  CREATE DATA lr_table_upload TYPE TABLE OF (p_table).
+  ASSIGN lr_table_upload->* TO <fs_table_upload>.
+
+  " Convert Excel Data to SAP internal Table Data
+  CALL FUNCTION 'TEXT_CONVERT_XLS_TO_SAP'
+    EXPORTING
+      i_line_header        = 'Χ'
+      i_tab_raw_data       = it_raw       " WORK TABLE
+      i_filename           = filename
+    TABLES
+      i_tab_converted_data = <fs_table_upload>  "ACTUAL DATA
+    EXCEPTIONS
+      conversion_failed    = 1
+      OTHERS               = 2.
+
+  IF sy-subrc EQ 0.
+    PERFORM display_upload.
+  ELSE.
+    MESSAGE 'Error While Uploading the Data' TYPE 'I'.
+  ENDIF.
+
+ENDFORM.
+
+FORM display_upload.
+
+
+  DATA: alv_upload     TYPE REF TO cl_salv_table,
+        lr_popup_table TYPE REF TO data,
+        message        TYPE REF TO cx_salv_msg,
+        lr_functions   TYPE REF TO cl_salv_functions_list,
+        lr_selections  TYPE REF TO cl_salv_selections,
+        columns        TYPE REF TO cl_salv_columns_table,
+        column         TYPE REF TO cl_salv_column,
+        not_found      TYPE REF TO cx_salv_not_found.
+
+  TRY.
+      cl_salv_table=>factory(
+      IMPORTING
+        r_salv_table = alv_upload
+      CHANGING
+        t_table      = <fs_table_upload> ).
+
+    CATCH cx_salv_msg INTO message.
+      " error handling
+  ENDTRY.
+
+  columns = alv_upload->get_columns( ).
+  TRY." HIDE_CLIENT_COLUMN
+      column = columns->get_column( 'MANDT' ).
+      column->set_visible( if_salv_c_bool_sap=>false ).
+    CATCH cx_salv_not_found INTO not_found.
+      " error handling
+  ENDTRY.
+
+
+  lr_functions = alv_upload->get_functions( ).
+  lr_functions->set_all( 'X' ).
+
+  IF alv_upload IS BOUND.
+    alv_upload->set_screen_popup(
+      start_column = 1
+      end_column  = 100
+      start_line  = 1
+      end_line    = 20 ).
+
+    lr_selections = alv_upload->get_selections( ).
+    lr_selections->set_selection_mode( if_salv_c_selection_mode=>row_column ).
+
+    alv_upload->display( ).
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+
+  SET PF-STATUS 'STATUS_100'.
+  SET TITLEBAR 'TITLE_100'.
+
+  PERFORM display_alv.
+
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  DATA ok_code_100 TYPE sy-ucomm.
+
+  ok_code_100 = sy-ucomm.
+
+  CASE ok_code_100.
+    WHEN 'BACK' OR 'CANC' OR 'EXIT'.
+      LEAVE TO SCREEN 0.
+    WHEN 'TABLE'.
+      CALL SCREEN 500 STARTING AT 5 02  "TOP LEFT CORNER
+                      ENDING   AT 30 03."BOTTOM RIGHT CORNER
+    WHEN 'SAVE'.
+      PERFORM database_update.
+    WHEN 'SAVE1'.
+      PERFORM database_update.
+    WHEN 'EDIT'.
+      PERFORM enable_disable_edit.
+    WHEN 'EXCEL'.
+      CALL SCREEN 400 STARTING AT 5 02  "TOP LEFT CORNER
+                      ENDING   AT 60 05."BOTTOM RIGHT CORNER.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0500  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0500 OUTPUT.
+  SET PF-STATUS 'STATUS_500'.
+  SET TITLEBAR 'TITLE_500'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0500  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0500 INPUT.
+
+  DATA ok_code_500 TYPE sy-ucomm.
+
+  ok_code_500 = sy-ucomm.
+
+  CASE ok_code_500.
+    WHEN 'ENTER'.
+      IF tab_name IS NOT INITIAL.
+        PERFORM table_check_if_db_tab USING tab_name.
+        PERFORM display_popup_alv.
+        LEAVE TO SCREEN 0.
+      ENDIF.
+    WHEN 'CANCEL'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0400  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0400 OUTPUT.
+  SET PF-STATUS 'STATUS_400'.
+  SET TITLEBAR 'TITLE_400'.
+  upload_table = p_table.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0400  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0400 INPUT.
+
+  DATA ok_code_400 TYPE sy-ucomm.
+
+  ok_code_400 = sy-ucomm.
+
+  CASE ok_code_400.
+    WHEN 'ENTER'.
+      IF filename IS NOT INITIAL AND upload_table EQ p_table.
+        PERFORM get_data_from_excel.
+        LEAVE TO SCREEN 0.
+      ELSEIF filename IS INITIAL.
+        MESSAGE 'Select Filepath of the Excel Table' TYPE 'I'.
+      ELSEIF  upload_table NE p_table.
+        MESSAGE 'Upload Table should be the same with Edit Table' TYPE 'I'.
+      ENDIF.
+    WHEN 'CANCEL'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+ENDMODULE.
+
+MODULE filename_f4 INPUT.
+
+
+  CALL FUNCTION 'KD_GET_FILENAME_ON_F4'
+    EXPORTING
+      mask      = '*.xls'
+      static    = 'X'
+    CHANGING
+      file_name = filename.
+
+ENDMODULE.
