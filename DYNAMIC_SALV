@@ -448,8 +448,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
         CALL METHOD lcl_event_handler=>show_hide_empty_columns.
 
       WHEN 'DETAILS'.
-
-*      MESSAGE 'DISPLAY DETAILS UNDER CONSTRUCTION' TYPE 'I'.
+      
         CALL METHOD lcl_event_handler=>display_details_of_selection.
 
       WHEN 'DOCU'.
