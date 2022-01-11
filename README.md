@@ -19,6 +19,7 @@ seeking to learn and develop our skills in ABAP area.
 
 * Copy-Paste Installation
 * Code based on New ABAP Syntax. 7.40 and later
+* Comments throughout the Code
 
 ## Project 1: Dynamic SALV
 
