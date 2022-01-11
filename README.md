@@ -1,6 +1,10 @@
 # ABAP_PROJECTS
 Repository for Projects based on ABAP programming language.
 
+Design Goals
+
+Copy-Paste Installation
+
 Project 1: Dynamic SALV
 
 Display any table using cl_salv_Table alv. Scope of this project is to create a cl_salv_table based alv which is
