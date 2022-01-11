@@ -11,4 +11,5 @@ cl_salv_table based ALV even though there are limitations compared to cl_gui_alv
 
 Project 2: Transport Request Utility
 
-Under Construction.....
+Heads up functional consultants. This one is built in order to assist you in your every daily request transports.
+It is under construction so stay tuned...
