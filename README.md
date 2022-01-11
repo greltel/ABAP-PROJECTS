@@ -1,12 +1,12 @@
 # ABAP_PROJECTS
 Repository for Projects based on ABAP programming language.
 
-Design Goals
+## Design Goals
 
 *Copy-Paste Installation
 *Code based on New ABAP Syntax. 7.40 and later
 
-Project 1: Dynamic SALV
+## Project 1: Dynamic SALV
 
 Display any table using cl_salv_Table alv. Scope of this project is to create a cl_salv_table based alv which is
 as dynamic as possible. There are no data declarations(wherever possible), no custom screen, no gui status etc.
@@ -14,7 +14,7 @@ Also many custom functions have been added to ALV toolbar like custom details sc
 hide/show empty columns of table and edit button. The whole point of this project is to reveal the real potential of 
 cl_salv_table based ALV even though there are limitations compared to cl_gui_alv_grid.
 
-Project 2: Transport Request Utility
+## Project 2: Transport Request Utility
 
 Heads up functional consultants. This one is built in order to assist you in your every daily request transports.
 It is under construction so stay tuned...
