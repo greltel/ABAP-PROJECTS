@@ -5,11 +5,13 @@
 ## Motivation for doing a Project based Repository
 
 The motivation for creating the repository was our desire to share our knowledge and our progress in ABAP.
+Any suggestions are always welcome regarding code optimization or the addition of new functions. We strongly believe
+that because there are not many ABAP developers worldwide, our 
 
 ## Contributors-Developers
 
 The repository was created by George Drakos and Dimitris Valouxis. We are both ABAP developers 
-seeking to learn and develop our skills in ABAP area.
+seeking to learn and develop our skills in ABAP area. 
 
 ## Design Goals
 
