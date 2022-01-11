@@ -1,6 +1,10 @@
 # ABAP_PROJECTS
 Repository for Projects based on ABAP programming language.
 
+## Motivation for doing a Project based Repository
+
+The motivation for creating the repository was our desire to share our
+
 ## Design Goals
 
 * Copy-Paste Installation
