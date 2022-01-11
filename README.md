@@ -4,9 +4,10 @@
 
 ## Motivation for doing a Project based Repository
 
-The motivation for creating the repository was our desire to share our knowledge and our progress in ABAP.
-Any suggestions are always welcome regarding code optimization or the addition of new functions. We strongly believe
-that because there are not many ABAP developers worldwide, our 
+The motivation for creating the current repository was our desire to share our knowledge and our progress in ABAP.
+We would be very happy if through this initiative, we could help developers to develop their skills and improve their productivity
+We strongly believe that because there are not many ABAP developers, our libraries must be shared.
+Any suggestions are always welcome regarding code optimization or the addition of new functions.
 
 ## Contributors-Developers
 
