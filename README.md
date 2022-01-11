@@ -3,8 +3,8 @@ Repository for Projects based on ABAP programming language.
 
 ## Design Goals
 
-*Copy-Paste Installation
-*Code based on New ABAP Syntax. 7.40 and later
+* Copy-Paste Installation
+* Code based on New ABAP Syntax. 7.40 and later
 
 ## Project 1: Dynamic SALV
 
