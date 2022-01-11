@@ -2,7 +2,7 @@
 
 *Repository for Projects based on ABAP programming language.*
 
-## Motivation for doing a Project based Repository
+## Motivation for Creating the Repository
 
 The motivation for creating the current repository was our desire to share our knowledge and progress in ABAP.
 We would be very happy if through this initiative, we could help ABAPers to develop their skills and improve their productivity.
@@ -20,6 +20,7 @@ seeking to learn and develop our skills in ABAP area.
 * Copy-Paste Installation
 * Code based on New ABAP Syntax. 7.40 and later
 * Comments throughout the Code
+* Public repository
 
 ## Project 1: Dynamic SALV
 
