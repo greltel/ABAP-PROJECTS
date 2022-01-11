@@ -3,7 +3,8 @@ Repository for Projects based on ABAP programming language.
 
 ## Motivation for doing a Project based Repository
 
-The motivation for creating the repository was our desire to share our
+The motivation for creating the repository was our desire to share our knowledge and our progress in ABAP.
+Despite not being a popular programming language, there are
 
 ## Design Goals
 
