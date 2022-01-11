@@ -6,6 +6,11 @@ Repository for Projects based on ABAP programming language.
 The motivation for creating the repository was our desire to share our knowledge and our progress in ABAP.
 Despite not being a popular programming language, there are
 
+## Contributors-Developers
+
+The repository was created by George Drakos and Dimitris Valouxis. We are both ABAP developers 
+seeking to learn and develop our skills in ABAP area.
+
 ## Design Goals
 
 * Copy-Paste Installation
