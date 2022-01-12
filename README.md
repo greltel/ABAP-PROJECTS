@@ -21,6 +21,7 @@ seeking to learn and develop our skills in ABAP and SAP area in general.
 * Code based on New ABAP Syntax. 7.40 and later
 * Comments throughout the Code
 * Public repository
+* No Text Elements-Selection Texts must be created.
 
 ## Project 1: Dynamic SALV
 
