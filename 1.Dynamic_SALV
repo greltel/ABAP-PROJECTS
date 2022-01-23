@@ -2,7 +2,7 @@
 *   Program name:                                                      *
 *   Description :                                                      *
 *                                                                      *
-*   Created   by: GDRAKOS DVALOUXIS                                    *
+*   Created   by: GDRAKOS                                              *
 *                                                                      *
 ************************************************************************
 REPORT z_salv_alv  NO STANDARD PAGE HEADING LINE-COUNT 255.
@@ -504,68 +504,73 @@ ENDCLASS.                    "lcl_layout_f4 IMPLEMENTATION
 *&---------------------------------------------------------------------*
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_table FOR FIELD p_table.
-    PARAMETERS: p_table TYPE tabname OBLIGATORY DEFAULT 'MARA' MATCHCODE OBJECT dd_dbtb_16.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_table FOR FIELD p_table.
+PARAMETERS: p_table TYPE tabname OBLIGATORY DEFAULT 'MARA' MATCHCODE OBJECT dd_dbtb_16.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_layout FOR FIELD p_layout.
-    PARAMETERS: p_layout TYPE disvariant-variant.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_hotsp FOR FIELD p_hotsp.
+PARAMETERS: p_hotsp TYPE lvc_fname.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_hits FOR FIELD p_hits.
-    PARAMETERS: p_hits TYPE syst_tabix DEFAULT 10.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_layout FOR FIELD p_layout.
+PARAMETERS: p_layout TYPE disvariant-variant.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_names FOR FIELD p_names.
-    PARAMETERS: p_names AS CHECKBOX DEFAULT space.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_hits FOR FIELD p_hits.
+PARAMETERS: p_hits TYPE syst_tabix DEFAULT 10.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_r1 FOR FIELD r1.
-    PARAMETERS: r1 RADIOBUTTON GROUP rb1 DEFAULT 'X' USER-COMMAND uc1.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_names FOR FIELD p_names.
+PARAMETERS: p_names AS CHECKBOX DEFAULT space.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_r2 FOR FIELD r2.
-    PARAMETERS: r2 RADIOBUTTON GROUP rb1.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_r1 FOR FIELD r1.
+PARAMETERS: r1 RADIOBUTTON GROUP rb1 DEFAULT 'X' USER-COMMAND uc1.
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_r2 FOR FIELD r2.
+PARAMETERS: r2 RADIOBUTTON GROUP rb1.
+SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b1.
 
 SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE title2.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_stand FOR FIELD p_stand MODIF ID id1.
-    PARAMETERS: p_stand RADIOBUTTON GROUP rb2 DEFAULT 'X' MODIF ID id1 .
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_stand FOR FIELD p_stand MODIF ID id1.
+PARAMETERS: p_stand RADIOBUTTON GROUP rb2 DEFAULT 'X' MODIF ID id1 .
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_doc FOR FIELD p_doc MODIF ID id1.
-    PARAMETERS: p_doc RADIOBUTTON GROUP rb2  MODIF ID id1 .
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_doc FOR FIELD p_doc MODIF ID id1.
+PARAMETERS: p_doc RADIOBUTTON GROUP rb2  MODIF ID id1 .
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_split FOR FIELD p_split MODIF ID id1.
-    PARAMETERS: p_split RADIOBUTTON GROUP rb2 MODIF ID id1 .
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_split FOR FIELD p_split MODIF ID id1.
+PARAMETERS: p_split RADIOBUTTON GROUP rb2 MODIF ID id1 .
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_dial FOR FIELD p_dial MODIF ID id1.
-    PARAMETERS: p_dial RADIOBUTTON GROUP rb2 MODIF ID id1 .
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_dial FOR FIELD p_dial MODIF ID id1.
+PARAMETERS: p_dial RADIOBUTTON GROUP rb2 MODIF ID id1 .
+SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b2.
 
 SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE title3.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_popup FOR FIELD p_popup MODIF ID id2.
-    PARAMETERS: p_popup AS CHECKBOX DEFAULT space MODIF ID id2.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_popup FOR FIELD p_popup MODIF ID id2.
+PARAMETERS: p_popup AS CHECKBOX DEFAULT space MODIF ID id2.
+SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b3.
 
@@ -598,6 +603,9 @@ AT SELECTION-SCREEN OUTPUT.
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_layout.
   lcl_layout_f4=>f4_salv( CHANGING cv_layout = p_layout ).
 
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_hotsp.
+  PERFORM hotspot_f4.
+
 *&---------------------------------------------------------------------*
 *& AT SELECTION SCREEN Actions
 *&---------------------------------------------------------------------*
@@ -629,6 +637,7 @@ FORM screen_initialization.
   t_names   = 'Display Technical Names'.
   t_hits    = 'Maximum no. of hits'.
   t_popup   = 'ALV on Popup'.
+  t_hotsp   = 'Hotspot Field'.
   t_doc     = 'ALV at Bottom'.
   t_split   = 'ALV Splitted'.
   t_table   = 'Table'.
@@ -638,6 +647,7 @@ FORM screen_initialization.
   t_r2      = 'Fiori Version'.
 
 ENDFORM.
+
 *&---------------------------------------------------------------------*
 *& Form MODIFY SCREEN
 *&---------------------------------------------------------------------*
@@ -666,6 +676,45 @@ FORM modify_screen.
     ENDIF.
 
   ENDLOOP.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form HOTSPOT_F4
+*&---------------------------------------------------------------------*
+FORM hotspot_f4.
+
+  TYPES:BEGIN OF type,
+          fieldname   TYPE fieldname,
+          field_descr TYPE scrtext_l,
+        END OF type.
+
+  DATA:lt_fields TYPE STANDARD TABLE OF type.
+
+  DATA(lo_descr) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_name( p_table ) ).
+
+  LOOP AT lo_descr->components ASSIGNING FIELD-SYMBOL(<fs_line>).
+
+    SELECT SINGLE scrtext_l
+    FROM  dd04t
+    INTO  @DATA(scrtext_l)
+    WHERE rollname EQ @<fs_line>-name AND
+          ddlanguage  EQ @sy-langu.
+
+    APPEND VALUE #( fieldname = <fs_line>-name field_descr = scrtext_l ) TO lt_fields.
+
+  ENDLOOP.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'FIELDNAME'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'P_HOTSP'
+      window_title = 'Table Fields'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_fields.
 
 ENDFORM.
 
@@ -1189,6 +1238,6 @@ FORM event_handling.
   SET HANDLER lcl_event_handler=>on_top_of_page FOR go_alv->get_event( ).
 
 *Set Desired Field Hotspot Enabled
-  lcl_event_handler=>set_hotspot( EXPORTING im_alv = go_alv im_field = 'BELNR' ).
+  lcl_event_handler=>set_hotspot( EXPORTING im_alv = go_alv im_field = p_hotsp ).
 
 ENDFORM.
