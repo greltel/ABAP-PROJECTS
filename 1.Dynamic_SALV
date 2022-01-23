@@ -2,7 +2,7 @@
 *   Program name:                                                      *
 *   Description :                                                      *
 *                                                                      *
-*   Created   by: GDRAKOS                                              *
+*   Created   by: GDRAKOS DVALOUXIS                                    *
 *                                                                      *
 ************************************************************************
 REPORT z_salv_alv  NO STANDARD PAGE HEADING LINE-COUNT 255.
@@ -450,23 +450,20 @@ CLASS lcl_event_handler IMPLEMENTATION.
   METHOD handle_hotspot." HANDLE THE CLICK ON A SPECIFIC HOTSPOT
 
 *   Get the line of the table that the user Clicked
-    READ TABLE <fs_table> ASSIGNING FIELD-SYMBOL(<fs_structure>) INDEX row.
+    ASSIGN <fs_table>[ row ]  TO FIELD-SYMBOL(<fs_structure>).
 
 *   Get the Desired Value and Call Transaction
-    IF <fs_structure>  IS ASSIGNED.
+    IF <fs_structure>  IS ASSIGNED AND sy-subrc EQ 0.
 
-      ASSIGN COMPONENT 'BELNR' OF STRUCTURE <fs_structure> TO FIELD-SYMBOL(<fs_belnr>)."CHANGE COMPONENT NAME BASED ON HOTSPOT COLUMN
-      ASSIGN COMPONENT 'BUKRS' OF STRUCTURE <fs_structure> TO FIELD-SYMBOL(<fs_bukrs>).
-      ASSIGN COMPONENT 'GJAHR' OF STRUCTURE <fs_structure> TO FIELD-SYMBOL(<fs_gjahr>).
+      ASSIGN COMPONENT column OF STRUCTURE <fs_structure> TO FIELD-SYMBOL(<fs_field_value>).
 
-      IF <fs_belnr> IS ASSIGNED AND <fs_bukrs> IS ASSIGNED AND <fs_gjahr> IS ASSIGNED .
-        SET PARAMETER ID 'BLN' FIELD <fs_belnr> . "CHANGE Parameter id to corrensponding tcode called
-        SET PARAMETER ID 'BUK' FIELD <fs_bukrs> .
-        SET PARAMETER ID 'GJR' FIELD <fs_gjahr> .
-        CALL TRANSACTION 'FB03' AND SKIP FIRST SCREEN ."CHANGE Determined the called tcode
+      IF <fs_field_value> IS ASSIGNED .
+        DATA(popup) = cl_demo_output=>new( mode = 'TEXT').
+        popup->write_text( |You have clicked on column { column } of row { row } | ).
+        popup->write_text( |The value is { <fs_field_value> } | ).
+        popup->display( ).
       ENDIF.
 
-      UNASSIGN: <fs_structure>,<fs_belnr>,<fs_bukrs>,<fs_gjahr>.
     ENDIF.
 
   ENDMETHOD.  "HANDLE_HOTSPOT
@@ -655,7 +652,7 @@ FORM modify_screen.
 
   LOOP AT SCREEN.
 
-    IF screen-name EQ 'T_LAYOUT' OR screen-name EQ 'T_NAMES' .
+    IF screen-name EQ 'T_LAYOUT' OR screen-name EQ 'T_HOTSP' OR screen-name EQ 'T_HITS' .
       screen-display_3d = '1'.
       screen-request = '1'.
       MODIFY SCREEN.
