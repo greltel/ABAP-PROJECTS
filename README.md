@@ -1,6 +1,6 @@
 # ABAP_PROJECTS
 
-*Repository for Projects based on ABAP programming language.*
+*Repository for Projects based on ABAP Programming language.*
 
 ## Motivation for Creating the Repository
 
