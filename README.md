@@ -31,7 +31,11 @@ Also many custom functions have been added to ALV toolbar like custom details sc
 hide/show empty columns of table and edit button. The whole point of this project is to reveal the real potential of 
 cl_salv_table based ALV even though there are limitations compared to cl_gui_alv_grid.
 
-## Project 2: Transport Request Utility
+## Project 2: XML to Internal Table
+
+Upload XML file and map it directly to Internal Table
+
+## Project 3: Transport Request Utility
 
 Heads up functional consultants. This one is built in order to assist you in your daily request transports.
 It is under construction so stay tuned...
