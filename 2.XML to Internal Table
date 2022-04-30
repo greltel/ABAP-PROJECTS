@@ -233,8 +233,8 @@ START-OF-SELECTION.
   lo_xml->get_structured_table_from_xml(
     EXPORTING
       im_xml_table = lt_xml
-      im_attribute_node = 'feeds'
-      im_map_by_index = abap_true
+*      im_attribute_node = 'node_name'
+*      im_map_by_index = abap_true
     IMPORTING
       ex_table = gt_data ).
 
