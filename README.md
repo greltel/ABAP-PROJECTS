@@ -33,7 +33,7 @@ cl_salv_table based ALV even though there are limitations compared to cl_gui_alv
 
 ## Project 2: XML to Internal Table
 
-Upload XML file and map it directly to Internal Table
+Upload XML file and map it directly to Internal Table( under optimization )
 
 ## Project 3: Transport Request Utility
 
