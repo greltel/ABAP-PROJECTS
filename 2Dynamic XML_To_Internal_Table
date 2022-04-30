@@ -5,7 +5,7 @@
 *   Created   by: GDRAKOS DVALOUXIS                                    *
 *                                                                      *
 ************************************************************************
-REPORT test_xml.
+REPORT XML_To_Internal_Table.
 
 TYPES:BEGIN OF t_xml_table,
         value_node1 TYPE c LENGTH 50,
