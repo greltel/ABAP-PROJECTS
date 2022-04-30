@@ -128,7 +128,7 @@ CLASS lcl_xml IMPLEMENTATION.
     CREATE DATA ref_wa LIKE LINE OF <fs_itab>.
     ASSIGN ref_wa->* TO <fs_wa>.
 
-    LOOP AT im_xml_table ASSIGNING FIELD-SYMBOL(<fs_xml_line>) WHERE type IS NOT INITIAL.
+    LOOP AT im_xml_table ASSIGNING FIELD-SYMBOL(<fs_xml_line>).
 
       DATA(lv_tabix) = sy-tabix.
 
@@ -233,7 +233,7 @@ START-OF-SELECTION.
   lo_xml->get_structured_table_from_xml(
     EXPORTING
       im_xml_table = lt_xml
-*      im_attribute_node = 'id'
+      im_attribute_node = 'feeds'
       im_map_by_index = abap_true
     IMPORTING
       ex_table = gt_data ).
