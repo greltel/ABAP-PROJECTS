@@ -5,7 +5,7 @@
 *   Created   by: GDRAKOS DVALOUXIS                                    *
 *                                                                      *
 ************************************************************************
-REPORT XML_To_Internal_Table.
+REPORT xml_to_internal_table.
 
 TYPES:BEGIN OF t_xml_table,
         value_node1 TYPE c LENGTH 50,
@@ -18,21 +18,58 @@ TYPES:BEGIN OF t_xml_table,
 
 DATA:gt_data TYPE STANDARD TABLE OF t_xml_table WITH EMPTY KEY INITIAL SIZE 0.
 
+CLASS lcx_xml DEFINITION INHERITING FROM cx_static_check.
+
+  PUBLIC SECTION.
+
+    METHODS: constructor IMPORTING text TYPE string,
+      get_text REDEFINITION.
+
+  PRIVATE SECTION.
+
+    DATA: local_text TYPE string.
+
+ENDCLASS.
+
+CLASS lcx_xml IMPLEMENTATION.
+
+  METHOD constructor.
+
+    super->constructor( textid = CONV #( text ) ).
+    local_text = text.
+
+  ENDMETHOD.
+
+  METHOD get_text.
+
+    result = me->local_text.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
 CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
   PUBLIC SECTION.
 
+    CLASS-METHODS:
+
+      open_dialog RETURNING VALUE(re_filepath)  TYPE file_table-filename,
+
+      display_table IMPORTING im_table           TYPE ANY TABLE
+                              im_technical_names TYPE abap_bool DEFAULT abap_false.
+
     METHODS:
 
-      open_dialog EXPORTING ex_filepath    TYPE file_table-filename,
-
       read_xml IMPORTING im_filepath  TYPE file_table-filename
-               EXPORTING ex_xml_table TYPE hrpayfr_t_smum_xmltb,
+               EXPORTING ex_xml_table TYPE hrpayfr_t_smum_xmltb
+               RAISING   lcx_xml,
 
       get_structured_table_from_xml IMPORTING im_xml_table      TYPE hrpayfr_t_smum_xmltb
                                               im_attribute_node TYPE cname OPTIONAL
                                               im_map_by_index   TYPE abap_bool DEFAULT abap_false
-                                    EXPORTING ex_table          TYPE ANY TABLE.
+                                    EXPORTING ex_table          TYPE ANY TABLE
+                                    RAISING   lcx_xml.
 
 ENDCLASS.
 
@@ -61,10 +98,9 @@ CLASS lcl_xml IMPLEMENTATION.
     CHECK sy-subrc IS INITIAL.
 
     TRY.
-        ex_filepath =  lt_file_table[ 1 ]-filename.
+        re_filepath =  lt_file_table[ 1 ]-filename.
       CATCH cx_sy_itab_line_not_found.
-        CLEAR:ex_filepath.
-        RETURN.
+        CLEAR:re_filepath.
     ENDTRY.
 
   ENDMETHOD.
@@ -82,6 +118,7 @@ CLASS lcl_xml IMPLEMENTATION.
         retcode  = DATA(lv_subrc).
 
     IF lv_subrc EQ 0.
+
       CALL METHOD lo_xml->render_2_xstring
         IMPORTING
           retcode = lv_subrc
@@ -99,6 +136,15 @@ CLASS lcl_xml IMPLEMENTATION.
             return    = lt_return.
 
       ENDIF.
+
+    ENDIF.
+
+    IF sy-subrc NE 0 OR
+       line_exists( lt_return[ type = 'E' ] ) OR
+       line_exists( lt_return[ type = 'A' ] ) OR
+       line_exists( lt_return[ type = 'X' ] ).
+
+      RAISE EXCEPTION TYPE lcx_xml EXPORTING text = 'Error Parsing the XML File'.
 
     ENDIF.
 
@@ -133,7 +179,7 @@ CLASS lcl_xml IMPLEMENTATION.
       DATA(lv_tabix) = sy-tabix.
 
       "MAP BY SUPPLIED ATTRIBUTE NODE
-      IF im_attribute_node IS SUPPLIED.
+      IF im_attribute_node IS NOT INITIAL.
 
         IF <fs_xml_line>-cname EQ im_attribute_node.
 
@@ -213,32 +259,137 @@ CLASS lcl_xml IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD display_table.
+
+    DATA:ref_wa TYPE REF TO data.
+
+    CREATE DATA ref_wa LIKE im_table.
+
+    ASSIGN ref_wa->* TO  FIELD-SYMBOL(<fs_itab>).
+    <fs_itab> = im_table.
+
+    TRY.
+        cl_salv_table=>factory( IMPORTING r_salv_table = DATA(alv) CHANGING t_table = <fs_itab> ).
+      CATCH cx_salv_msg.
+    ENDTRY.
+
+    "Columns Optimize
+    alv->get_columns( )->set_optimize( if_salv_c_bool_sap=>true ).
+
+    "Build Field Catalog Dynamically in Case of Empty
+    LOOP AT alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<fs_cols>).
+
+      IF <fs_cols>-r_column->get_medium_text( ) IS INITIAL.
+        <fs_cols>-r_column->set_medium_text( CONV #( <fs_cols>-columnname ) ).
+      ENDIF.
+
+    ENDLOOP.
+
+    " Show technical and regular column names at the same time as column names
+    IF im_technical_names EQ abap_true.
+      LOOP AT alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<c>).
+        <c>-r_column->set_short_text( |{ <c>-r_column->get_columnname( ) } [{ <c>-r_column->get_short_text( ) }]| ).
+        <c>-r_column->set_medium_text( |{ <c>-r_column->get_columnname( ) } [{ <c>-r_column->get_medium_text( ) }]| ).
+        <c>-r_column->set_long_text( |{ <c>-r_column->get_columnname( ) } [{ <c>-r_column->get_long_text( ) }]| ).
+      ENDLOOP.
+    ENDIF.
+
+    "Stripped Display
+    alv->get_display_settings( )->set_striped_pattern( if_salv_c_bool_sap=>true ).
+
+    "Full Toolbar Options
+    alv->get_functions( )->set_all( ).
+
+    " Enable Multiple Selection in the ALV Layout and Enable Left Column for Selection
+    alv->get_selections( )->set_selection_mode( if_salv_c_selection_mode=>row_column )."cl_salv_selections=>multiple
+
+    "Layout Settings
+    DATA(v_key) = VALUE salv_s_layout_key( report = sy-repid ).
+    alv->get_layout( )->set_key( value = v_key ).
+    alv->get_layout( )->set_default( abap_true ).
+    alv->get_layout( )->set_save_restriction( if_salv_c_layout=>restrict_none ).
+    alv->get_layout( )->set_default( if_salv_c_bool_sap=>true ).
+
+    alv->display( ).
+
+  ENDMETHOD.
 
 ENDCLASS.
 
+*&---------------------------------------------------------------------*
+*& SELECTION SCREEN DESIGN
+*&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
+
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_file FOR FIELD p_file.
+PARAMETERS: p_file TYPE file_table-filename.
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_attr FOR FIELD p_attr.
+PARAMETERS: p_attr TYPE cname.
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_index FOR FIELD p_index.
+PARAMETERS: p_index AS CHECKBOX DEFAULT ''.
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN END OF BLOCK b1.
+*&---------------------------------------------------------------------*
+*& INITIALIZATION OF SELECTION SCREEN ELEMENTS
+*&---------------------------------------------------------------------*
+INITIALIZATION.
+  PERFORM screen_initialization.
+*&---------------------------------------------------------------------*
+*& AT SELECTION SCREEN ON VALUE REQUESTS (F4)
+*&---------------------------------------------------------------------*
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
+  p_file =  lcl_xml=>open_dialog( ).
+*&---------------------------------------------------------------------*
+*& EXECUTABLE CODE
+*&---------------------------------------------------------------------*
 START-OF-SELECTION.
 
   DATA(lo_xml) = NEW lcl_xml( ).
 
-  lo_xml->open_dialog(
-    IMPORTING
-       ex_filepath = DATA(lv_filepath) ).
+  TRY.
+      lo_xml->read_xml(
+        EXPORTING
+          im_filepath  = p_file
+        IMPORTING
+          ex_xml_table = DATA(lt_xml) ).
 
-  lo_xml->read_xml(
-    EXPORTING
-      im_filepath  = lv_filepath
-    IMPORTING
-      ex_xml_table = DATA(lt_xml) ).
+      lo_xml->get_structured_table_from_xml(
+        EXPORTING
+          im_xml_table = lt_xml
+          im_attribute_node = p_attr
+          im_map_by_index = p_index
+        IMPORTING
+          ex_table = gt_data ).
 
-  lo_xml->get_structured_table_from_xml(
-    EXPORTING
-      im_xml_table = lt_xml
-*      im_attribute_node = 'node_name'
-*      im_map_by_index = abap_true
-    IMPORTING
-      ex_table = gt_data ).
+      CALL METHOD lcl_xml=>display_table( EXPORTING im_table = gt_data ).
 
-
-  BREAK-POINT.
+    CATCH lcx_xml INTO DATA(lo_exception).
+      MESSAGE lo_exception->get_text( ) TYPE 'I' DISPLAY LIKE 'E'.
+  ENDTRY.
 
 END-OF-SELECTION.
+
+*&---------------------------------------------------------------------*
+*& SUBROUTINE CREATION
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*& Form SCREEN INITIALIZATION
+*&---------------------------------------------------------------------*
+FORM screen_initialization.
+
+  title1  = 'XML'.
+
+  t_file  = 'XML Filepath'.
+  t_attr  = 'Attribute Node'.
+  t_index = 'Map by Index'.
+
+ENDFORM.
