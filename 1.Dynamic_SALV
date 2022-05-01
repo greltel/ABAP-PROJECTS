@@ -14,7 +14,6 @@ CONSTANTS:gc_report_heading TYPE syst-title VALUE 'Dynamic SALV Report'.
  TYPE-POOLS:icon,slis,cntb.
 
  TABLES:sscrfields.
-
 *&---------------------------------------------------------------------*
 *& LOCAL CLASSES
 *&---------------------------------------------------------------------*
@@ -22,8 +21,8 @@ CLASS: lcl_main_salv       DEFINITION DEFERRED,
        lcl_general_util    DEFINITION DEFERRED,
        lcl_event_handler   DEFINITION DEFERRED,
        lcl_salv_edit       DEFINITION DEFERRED,
-       lcl_layout_f4       DEFINITION DEFERRED.
-
+       lcl_layout_f4       DEFINITION DEFERRED,
+       lcx_exception       DEFINITION DEFERRED.
 *&---------------------------------------------------------------------*
 *& GLOBAL DATA DECLARATION
 *&---------------------------------------------------------------------*
@@ -35,6 +34,22 @@ TYPES:BEGIN OF ty_color,
 END OF ty_color.
 
 DATA: t_color TYPE STANDARD TABLE OF ty_color.
+
+*----------------------------------------------------------------------*
+*       CLASS LCX_EXCEPTION
+*----------------------------------------------------------------------*
+CLASS lcx_exception DEFINITION INHERITING FROM cx_static_check.
+
+  PUBLIC SECTION.
+
+    METHODS: constructor IMPORTING text TYPE string,
+             get_text REDEFINITION.
+
+  PRIVATE SECTION.
+
+    DATA: local_text TYPE string.
+
+ENDCLASS.
 
 *----------------------------------------------------------------------*
 *       CLASS LCL_MAIN_SALV
@@ -73,17 +88,20 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
                                    im_handle_gui_grid_events  TYPE flag               DEFAULT abap_false,
 
              get_data    IMPORTING im_data_source        TYPE en_data_source
-                                   im_table              TYPE tabname   OPTIONAL
+                                   im_table              TYPE tabname             OPTIONAL
                                    im_filepath           TYPE file_table-filename OPTIONAL
-                                   im_sheet_name         TYPE char20
-                                   im_number_of_lines    TYPE syst_tabix DEFAULT 100
-                                   im_field              TYPE char5      OPTIONAL
-                                   im_comp               TYPE ddoption   OPTIONAL
-                                   im_val                TYPE string     OPTIONAL
-                                   im_checkbox_column    TYPE abap_bool  DEFAULT abap_true
-                                   im_icon_column        TYPE abap_bool  DEFAULT abap_true,
-             process_data,
-             display_data.
+                                   im_sheet_name         TYPE char20              OPTIONAL
+                                   im_number_of_lines    TYPE syst_tabix          DEFAULT 100
+                                   im_field              TYPE char5               OPTIONAL
+                                   im_comp               TYPE ddoption            OPTIONAL
+                                   im_val                TYPE string              OPTIONAL
+                                   im_checkbox_column    TYPE abap_bool           DEFAULT abap_true
+                                   im_icon_column        TYPE abap_bool           DEFAULT abap_true
+                                   RAISING lcx_exception,
+
+             process_data RAISING lcx_exception,
+
+             display_data RAISING lcx_exception.
 
 
   PROTECTED SECTION.
@@ -104,6 +122,7 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
           lv_status                 TYPE rsmpe-status,
           lv_version                TYPE en_alv_version,
           lv_handle_gui_grid_events TYPE flag,
+          lv_data_source            TYPE en_data_source,
           lv_container              TYPE en_alv_container.
 
     "Private Class Data
@@ -111,7 +130,7 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
           lo_salv_alv     TYPE REF TO cl_salv_table.
 
     "Private Methods
-    METHODS: create_alv,
+    METHODS: create_alv RAISING lcx_exception,
              field_catalog,
              column_properties,
              display_settings_header,
@@ -132,12 +151,23 @@ CLASS lcl_general_util DEFINITION CREATE PUBLIC.
 
   PUBLIC SECTION.
 
-    CLASS-METHODS: dynamic_where_clause        IMPORTING im_field    TYPE char5  im_comp                           TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal im_val TYPE string im_table_name TYPE tabname RETURNING VALUE(re_select_clause)
-TYPE hrtb_cond,
-                   convert_to_internal_alpha   IMPORTING im_external TYPE any    RETURNING VALUE(re_internal)      TYPE string,
-                   check_field_exists_in_table IMPORTING im_field    TYPE char5  im_table                          TYPE tabname30 RETURNING VALUE(re_exists) TYPE abap_bool,
-                   date_external_to_internal   IMPORTING im_date     TYPE string RETURNING VALUE(re_date_internal) TYPE tumls_date,
-                   open_dialog_excel RETURNING VALUE(re_filepath)  TYPE file_table-filename.
+    CLASS-METHODS: dynamic_where_clause IMPORTING im_field      TYPE char5
+                                                  im_comp       TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal
+                                                  im_val        TYPE string
+                                                  im_table_name TYPE tabname
+                                                  RETURNING VALUE(re_select_clause) TYPE hrtb_cond,
+
+                   convert_to_internal_alpha  IMPORTING im_external TYPE any
+                                              RETURNING VALUE(re_internal)      TYPE string,
+
+                   check_field_exists_in_table IMPORTING im_field    TYPE char5
+                                                         im_table    TYPE tabname30
+                                                         RETURNING VALUE(re_exists) TYPE abap_bool,
+
+                   date_external_to_internal   IMPORTING im_date  TYPE string
+                                               RETURNING VALUE(re_date_internal) TYPE tumls_date,
+
+                   open_dialog_excel  RETURNING VALUE(re_filepath)  TYPE file_table-filename.
 
 ENDCLASS.
 *----------------------------------------------------------------------*
@@ -248,8 +278,14 @@ SELECTION-SCREEN BEGIN OF BLOCK b05 WITH FRAME TITLE title05.
 
   SELECTION-SCREEN BEGIN OF LINE.
     SELECTION-SCREEN COMMENT 1(22) t_sheet FOR FIELD p_sheet MODIF ID id3.
-    PARAMETERS: p_sheet TYPE char20 MODIF ID id3.
+    PARAMETERS: p_sheet TYPE char20 MODIF ID id3 LOWER CASE.
   SELECTION-SCREEN END OF LINE.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_head FOR FIELD p_head MODIF ID id3.
+    PARAMETERS: p_head AS CHECKBOX DEFAULT  '' MODIF ID id3.
+  SELECTION-SCREEN END OF LINE.
+
 
 SELECTION-SCREEN END OF BLOCK b05.
 
@@ -436,6 +472,7 @@ AT SELECTION-SCREEN.
 *&---------------------------------------------------------------------*
 START-OF-SELECTION.
 
+  TRY.
   DATA(go_lcl_main) = NEW lcl_main_salv( im_version                 = COND #( WHEN r1 EQ abap_true THEN lcl_main_salv=>gui
                                                                               WHEN r2 EQ abap_true THEN lcl_main_salv=>fiori
                                                                               ELSE lcl_main_salv=>fiori )
@@ -454,7 +491,8 @@ START-OF-SELECTION.
                                          im_handle_gui_grid_events  = p_event ).
 
   go_lcl_main->get_data( im_data_source = COND #( WHEN db EQ abap_true THEN lcl_main_salv=>database
-                                                  WHEN file EQ abap_true THEN lcl_main_salv=>excel )
+                                                  WHEN file EQ abap_true THEN lcl_main_salv=>excel
+                                                  ELSE THROW lcx_exception( text = 'Invalid Selection Value' )  )
                          im_filepath = p_excel
                          im_sheet_name = p_sheet
                          im_table = p_table
@@ -467,6 +505,10 @@ START-OF-SELECTION.
 
   go_lcl_main->process_data( ).
   go_lcl_main->display_data( ).
+
+  CATCH lcx_exception INTO DATA(lo_exception).
+    MESSAGE lo_exception->get_text( ) TYPE 'I' DISPLAY LIKE 'E'.
+  ENDTRY.
 
 END-OF-SELECTION.
 *&---------------------------------------------------------------------*
@@ -487,7 +529,7 @@ FORM screen_initialization.
                      ( color = 7  color_descr = 'Orange'     ) ).
 
   title0    = 'Table Selection'.
-  title05   = 'Filepath'.
+  title05   = 'Excel Options'.
   title1    = 'ALV General Options'.
   title2    = 'GUI Version Options'.
   title3    = 'Fiori Version Options'.
@@ -497,6 +539,7 @@ FORM screen_initialization.
   t_file    = icon_xls && 'Table from Excel File'.
   t_excel   = icon_open_folder && 'Excel Filepath'.
   t_sheet   = icon_xls && 'Sheet Name'.
+  t_head    = 'Dynamic Column Name'.
   t_status  = icon_wd_toolbar_caption && 'Custom GUI Status'.
   t_layout  = icon_alv_variants && 'Layout'.
   t_names   = icon_wd_input_field && 'Display Technical Names'.
@@ -724,6 +767,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     IF im_data_source EQ lcl_main_salv=>excel.
 
+      lv_data_source = lcl_main_salv=>excel.
+
       DATA: lt_records TYPE solix_tab.
 
       CALL METHOD cl_gui_frontend_services=>gui_upload
@@ -773,14 +818,13 @@ CLASS lcl_main_salv IMPLEMENTATION.
                                   document_name = CONV #( im_filepath )
                                   xdocument     = lv_headerxstring ) .
         CATCH cx_fdt_excel_core INTO DATA(ex_ref).
-          MESSAGE 'Error Upload Excel File' TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
-        LEAVE LIST-PROCESSING.
+          RAISE EXCEPTION TYPE lcx_exception EXPORTING text = | Error while Uploading Excel File |.
       ENDTRY.
 
 
       lo_excel_ref->if_fdt_doc_spreadsheet~get_worksheet_names( IMPORTING worksheet_names = DATA(t_worksheets) ).
 
-      IF im_sheet_name IS NOT INITIAL.
+      IF im_sheet_name IS NOT INITIAL AND line_exists( t_worksheets[ table_line = im_sheet_name  ]  ) .
         DATA(sheet) = VALUE #( t_worksheets[ table_line = im_sheet_name  ] DEFAULT space ).
       ELSE.
         sheet = VALUE #( t_worksheets[ 1 ] DEFAULT space ).
@@ -791,6 +835,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
       ASSIGN lo_data_ref->* TO <fs_table>.
 
     ELSEIF im_data_source EQ lcl_main_salv=>database.
+
+      lv_data_source = lcl_main_salv=>database.
 
       "Build Components of Dynamic Table
       DATA:lo_data  TYPE REF TO data.
@@ -842,13 +888,11 @@ CLASS lcl_main_salv IMPLEMENTATION.
         WHERE (lt_select_clause).
 
         IF <fs_table> IS INITIAL.
-          MESSAGE 'No value Retrieved from Table:' && im_table TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
-          LEAVE LIST-PROCESSING.
+          RAISE EXCEPTION TYPE lcx_exception EXPORTING text = | No value Retrieved from Table: { im_table } |.
         ENDIF.
 
       ELSE.
-        MESSAGE 'Error while Creating Dynamic Table' TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
-        LEAVE LIST-PROCESSING.
+        RAISE EXCEPTION TYPE lcx_exception EXPORTING text = 'Error while Creating Dynamic Table'.
       ENDIF.
 
     ENDIF.
@@ -1122,13 +1166,14 @@ CLASS lcl_main_salv IMPLEMENTATION.
     ENDIF.
 
   IF lo_salv_alv IS NOT BOUND.
-    MESSAGE 'Error while creating ALV Reference' TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
-    LEAVE LIST-PROCESSING.
+    RAISE EXCEPTION TYPE lcx_exception EXPORTING text = 'Error while creating ALV Reference'.
   ENDIF.
 
   ENDMETHOD.
 
   METHOD field_catalog.
+
+    IF  lv_data_source EQ lcl_main_salv=>database.
 
     " Set information regarding currency and quantity.It is not set automatically
     TRY.
@@ -1209,10 +1254,16 @@ CLASS lcl_main_salv IMPLEMENTATION.
 *
 *      ENDIF.
 
+
+  ELSEIF lv_data_source EQ lcl_main_salv=>excel.
+
+
+
+  ENDIF.
+
   ENDMETHOD.
 
   METHOD column_properties.
-
 
 * Center Columns
   LOOP AT lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<c>).
@@ -1267,6 +1318,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     CATCH cx_salv_not_found.                            "#EC NO_HANDLER
   ENDTRY.
+
 * Add Checkbox Column
   TRY.
       DATA(o_column_checkbox) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lc_checkbox  ) ).
@@ -1275,7 +1327,6 @@ CLASS lcl_main_salv IMPLEMENTATION.
       o_column_checkbox->set_long_text( 'Checkbox' ).
     CATCH cx_salv_not_found.                            "#EC NO_HANDLER
   ENDTRY.
-*
 
 * Add Tooltips to Icons
   TRY.
@@ -1496,9 +1547,16 @@ CLASS lcl_main_salv IMPLEMENTATION.
   lo_f_label->set_text( 'Footer').
 
   DATA(lo_f_flow) = lo_footer->create_flow( row = 2 column = 1 ).
-  DATA(lv_text) = |Displaying Details of Table | .
-  lo_f_flow->create_text( text = lv_text ).
 
+  IF lv_data_source EQ lcl_main_salv=>database.
+    DATA(lv_text) = |Displaying Details of Table | .
+  ELSEIF lv_data_source EQ lcl_main_salv=>excel.
+    lv_text = |Displaying Details of Excel File | .
+  ELSE.
+    lv_text = |Footer Details | .
+  ENDIF.
+
+  lo_f_flow->create_text( text = lv_text ).
   lo_salv_alv->set_end_of_list( lo_footer ).
   lo_salv_alv->set_end_of_list_print( lo_footer ).
 
@@ -2390,3 +2448,23 @@ CLASS lcl_layout_f4 IMPLEMENTATION.
   ENDMETHOD.                    "f4_salv
 
 ENDCLASS.                    "lcl_layout_f4 IMPLEMENTATION
+
+*&----------------------------------------------------------------------*
+*& CLASS LCX_EXCEPTION IMPLEMENTATION
+*&----------------------------------------------------------------------*
+CLASS lcx_exception IMPLEMENTATION.
+
+  METHOD constructor.
+
+    super->constructor( textid = CONV #( text ) ).
+    local_text = text.
+
+  ENDMETHOD.
+
+  METHOD get_text.
+
+    result = me->local_text.
+
+  ENDMETHOD.
+
+ENDCLASS.
