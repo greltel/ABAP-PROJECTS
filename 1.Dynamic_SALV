@@ -56,6 +56,11 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
            context,
     END OF ENUM en_alv_container.
 
+    TYPES:BEGIN OF ENUM en_data_source,
+           excel,
+           database,
+    END OF ENUM en_data_source.
+
     "Public Methods
     METHODS: constructor IMPORTING im_version                 TYPE en_alv_version
                                    im_container               TYPE en_alv_container   OPTIONAL
@@ -67,7 +72,10 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
                                    im_line_color              TYPE lvc_col            OPTIONAL
                                    im_handle_gui_grid_events  TYPE flag               DEFAULT abap_false,
 
-             get_data    IMPORTING im_table              TYPE tabname
+             get_data    IMPORTING im_data_source        TYPE en_data_source
+                                   im_table              TYPE tabname   OPTIONAL
+                                   im_filepath           TYPE file_table-filename OPTIONAL
+                                   im_sheet_name         TYPE char20
                                    im_number_of_lines    TYPE syst_tabix DEFAULT 100
                                    im_field              TYPE char5      OPTIONAL
                                    im_comp               TYPE ddoption   OPTIONAL
@@ -128,7 +136,8 @@ CLASS lcl_general_util DEFINITION CREATE PUBLIC.
 TYPE hrtb_cond,
                    convert_to_internal_alpha   IMPORTING im_external TYPE any    RETURNING VALUE(re_internal)      TYPE string,
                    check_field_exists_in_table IMPORTING im_field    TYPE char5  im_table                          TYPE tabname30 RETURNING VALUE(re_exists) TYPE abap_bool,
-                   date_external_to_internal   IMPORTING im_date     TYPE string RETURNING VALUE(re_date_internal) TYPE tumls_date.
+                   date_external_to_internal   IMPORTING im_date     TYPE string RETURNING VALUE(re_date_internal) TYPE tumls_date,
+                   open_dialog_excel RETURNING VALUE(re_filepath)  TYPE file_table-filename.
 
 ENDCLASS.
 *----------------------------------------------------------------------*
@@ -216,12 +225,40 @@ ENDCLASS.                    "lcl_layout_f4 DEFINITION
 *&---------------------------------------------------------------------*
 *& SELECTION SCREEN DESIGN
 *&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME TITLE title0.
+
+    SELECTION-SCREEN BEGIN OF LINE.
+      SELECTION-SCREEN COMMENT 1(26) t_db FOR FIELD db.
+      PARAMETERS: db RADIOBUTTON GROUP rb0 DEFAULT 'X' USER-COMMAND dummy.
+    SELECTION-SCREEN END OF LINE.
+
+    SELECTION-SCREEN BEGIN OF LINE.
+      SELECTION-SCREEN COMMENT 1(26) t_file FOR FIELD file.
+      PARAMETERS:file RADIOBUTTON GROUP rb0.
+    SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN END OF BLOCK b0.
+
+SELECTION-SCREEN BEGIN OF BLOCK b05 WITH FRAME TITLE title05.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_excel FOR FIELD p_excel MODIF ID id3.
+    PARAMETERS: p_excel TYPE file_table-filename MODIF ID id3.
+  SELECTION-SCREEN END OF LINE.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_sheet FOR FIELD p_sheet MODIF ID id3.
+    PARAMETERS: p_sheet TYPE char20 MODIF ID id3.
+  SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN END OF BLOCK b05.
+
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_table FOR FIELD p_table.
-    PARAMETERS: p_table TYPE tabname OBLIGATORY DEFAULT 'BSEG' MATCHCODE OBJECT dd_dbtb_16.
-    SELECTION-SCREEN COMMENT 57(55) t_descr.
+    SELECTION-SCREEN COMMENT 1(22) t_table FOR FIELD p_table MODIF ID id4.
+    PARAMETERS: p_table TYPE tabname OBLIGATORY DEFAULT 'BSEG' MATCHCODE OBJECT dd_dbtb_16 MODIF ID id4.
+    SELECTION-SCREEN COMMENT 57(55) t_descr MODIF ID id4.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
@@ -229,46 +266,46 @@ SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_hotsp FOR FIELD p_hotsp.
-    PARAMETERS: p_hotsp TYPE lvc_fname.
-    SELECTION-SCREEN COMMENT 57(55) h_descr.
+    SELECTION-SCREEN COMMENT 1(22) t_hotsp FOR FIELD p_hotsp MODIF ID id4.
+    PARAMETERS: p_hotsp TYPE lvc_fname MODIF ID id4.
+    SELECTION-SCREEN COMMENT 57(55) h_descr MODIF ID id4.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_colh FOR FIELD p_colh.
-    PARAMETERS: p_colh TYPE lvc_col DEFAULT 6.
-    SELECTION-SCREEN COMMENT 38(50) t_desch.
+    SELECTION-SCREEN COMMENT 1(22) t_colh FOR FIELD p_colh MODIF ID id4.
+    PARAMETERS: p_colh TYPE lvc_col DEFAULT 6 MODIF ID id4.
+    SELECTION-SCREEN COMMENT 38(50) t_desch MODIF ID id4.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_coll FOR FIELD p_coll.
-    PARAMETERS: p_coll TYPE lvc_col DEFAULT space.
-    SELECTION-SCREEN COMMENT 38(50) t_descl.
+    SELECTION-SCREEN COMMENT 1(22) t_coll FOR FIELD p_coll MODIF ID id4.
+    PARAMETERS: p_coll TYPE lvc_col DEFAULT space MODIF ID id4.
+    SELECTION-SCREEN COMMENT 38(50) t_descl MODIF ID id4.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_layout FOR FIELD p_layout.
-    PARAMETERS: p_layout TYPE disvariant-variant VISIBLE LENGTH 11.
+    SELECTION-SCREEN COMMENT 1(22) t_layout FOR FIELD p_layout MODIF ID id4.
+    PARAMETERS: p_layout TYPE disvariant-variant VISIBLE LENGTH 11 MODIF ID id4.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_hits FOR FIELD p_hits.
-    PARAMETERS: p_hits TYPE syst_tabix DEFAULT 10.
+    SELECTION-SCREEN COMMENT 1(22) t_hits FOR FIELD p_hits MODIF ID id4.
+    PARAMETERS: p_hits TYPE syst_tabix DEFAULT 10 MODIF ID id4.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_names FOR FIELD p_names.
-    PARAMETERS: p_names AS CHECKBOX DEFAULT space.
+    SELECTION-SCREEN COMMENT 1(26) t_names FOR FIELD p_names MODIF ID id4.
+    PARAMETERS: p_names AS CHECKBOX DEFAULT space MODIF ID id4.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_check FOR FIELD p_check.
-    PARAMETERS: p_check AS CHECKBOX DEFAULT space.
+    SELECTION-SCREEN COMMENT 1(26) t_check FOR FIELD p_check MODIF ID id4.
+    PARAMETERS: p_check AS CHECKBOX DEFAULT space MODIF ID id4.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_icon FOR FIELD p_icon.
-    PARAMETERS: p_icon AS CHECKBOX DEFAULT space.
+    SELECTION-SCREEN COMMENT 1(26) t_icon FOR FIELD p_icon MODIF ID id4.
+    PARAMETERS: p_icon AS CHECKBOX DEFAULT space MODIF ID id4.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
@@ -287,12 +324,11 @@ SELECTION-SCREEN BEGIN OF BLOCK b4 WITH FRAME TITLE title4.
 
   SELECTION-SCREEN BEGIN OF LINE.
 
-    PARAMETERS: p_fiel TYPE char5,
-                p_comp TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal,
-                p_val  TYPE string.
+    PARAMETERS: p_fiel TYPE char5 MODIF ID id4,
+                p_comp TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal MODIF ID id4,
+                p_val  TYPE string MODIF ID id4.
 
   SELECTION-SCREEN END OF LINE.
-
 
 SELECTION-SCREEN END OF BLOCK b4.
 
@@ -386,6 +422,9 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_coll.
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_colh.
   PERFORM color_f4.
 
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_excel.
+  p_excel = lcl_general_util=>open_dialog_excel( ).
+
 *&---------------------------------------------------------------------*
 *& AT SELECTION SCREEN Actions
 *&---------------------------------------------------------------------*
@@ -414,7 +453,11 @@ START-OF-SELECTION.
                                          im_line_color              = p_coll
                                          im_handle_gui_grid_events  = p_event ).
 
-  go_lcl_main->get_data( im_table = p_table
+  go_lcl_main->get_data( im_data_source = COND #( WHEN db EQ abap_true THEN lcl_main_salv=>database
+                                                  WHEN file EQ abap_true THEN lcl_main_salv=>excel )
+                         im_filepath = p_excel
+                         im_sheet_name = p_sheet
+                         im_table = p_table
                          im_number_of_lines = p_hits
                          im_comp = p_comp
                          im_field = p_fiel
@@ -443,11 +486,17 @@ FORM screen_initialization.
                      ( color = 6  color_descr = 'Red'        )
                      ( color = 7  color_descr = 'Orange'     ) ).
 
+  title0    = 'Table Selection'.
+  title05   = 'Filepath'.
   title1    = 'ALV General Options'.
   title2    = 'GUI Version Options'.
   title3    = 'Fiori Version Options'.
   title4    = 'Dynamic Where Clause'.
 
+  t_db      = icon_database_table && 'Database Table'.
+  t_file    = icon_xls && 'Table from Excel File'.
+  t_excel   = icon_open_folder && 'Excel Filepath'.
+  t_sheet   = icon_xls && 'Sheet Name'.
   t_status  = icon_wd_toolbar_caption && 'Custom GUI Status'.
   t_layout  = icon_alv_variants && 'Layout'.
   t_names   = icon_wd_input_field && 'Display Technical Names'.
@@ -492,16 +541,25 @@ FORM modify_screen.
         MODIFY SCREEN.
       ENDIF.
 
-      IF screen-group1 EQ 'ID3'.
+    ELSEIF r2 EQ abap_true."FIORI VERSION
+
+      IF screen-group1 EQ 'ID1'.
         screen-active = 0.
         MODIFY SCREEN.
       ENDIF.
 
     ENDIF.
 
-    IF r2 EQ abap_true."FIORI VERSION
+    IF db EQ abap_true."DATABASE TABLE
 
-      IF screen-group1 EQ 'ID1'.
+      IF screen-group1 EQ 'ID3'.
+        screen-active = 0.
+        MODIFY SCREEN.
+      ENDIF.
+
+    ELSEIF file EQ abap_true."EXCEL
+
+      IF screen-group1 EQ 'ID4'.
         screen-active = 0.
         MODIFY SCREEN.
       ENDIF.
@@ -664,63 +722,135 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD get_data.
 
-    "Build Components of Dynamic Table
-    DATA:lo_data  TYPE REF TO data.
+    IF im_data_source EQ lcl_main_salv=>excel.
 
-    DATA(lt_tot_comp) = VALUE cl_abap_structdescr=>component_table(
-                          ( name = lc_cell_style  type = CAST #( cl_abap_elemdescr=>describe_by_name( 'salv_t_int4_column' ) ) )
-                          ( name = lc_color_column type = CAST #( cl_abap_elemdescr=>describe_by_name( 'lvc_t_scol' ) ) ) ).
+      DATA: lt_records TYPE solix_tab.
 
-    IF im_icon_column EQ abap_true.
-      APPEND VALUE abap_componentdescr( name = lc_icon_column type = cl_abap_elemdescr=>get_c( cl_mmim_maa_2=>gc_integer_8 ) ) TO lt_tot_comp.
-    ENDIF.
+      CALL METHOD cl_gui_frontend_services=>gui_upload
+        EXPORTING
+          filename                = CONV #( im_filepath )
+          filetype                = 'BIN'
+        IMPORTING
+          filelength              = DATA(lv_filelength)
+          header                  = DATA(lv_headerxstring)
+        CHANGING
+          data_tab                = lt_records
+        EXCEPTIONS
+          file_open_error         = 1
+          file_read_error         = 2
+          no_batch                = 3
+          gui_refuse_filetransfer = 4
+          invalid_type            = 5
+          no_authority            = 6
+          unknown_error           = 7
+          bad_data_format         = 8
+          header_not_allowed      = 9
+          separator_not_allowed   = 10
+          header_too_long         = 11
+          unknown_dp_error        = 12
+          access_denied           = 13
+          dp_out_of_memory        = 14
+          disk_full               = 15
+          dp_timeout              = 16
+          not_supported_by_gui    = 17
+          error_no_gui            = 18
+          OTHERS                  = 19.
 
-    IF im_checkbox_column EQ abap_true.
-      APPEND VALUE abap_componentdescr( name = lc_checkbox  type = cl_abap_elemdescr=>get_c( cl_mmim_maa_2=>gc_integer_1 ) ) TO lt_tot_comp.
-    ENDIF.
 
-    DATA(lo_struct) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_name( im_table ) ).
-    DATA(lt_comp)  =  lo_struct->get_components( ).
-    APPEND LINES OF lt_comp TO lt_tot_comp.
+      CALL FUNCTION 'SCMS_BINARY_TO_XSTRING'
+        EXPORTING
+          input_length = lv_filelength
+        IMPORTING
+          buffer       = lv_headerxstring
+        TABLES
+          binary_tab   = lt_records
+        EXCEPTIONS
+          failed       = 1
+          OTHERS       = 2.
 
-    DELETE lt_tot_comp WHERE suffix IS NOT INITIAL.
+      TRY.
+          DATA(lo_excel_ref) = NEW cl_fdt_xl_spreadsheet(
+                                  document_name = CONV #( im_filepath )
+                                  xdocument     = lv_headerxstring ) .
+        CATCH cx_fdt_excel_core INTO DATA(ex_ref).
+          MESSAGE 'Error Upload Excel File' TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
+        LEAVE LIST-PROCESSING.
+      ENDTRY.
 
-    "Table type
-    TRY.
-        DATA(lo_new_tab) = cl_abap_tabledescr=>create(
-                           p_line_type  = cl_abap_structdescr=>create( lt_tot_comp )
-                           p_table_kind = cl_abap_tabledescr=>tablekind_std
-                           p_unique     = abap_false ).
-      CATCH cx_sy_struct_attributes. "#EC NO_HANDLER
-    ENDTRY.
 
-    "Data to handle the new table type
-    CREATE DATA lo_data TYPE HANDLE lo_new_tab.
+      lo_excel_ref->if_fdt_doc_spreadsheet~get_worksheet_names( IMPORTING worksheet_names = DATA(t_worksheets) ).
 
-    "New internal table in fieldsymbol
-    ASSIGN lo_data->* TO <fs_table>.
+      IF im_sheet_name IS NOT INITIAL.
+        DATA(sheet) = VALUE #( t_worksheets[ table_line = im_sheet_name  ] DEFAULT space ).
+      ELSE.
+        sheet = VALUE #( t_worksheets[ 1 ] DEFAULT space ).
+      ENDIF.
 
-    "Build Dynamic Where Clause
-    IF ( im_field IS NOT INITIAL ) AND ( im_comp IS NOT INITIAL ) AND ( im_val IS NOT INITIAL ) .
-      DATA(lt_select_clause) = lcl_general_util=>dynamic_where_clause( EXPORTING im_comp = im_comp im_field = im_field im_val = im_val im_table_name = im_table ).
-    ENDIF.
+      DATA(lo_data_ref) = lo_excel_ref->if_fdt_doc_spreadsheet~get_itab_from_worksheet( sheet ).
 
-    IF <fs_table> IS ASSIGNED.
+      ASSIGN lo_data_ref->* TO <fs_table>.
 
-      SELECT *
-      FROM (im_table)
-      INTO CORRESPONDING FIELDS OF TABLE @<fs_table>
-      UP TO @im_number_of_lines ROWS
-      WHERE (lt_select_clause).
+    ELSEIF im_data_source EQ lcl_main_salv=>database.
 
-      IF <fs_table> IS INITIAL.
-        MESSAGE 'No value Retrieved from Table:' && im_table TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
+      "Build Components of Dynamic Table
+      DATA:lo_data  TYPE REF TO data.
+
+      DATA(lt_tot_comp) = VALUE cl_abap_structdescr=>component_table(
+                            ( name = lc_cell_style  type = CAST #( cl_abap_elemdescr=>describe_by_name( 'salv_t_int4_column' ) ) )
+                            ( name = lc_color_column type = CAST #( cl_abap_elemdescr=>describe_by_name( 'lvc_t_scol' ) ) ) ).
+
+      IF im_icon_column EQ abap_true.
+        APPEND VALUE abap_componentdescr( name = lc_icon_column type = cl_abap_elemdescr=>get_c( cl_mmim_maa_2=>gc_integer_8 ) ) TO lt_tot_comp.
+      ENDIF.
+
+      IF im_checkbox_column EQ abap_true.
+        APPEND VALUE abap_componentdescr( name = lc_checkbox  type = cl_abap_elemdescr=>get_c( cl_mmim_maa_2=>gc_integer_1 ) ) TO lt_tot_comp.
+      ENDIF.
+
+      DATA(lo_struct) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_name( im_table ) ).
+      DATA(lt_comp)  =  lo_struct->get_components( ).
+      APPEND LINES OF lt_comp TO lt_tot_comp.
+
+      DELETE lt_tot_comp WHERE suffix IS NOT INITIAL.
+
+      "Table type
+      TRY.
+          DATA(lo_new_tab) = cl_abap_tabledescr=>create(
+                             p_line_type  = cl_abap_structdescr=>create( lt_tot_comp )
+                             p_table_kind = cl_abap_tabledescr=>tablekind_std
+                             p_unique     = abap_false ).
+        CATCH cx_sy_struct_attributes. "#EC NO_HANDLER
+      ENDTRY.
+
+      "Data to handle the new table type
+      CREATE DATA lo_data TYPE HANDLE lo_new_tab.
+
+      "New internal table in fieldsymbol
+      ASSIGN lo_data->* TO <fs_table>.
+
+      "Build Dynamic Where Clause
+      IF ( im_field IS NOT INITIAL ) AND ( im_comp IS NOT INITIAL ) AND ( im_val IS NOT INITIAL ) .
+        DATA(lt_select_clause) = lcl_general_util=>dynamic_where_clause( EXPORTING im_comp = im_comp im_field = im_field im_val = im_val im_table_name = im_table ).
+      ENDIF.
+
+      IF <fs_table> IS ASSIGNED.
+
+        SELECT *
+        FROM (im_table)
+        INTO CORRESPONDING FIELDS OF TABLE @<fs_table>
+        UP TO @im_number_of_lines ROWS
+        WHERE (lt_select_clause).
+
+        IF <fs_table> IS INITIAL.
+          MESSAGE 'No value Retrieved from Table:' && im_table TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
+          LEAVE LIST-PROCESSING.
+        ENDIF.
+
+      ELSE.
+        MESSAGE 'Error while Creating Dynamic Table' TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
         LEAVE LIST-PROCESSING.
       ENDIF.
 
-    ELSE.
-      MESSAGE 'Error while Creating Dynamic Table' TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
-      LEAVE LIST-PROCESSING.
     ENDIF.
 
   ENDMETHOD.
@@ -1631,6 +1761,37 @@ CLASS lcl_general_util IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD open_dialog_excel.
+
+    DATA:   lt_file_table TYPE filetable,
+            lv_return     TYPE i.
+
+    CLEAR:lt_file_table.
+    CALL METHOD cl_gui_frontend_services=>file_open_dialog
+      EXPORTING
+        window_title            = 'File System of Presentation Server'
+        default_extension       = cl_gui_frontend_services=>filetype_excel
+        file_filter             = 'All Files(*.*)|*.*|' && 'Excel Files (*.xlsx)|*.xlsx|' && 'Excel Files (*.xls)|*.xls|'
+      CHANGING
+        file_table              = lt_file_table
+        rc                      = lv_return
+      EXCEPTIONS
+        file_open_dialog_failed = 1
+        cntl_error              = 2
+        error_no_gui            = 3
+        OTHERS                  = 4.
+
+    CHECK sy-subrc IS INITIAL.
+
+    TRY.
+        re_filepath =  lt_file_table[ 1 ]-filename.
+      CATCH cx_sy_itab_line_not_found.
+        CLEAR:re_filepath.
+    ENDTRY.
+
+  ENDMETHOD.
+
+
 ENDCLASS.
 *----------------------------------------------------------------------*
 *       CLASS lcl_salv_edit IMPLEMENTATION
@@ -2229,4 +2390,3 @@ CLASS lcl_layout_f4 IMPLEMENTATION.
   ENDMETHOD.                    "f4_salv
 
 ENDCLASS.                    "lcl_layout_f4 IMPLEMENTATION
-
