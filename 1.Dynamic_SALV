@@ -11,9 +11,9 @@ CONSTANTS:gc_report_heading TYPE syst-title VALUE 'Dynamic SALV Report'.
 *&---------------------------------------------------------------------*
 *& DICTIONARY TABLES-TYPE POOLS
 *&---------------------------------------------------------------------*
- TYPE-POOLS:icon,slis,cntb.
+TYPE-POOLS:icon,slis,cntb.
 
- TABLES:sscrfields.
+TABLES:sscrfields.
 *&---------------------------------------------------------------------*
 *& LOCAL CLASSES
 *&---------------------------------------------------------------------*
@@ -21,7 +21,6 @@ CLASS: lcl_main_salv       DEFINITION DEFERRED,
        lcl_general_util    DEFINITION DEFERRED,
        lcl_event_handler   DEFINITION DEFERRED,
        lcl_salv_edit       DEFINITION DEFERRED,
-       lcl_layout_f4       DEFINITION DEFERRED,
        lcx_exception       DEFINITION DEFERRED.
 *&---------------------------------------------------------------------*
 *& GLOBAL DATA DECLARATION
@@ -29,9 +28,9 @@ CLASS: lcl_main_salv       DEFINITION DEFERRED,
 FIELD-SYMBOLS: <fs_table> TYPE STANDARD TABLE.
 
 TYPES:BEGIN OF ty_color,
-  color TYPE lvc_col,
-  color_descr TYPE as4text,
-END OF ty_color.
+        color       TYPE lvc_col,
+        color_descr TYPE as4text,
+      END OF ty_color.
 
 DATA: t_color TYPE STANDARD TABLE OF ty_color.
 
@@ -43,7 +42,7 @@ CLASS lcx_exception DEFINITION INHERITING FROM cx_static_check.
   PUBLIC SECTION.
 
     METHODS: constructor IMPORTING text TYPE string,
-             get_text REDEFINITION.
+      get_text REDEFINITION.
 
   PRIVATE SECTION.
 
@@ -59,49 +58,52 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
   PUBLIC SECTION.
 
     TYPES:BEGIN OF ENUM en_alv_version,
-           gui,
-           fiori,
-    END OF ENUM en_alv_version.
+            gui,
+            fiori,
+          END OF ENUM en_alv_version.
 
-   TYPES:BEGIN OF ENUM en_alv_container,
-           standard,
-           bottom,
-           splitter,
-           dialog,
-           context,
-    END OF ENUM en_alv_container.
+    TYPES:BEGIN OF ENUM en_alv_container,
+            standard,
+            bottom,
+            splitter,
+            dialog,
+            context,
+          END OF ENUM en_alv_container.
 
     TYPES:BEGIN OF ENUM en_data_source,
-           excel,
-           database,
-    END OF ENUM en_data_source.
+            excel,
+            database,
+          END OF ENUM en_data_source.
 
     "Public Methods
-    METHODS: constructor IMPORTING im_version                 TYPE en_alv_version
-                                   im_container               TYPE en_alv_container   OPTIONAL
-                                   im_layout                  TYPE disvariant-variant OPTIONAL
-                                   im_status                  TYPE rsmpe-status       OPTIONAL
-                                   im_technical_names         TYPE flag               OPTIONAL
-                                   im_hotspot_field           TYPE lvc_fname          OPTIONAL
-                                   im_hotspot_color           TYPE lvc_col            OPTIONAL
-                                   im_line_color              TYPE lvc_col            OPTIONAL
-                                   im_handle_gui_grid_events  TYPE flag               DEFAULT abap_false,
+    METHODS:
 
-             get_data    IMPORTING im_data_source        TYPE en_data_source
-                                   im_table              TYPE tabname             OPTIONAL
-                                   im_filepath           TYPE file_table-filename OPTIONAL
-                                   im_sheet_name         TYPE char20              OPTIONAL
-                                   im_number_of_lines    TYPE syst_tabix          DEFAULT 100
-                                   im_field              TYPE char5               OPTIONAL
-                                   im_comp               TYPE ddoption            OPTIONAL
-                                   im_val                TYPE string              OPTIONAL
-                                   im_checkbox_column    TYPE abap_bool           DEFAULT abap_true
-                                   im_icon_column        TYPE abap_bool           DEFAULT abap_true
-                                   RAISING lcx_exception,
+      constructor IMPORTING im_version                TYPE en_alv_version
+                            im_container              TYPE en_alv_container   OPTIONAL
+                            im_layout                 TYPE disvariant-variant OPTIONAL
+                            im_status                 TYPE rsmpe-status       OPTIONAL
+                            im_technical_names        TYPE flag               OPTIONAL
+                            im_hotspot_field          TYPE lvc_fname          OPTIONAL
+                            im_hotspot_color          TYPE lvc_col            OPTIONAL
+                            im_line_color             TYPE lvc_col            OPTIONAL
+                            im_handle_gui_grid_events TYPE flag               DEFAULT abap_false,
 
-             process_data RAISING lcx_exception,
+      get_data    IMPORTING im_data_source     TYPE en_data_source
+                            im_table           TYPE tabname             OPTIONAL
+                            im_filepath        TYPE file_table-filename OPTIONAL
+                            im_sheet_name      TYPE char20              OPTIONAL
+                            im_number_of_lines TYPE syst_tabix          DEFAULT 100
+                            im_field           TYPE char5               OPTIONAL
+                            im_comp            TYPE ddoption            OPTIONAL
+                            im_val             TYPE string              OPTIONAL
+                            im_checkbox_column TYPE abap_bool           DEFAULT abap_true
+                            im_icon_column     TYPE abap_bool           DEFAULT abap_true
+                            im_head            TYPE abap_bool           DEFAULT abap_false
+                  RAISING   lcx_exception,
 
-             display_data RAISING lcx_exception.
+      process_data RAISING lcx_exception,
+
+      display_data RAISING lcx_exception.
 
 
   PROTECTED SECTION.
@@ -130,18 +132,19 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
           lo_salv_alv     TYPE REF TO cl_salv_table.
 
     "Private Methods
-    METHODS: create_alv RAISING lcx_exception,
-             field_catalog,
-             column_properties,
-             display_settings_header,
-             header_creation,
-             header_creation_fiori,
-             determine_displayed_rows,
-             footer_creation,
-             toolbar_status,
-             handle_gui_grid_events,
-             event_handling,
-             display_alv.
+    METHODS:
+      create_alv RAISING lcx_exception,
+      field_catalog,
+      column_properties,
+      display_settings_header,
+      header_creation,
+      header_creation_fiori,
+      determine_displayed_rows,
+      footer_creation,
+      toolbar_status,
+      handle_gui_grid_events,
+      event_handling,
+      display_alv.
 
 ENDCLASS.
 *----------------------------------------------------------------------*
@@ -151,23 +154,39 @@ CLASS lcl_general_util DEFINITION CREATE PUBLIC.
 
   PUBLIC SECTION.
 
-    CLASS-METHODS: dynamic_where_clause IMPORTING im_field      TYPE char5
-                                                  im_comp       TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal
-                                                  im_val        TYPE string
-                                                  im_table_name TYPE tabname
-                                                  RETURNING VALUE(re_select_clause) TYPE hrtb_cond,
+    CLASS-METHODS: dynamic_where_clause IMPORTING im_field                TYPE char5
+                                                  im_comp                 TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal
+                                                  im_val                  TYPE string
+                                                  im_table_name           TYPE tabname
+                                        RETURNING VALUE(re_select_clause) TYPE hrtb_cond,
 
-                   convert_to_internal_alpha  IMPORTING im_external TYPE any
-                                              RETURNING VALUE(re_internal)      TYPE string,
+      open_dialog_excel  RETURNING VALUE(re_filepath)  TYPE file_table-filename,
 
-                   check_field_exists_in_table IMPORTING im_field    TYPE char5
-                                                         im_table    TYPE tabname30
-                                                         RETURNING VALUE(re_exists) TYPE abap_bool,
+      check_field_exists_in_table IMPORTING im_field         TYPE char5
+                                            im_table         TYPE tabname30
+                                  RETURNING VALUE(re_exists) TYPE abap_bool,
 
-                   date_external_to_internal   IMPORTING im_date  TYPE string
-                                               RETURNING VALUE(re_date_internal) TYPE tumls_date,
+      f4_salv CHANGING cv_layout TYPE disvariant-variant,
 
-                   open_dialog_excel  RETURNING VALUE(re_filepath)  TYPE file_table-filename.
+      get_structured_table_from_gen IMPORTING im_table            TYPE ANY TABLE
+                                              im_map_by_structure TYPE abap_bool OPTIONAL
+                                              im_structure_line   TYPE i DEFAULT 1
+                                              im_start_line       TYPE i DEFAULT 2
+                                    EXPORTING ex_table            TYPE ANY TABLE,
+
+      upload_excel IMPORTING im_filepath   TYPE file_table-filename
+                             im_sheet_name TYPE char20
+                   EXPORTING ex_table      TYPE REF TO data
+                   RAISING   lcx_exception.
+
+  PRIVATE SECTION.
+
+    CLASS-METHODS: convert_to_internal_alpha IMPORTING im_external        TYPE any
+                                             RETURNING VALUE(re_internal) TYPE string,
+
+
+      date_external_to_internal IMPORTING im_date                 TYPE string
+                                RETURNING VALUE(re_date_internal) TYPE tumls_date.
 
 ENDCLASS.
 *----------------------------------------------------------------------*
@@ -181,13 +200,13 @@ CLASS lcl_salv_edit DEFINITION INHERITING FROM cl_salv_controller CREATE PRIVATE
                                     EXPORTING e_adapter_type TYPE salv_de_adapter_type
                                               e_control_rtti TYPE REF TO cl_abap_typedescr,
 
-                   get_control      IMPORTING i_salv           TYPE REF TO cl_salv_model_base
-                                    RETURNING VALUE(r_control) TYPE REF TO object,
+      get_control      IMPORTING i_salv           TYPE REF TO cl_salv_model_base
+                       RETURNING VALUE(r_control) TYPE REF TO object,
 
-                   set_editable     IMPORTING VALUE(i_fieldname) TYPE csequence OPTIONAL
-                                    i_salv_table       TYPE REF TO cl_salv_table
-                                    VALUE(i_editable)  TYPE abap_bool DEFAULT abap_true
-                                    VALUE(i_refresh)   TYPE abap_bool DEFAULT abap_true.
+      set_editable     IMPORTING VALUE(i_fieldname) TYPE csequence OPTIONAL
+                                 i_salv_table       TYPE REF TO cl_salv_table
+                                 VALUE(i_editable)  TYPE abap_bool DEFAULT abap_true
+                                 VALUE(i_refresh)   TYPE abap_bool DEFAULT abap_true.
 
   PRIVATE SECTION.
 
@@ -209,11 +228,11 @@ CLASS lcl_event_handler DEFINITION FINAL CREATE PUBLIC.
 
     "SALV EVENTS
     CLASS-METHODS: handle_double_click    FOR EVENT double_click        OF cl_salv_events_table IMPORTING row column,
-                   handle_hotspot         FOR EVENT link_click          OF cl_salv_events_table IMPORTING row column,
-                   on_user_command        FOR EVENT added_function      OF cl_salv_events_table IMPORTING e_salv_function,
-                   on_end_of_page         FOR EVENT end_of_page         OF cl_salv_events_table IMPORTING r_end_of_page page,
-                   on_top_of_page         FOR EVENT top_of_page         OF cl_salv_events_table IMPORTING r_top_of_page page,
-                   on_after_salv_function FOR EVENT after_salv_function OF cl_salv_events       IMPORTING e_salv_function.
+      handle_hotspot         FOR EVENT link_click          OF cl_salv_events_table IMPORTING row column,
+      on_user_command        FOR EVENT added_function      OF cl_salv_events_table IMPORTING e_salv_function,
+      on_end_of_page         FOR EVENT end_of_page         OF cl_salv_events_table IMPORTING r_end_of_page page,
+      on_top_of_page         FOR EVENT top_of_page         OF cl_salv_events_table IMPORTING r_top_of_page page,
+      on_after_salv_function FOR EVENT after_salv_function OF cl_salv_events       IMPORTING e_salv_function.
 
     CLASS-METHODS: set_hotspot IMPORTING im_field TYPE lvc_fname im_alv TYPE REF TO cl_salv_table.
 
@@ -222,7 +241,7 @@ CLASS lcl_event_handler DEFINITION FINAL CREATE PUBLIC.
 
     "GUI GRID EVENTS
     METHODS: event_after_refresh FOR EVENT after_refresh OF cl_gui_alv_grid IMPORTING sender,
-             on_toolbar      FOR EVENT toolbar      OF cl_gui_alv_grid IMPORTING e_object e_interactive sender.
+      on_toolbar      FOR EVENT toolbar      OF cl_gui_alv_grid IMPORTING e_object e_interactive sender.
 
   PRIVATE SECTION.
 
@@ -237,184 +256,175 @@ CLASS lcl_event_handler DEFINITION FINAL CREATE PUBLIC.
                 gv_editable      TYPE abap_bool VALUE abap_false.
 
     CLASS-METHODS:show_hide_empty_columns,
-                  display_documentation,
-                  display_details_of_selection.
+      display_documentation,
+      display_details_of_selection.
 
 ENDCLASS.                    "lcl_event_handler DEFINITION
-*&---------------------------------------------------------------------*
-*& CLASS lcl_layout_F4 DEFINITION
-*&----------------------------------------------------------------------*
-CLASS lcl_layout_f4 DEFINITION.
-
-  PUBLIC SECTION.
-
-    CLASS-METHODS: f4_salv CHANGING cv_layout TYPE disvariant-variant.
-
-ENDCLASS.                    "lcl_layout_f4 DEFINITION
 
 *&---------------------------------------------------------------------*
 *& SELECTION SCREEN DESIGN
 *&---------------------------------------------------------------------*
 SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME TITLE title0.
 
-    SELECTION-SCREEN BEGIN OF LINE.
-      SELECTION-SCREEN COMMENT 1(26) t_db FOR FIELD db.
-      PARAMETERS: db RADIOBUTTON GROUP rb0 DEFAULT 'X' USER-COMMAND dummy.
-    SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_db FOR FIELD db.
+PARAMETERS: db RADIOBUTTON GROUP rb0 DEFAULT 'X' USER-COMMAND dummy.
+SELECTION-SCREEN END OF LINE.
 
-    SELECTION-SCREEN BEGIN OF LINE.
-      SELECTION-SCREEN COMMENT 1(26) t_file FOR FIELD file.
-      PARAMETERS:file RADIOBUTTON GROUP rb0.
-    SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_file FOR FIELD file.
+PARAMETERS:file RADIOBUTTON GROUP rb0.
+SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b0.
 
 SELECTION-SCREEN BEGIN OF BLOCK b05 WITH FRAME TITLE title05.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_excel FOR FIELD p_excel MODIF ID id3.
-    PARAMETERS: p_excel TYPE file_table-filename MODIF ID id3.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_excel FOR FIELD p_excel MODIF ID id3.
+PARAMETERS: p_excel TYPE file_table-filename MODIF ID id3.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_sheet FOR FIELD p_sheet MODIF ID id3.
-    PARAMETERS: p_sheet TYPE char20 MODIF ID id3 LOWER CASE.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_sheet FOR FIELD p_sheet MODIF ID id3.
+PARAMETERS: p_sheet TYPE char20 MODIF ID id3 LOWER CASE.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_head FOR FIELD p_head MODIF ID id3.
-    PARAMETERS: p_head AS CHECKBOX DEFAULT  '' MODIF ID id3.
-  SELECTION-SCREEN END OF LINE.
-
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_head FOR FIELD p_head MODIF ID id3.
+PARAMETERS: p_head AS CHECKBOX DEFAULT  '' MODIF ID id3.
+SELECTION-SCREEN COMMENT 27(42) t_hdesc MODIF ID id3.
+SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b05.
 
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_table FOR FIELD p_table MODIF ID id4.
-    PARAMETERS: p_table TYPE tabname OBLIGATORY DEFAULT 'BSEG' MATCHCODE OBJECT dd_dbtb_16 MODIF ID id4.
-    SELECTION-SCREEN COMMENT 57(55) t_descr MODIF ID id4.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_table FOR FIELD p_table MODIF ID id4.
+PARAMETERS: p_table TYPE tabname OBLIGATORY DEFAULT 'BSEG' MATCHCODE OBJECT dd_dbtb_16 MODIF ID id4.
+SELECTION-SCREEN COMMENT 57(55) t_descr MODIF ID id4.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    PARAMETERS: p_editf TYPE lvc_fname NO-DISPLAY.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+PARAMETERS: p_editf TYPE lvc_fname NO-DISPLAY.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_hotsp FOR FIELD p_hotsp MODIF ID id4.
-    PARAMETERS: p_hotsp TYPE lvc_fname MODIF ID id4.
-    SELECTION-SCREEN COMMENT 57(55) h_descr MODIF ID id4.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_hotsp FOR FIELD p_hotsp MODIF ID id4.
+PARAMETERS: p_hotsp TYPE lvc_fname MODIF ID id4.
+SELECTION-SCREEN COMMENT 57(55) h_descr MODIF ID id4.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_colh FOR FIELD p_colh MODIF ID id4.
-    PARAMETERS: p_colh TYPE lvc_col DEFAULT 6 MODIF ID id4.
-    SELECTION-SCREEN COMMENT 38(50) t_desch MODIF ID id4.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_colh FOR FIELD p_colh MODIF ID id4.
+PARAMETERS: p_colh TYPE lvc_col DEFAULT 6 MODIF ID id4.
+SELECTION-SCREEN COMMENT 38(50) t_desch MODIF ID id4.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_coll FOR FIELD p_coll MODIF ID id4.
-    PARAMETERS: p_coll TYPE lvc_col DEFAULT space MODIF ID id4.
-    SELECTION-SCREEN COMMENT 38(50) t_descl MODIF ID id4.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_coll FOR FIELD p_coll MODIF ID id4.
+PARAMETERS: p_coll TYPE lvc_col DEFAULT space MODIF ID id4.
+SELECTION-SCREEN COMMENT 38(50) t_descl MODIF ID id4.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_layout FOR FIELD p_layout MODIF ID id4.
-    PARAMETERS: p_layout TYPE disvariant-variant VISIBLE LENGTH 11 MODIF ID id4.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_layout FOR FIELD p_layout MODIF ID id4.
+PARAMETERS: p_layout TYPE disvariant-variant VISIBLE LENGTH 11 MODIF ID id4.
+SELECTION-SCREEN COMMENT 38(50) t_ldescr MODIF ID id4.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(22) t_hits FOR FIELD p_hits MODIF ID id4.
-    PARAMETERS: p_hits TYPE syst_tabix DEFAULT 10 MODIF ID id4.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(22) t_hits FOR FIELD p_hits MODIF ID id4.
+PARAMETERS: p_hits TYPE syst_tabix DEFAULT 10 MODIF ID id4.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_names FOR FIELD p_names MODIF ID id4.
-    PARAMETERS: p_names AS CHECKBOX DEFAULT space MODIF ID id4.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_names FOR FIELD p_names MODIF ID id4.
+PARAMETERS: p_names AS CHECKBOX DEFAULT space MODIF ID id4.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_check FOR FIELD p_check MODIF ID id4.
-    PARAMETERS: p_check AS CHECKBOX DEFAULT space MODIF ID id4.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_check FOR FIELD p_check.
+PARAMETERS: p_check AS CHECKBOX DEFAULT space.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_icon FOR FIELD p_icon MODIF ID id4.
-    PARAMETERS: p_icon AS CHECKBOX DEFAULT space MODIF ID id4.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_icon FOR FIELD p_icon.
+PARAMETERS: p_icon AS CHECKBOX DEFAULT space.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_r1 FOR FIELD r1.
-    PARAMETERS: r1 RADIOBUTTON GROUP rb1 DEFAULT 'X' USER-COMMAND dummy.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_r1 FOR FIELD r1.
+PARAMETERS: r1 RADIOBUTTON GROUP rb1 DEFAULT 'X' USER-COMMAND dummy.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_r2 FOR FIELD r2.
-    PARAMETERS: r2 RADIOBUTTON GROUP rb1.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_r2 FOR FIELD r2.
+PARAMETERS: r2 RADIOBUTTON GROUP rb1.
+SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b1.
 
 SELECTION-SCREEN BEGIN OF BLOCK b4 WITH FRAME TITLE title4.
 
-  SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
 
-    PARAMETERS: p_fiel TYPE char5 MODIF ID id4,
-                p_comp TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal MODIF ID id4,
-                p_val  TYPE string MODIF ID id4.
+PARAMETERS: p_fiel TYPE char5 MODIF ID id4,
+            p_comp TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal MODIF ID id4,
+            p_val  TYPE string MODIF ID id4.
 
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b4.
 
 SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE title2.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_stand FOR FIELD p_stand MODIF ID id1.
-    PARAMETERS: p_stand RADIOBUTTON GROUP rb2 DEFAULT 'X' MODIF ID id1 .
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_stand FOR FIELD p_stand MODIF ID id1.
+PARAMETERS: p_stand RADIOBUTTON GROUP rb2 DEFAULT 'X' MODIF ID id1 .
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_doc FOR FIELD p_doc MODIF ID id1.
-    PARAMETERS: p_doc RADIOBUTTON GROUP rb2  MODIF ID id1 .
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_doc FOR FIELD p_doc MODIF ID id1.
+PARAMETERS: p_doc RADIOBUTTON GROUP rb2  MODIF ID id1 .
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_split FOR FIELD p_split MODIF ID id1.
-    PARAMETERS: p_split RADIOBUTTON GROUP rb2 MODIF ID id1 .
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_split FOR FIELD p_split MODIF ID id1.
+PARAMETERS: p_split RADIOBUTTON GROUP rb2 MODIF ID id1 .
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_dial FOR FIELD p_dial MODIF ID id1.
-    PARAMETERS: p_dial RADIOBUTTON GROUP rb2 MODIF ID id1 .
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_dial FOR FIELD p_dial MODIF ID id1.
+PARAMETERS: p_dial RADIOBUTTON GROUP rb2 MODIF ID id1 .
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_cont FOR FIELD p_cont MODIF ID id1.
-    PARAMETERS: p_cont RADIOBUTTON GROUP rb2 MODIF ID id1 .
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_cont FOR FIELD p_cont MODIF ID id1.
+PARAMETERS: p_cont RADIOBUTTON GROUP rb2 MODIF ID id1 .
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN SKIP 1.
+SELECTION-SCREEN SKIP 1.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_event FOR FIELD p_event MODIF ID id1.
-    PARAMETERS: p_event AS CHECKBOX MODIF ID id1 .
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_event FOR FIELD p_event MODIF ID id1.
+PARAMETERS: p_event AS CHECKBOX MODIF ID id1 .
+SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b2.
 
 SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE title3.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_popup FOR FIELD p_popup MODIF ID id2.
-    PARAMETERS: p_popup AS CHECKBOX DEFAULT space MODIF ID id2.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_popup FOR FIELD p_popup MODIF ID id2.
+PARAMETERS: p_popup AS CHECKBOX DEFAULT space MODIF ID id2.
+SELECTION-SCREEN END OF LINE.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_status FOR FIELD p_status MODIF ID id2.
-    PARAMETERS: p_status TYPE rsmpe-status MODIF ID id2.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_status FOR FIELD p_status MODIF ID id2.
+PARAMETERS: p_status TYPE rsmpe-status MODIF ID id2.
+SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b3.
 
@@ -444,7 +454,7 @@ AT SELECTION-SCREEN OUTPUT.
 *& AT SELECTION SCREEN ON VALUE REQUESTS (F4)
 *&---------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_layout.
-  lcl_layout_f4=>f4_salv( CHANGING cv_layout = p_layout ).
+  lcl_general_util=>f4_salv( CHANGING cv_layout = p_layout ).
 
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_hotsp.
   PERFORM fields_f4.
@@ -473,41 +483,42 @@ AT SELECTION-SCREEN.
 START-OF-SELECTION.
 
   TRY.
-  DATA(go_lcl_main) = NEW lcl_main_salv( im_version                 = COND #( WHEN r1 EQ abap_true THEN lcl_main_salv=>gui
-                                                                              WHEN r2 EQ abap_true THEN lcl_main_salv=>fiori
-                                                                              ELSE lcl_main_salv=>fiori )
-                                         im_container               = COND #( WHEN p_stand EQ abap_true THEN lcl_main_salv=>standard
-                                                                              WHEN p_doc   EQ abap_true THEN lcl_main_salv=>bottom
-                                                                              WHEN p_split EQ abap_true THEN lcl_main_salv=>splitter
-                                                                              WHEN p_dial  EQ abap_true THEN lcl_main_salv=>dialog
-                                                                              WHEN p_cont  EQ abap_true THEN lcl_main_salv=>context
-                                                                              ELSE lcl_main_salv=>standard )
-                                         im_layout                  = p_layout
-                                         im_technical_names         = p_names
-                                         im_status                  = p_status
-                                         im_hotspot_field           = p_hotsp
-                                         im_hotspot_color           = p_colh
-                                         im_line_color              = p_coll
-                                         im_handle_gui_grid_events  = p_event ).
+      DATA(go_lcl_main) = NEW lcl_main_salv( im_version                 = COND #( WHEN r1 EQ abap_true THEN lcl_main_salv=>gui
+                                                                                  WHEN r2 EQ abap_true THEN lcl_main_salv=>fiori
+                                                                                  ELSE lcl_main_salv=>fiori )
+                                             im_container               = COND #( WHEN p_stand EQ abap_true THEN lcl_main_salv=>standard
+                                                                                  WHEN p_doc   EQ abap_true THEN lcl_main_salv=>bottom
+                                                                                  WHEN p_split EQ abap_true THEN lcl_main_salv=>splitter
+                                                                                  WHEN p_dial  EQ abap_true THEN lcl_main_salv=>dialog
+                                                                                  WHEN p_cont  EQ abap_true THEN lcl_main_salv=>context
+                                                                                  ELSE lcl_main_salv=>standard )
+                                             im_layout                  = p_layout
+                                             im_technical_names         = p_names
+                                             im_status                  = p_status
+                                             im_hotspot_field           = p_hotsp
+                                             im_hotspot_color           = p_colh
+                                             im_line_color              = p_coll
+                                             im_handle_gui_grid_events  = p_event ).
 
-  go_lcl_main->get_data( im_data_source = COND #( WHEN db EQ abap_true THEN lcl_main_salv=>database
-                                                  WHEN file EQ abap_true THEN lcl_main_salv=>excel
-                                                  ELSE THROW lcx_exception( text = 'Invalid Selection Value' )  )
-                         im_filepath = p_excel
-                         im_sheet_name = p_sheet
-                         im_table = p_table
-                         im_number_of_lines = p_hits
-                         im_comp = p_comp
-                         im_field = p_fiel
-                         im_val = p_val
-                         im_checkbox_column = p_check
-                         im_icon_column  = p_icon ).
+      go_lcl_main->get_data( im_data_source = COND #( WHEN db EQ abap_true THEN lcl_main_salv=>database
+                                                      WHEN file EQ abap_true THEN lcl_main_salv=>excel
+                                                      ELSE THROW lcx_exception( text = 'Invalid Data Source Selection' )  )
+                             im_filepath = p_excel
+                             im_sheet_name = p_sheet
+                             im_head = p_head
+                             im_table = p_table
+                             im_number_of_lines = p_hits
+                             im_comp = p_comp
+                             im_field = p_fiel
+                             im_val = p_val
+                             im_checkbox_column = p_check
+                             im_icon_column  = p_icon ).
 
-  go_lcl_main->process_data( ).
-  go_lcl_main->display_data( ).
+      go_lcl_main->process_data( ).
+      go_lcl_main->display_data( ).
 
-  CATCH lcx_exception INTO DATA(lo_exception).
-    MESSAGE lo_exception->get_text( ) TYPE 'I' DISPLAY LIKE 'E'.
+    CATCH lcx_exception INTO DATA(lo_exception).
+      MESSAGE lo_exception->get_text( ) TYPE 'I' DISPLAY LIKE 'E'.
   ENDTRY.
 
 END-OF-SELECTION.
@@ -539,6 +550,7 @@ FORM screen_initialization.
   t_file    = icon_xls && 'Table from Excel File'.
   t_excel   = icon_open_folder && 'Excel Filepath'.
   t_sheet   = icon_xls && 'Sheet Name'.
+  t_hdesc   = 'Bases on First Row of Excel Table'.
   t_head    = 'Dynamic Column Name'.
   t_status  = icon_wd_toolbar_caption && 'Custom GUI Status'.
   t_layout  = icon_alv_variants && 'Layout'.
@@ -613,60 +625,72 @@ FORM modify_screen.
 
   IF p_table IS NOT INITIAL.
 
-     SELECT SINGLE FROM dd02t
-       FIELDS ddtext
-       WHERE tabname EQ @p_table AND
-             ddlanguage EQ @sy-langu
-       INTO @t_descr.
+    SELECT SINGLE FROM dd02t
+      FIELDS ddtext
+      WHERE tabname EQ @p_table AND
+            ddlanguage EQ @sy-langu
+      INTO @t_descr.
 
-       IF sy-subrc NE /accgo/if_cas_constants=>gc_sysubrc_success.
-         CLEAR:t_descr.
-       ENDIF.
+    IF sy-subrc NE /accgo/if_cas_constants=>gc_sysubrc_success.
+      CLEAR:t_descr.
+    ENDIF.
 
-   ENDIF.
+  ENDIF.
 
-   IF p_hotsp IS NOT INITIAL AND p_table IS NOT INITIAL.
+  IF p_hotsp IS NOT INITIAL AND p_table IS NOT INITIAL.
 
-     DATA(lv_field_exists) = lcl_general_util=>check_field_exists_in_table( EXPORTING im_field = CONV #( p_hotsp ) im_table = p_table ).
+    DATA(lv_field_exists) = lcl_general_util=>check_field_exists_in_table( EXPORTING im_field = CONV #( p_hotsp ) im_table = p_table ).
 
-     IF lv_field_exists EQ abap_true.
+    IF lv_field_exists EQ abap_true.
 
-       DATA(lv_data_element) = CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( |{ p_table CASE = UPPER }-{ p_hotsp CASE = UPPER }| ) )->get_ddic_field( )-rollname.
+      DATA(lv_data_element) = CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( |{ p_table CASE = UPPER }-{ p_hotsp CASE = UPPER }| ) )->get_ddic_field( )-rollname.
 
-       SELECT SINGLE FROM dd04t
-         FIELDS ddtext
-         WHERE rollname EQ @lv_data_element AND
-               ddlanguage EQ @sy-langu
-         INTO @h_descr.
+      SELECT SINGLE FROM dd04t
+        FIELDS ddtext
+        WHERE rollname EQ @lv_data_element AND
+              ddlanguage EQ @sy-langu
+        INTO @h_descr.
 
-     ELSE.
+    ELSE.
 
-       CLEAR: h_descr.
+      CLEAR: h_descr.
 
-     ENDIF.
+    ENDIF.
 
-   ENDIF.
+  ENDIF.
 
-   IF p_coll IS NOT INITIAL.
+  IF p_coll IS NOT INITIAL.
 
-      TRY.
-      t_descl = t_color[ color = p_coll ]-color_descr.
-        CATCH cx_sy_itab_line_not_found.
-      ENDTRY.
+    TRY.
+        t_descl = t_color[ color = p_coll ]-color_descr.
+      CATCH cx_sy_itab_line_not_found.
+    ENDTRY.
 
-   ELSE.
-     CLEAR:t_descl.
-   ENDIF.
+  ELSE.
+    CLEAR:t_descl.
+  ENDIF.
 
-   IF p_colh IS NOT INITIAL.
+  IF p_colh IS NOT INITIAL.
 
-      TRY.
+    TRY.
         t_desch = t_color[ color = p_colh ]-color_descr.
-        CATCH cx_sy_itab_line_not_found.
-      ENDTRY.
-   ELSE.
-     CLEAR:t_desch.
-   ENDIF.
+      CATCH cx_sy_itab_line_not_found.
+    ENDTRY.
+  ELSE.
+    CLEAR:t_desch.
+  ENDIF.
+
+  IF p_layout IS NOT INITIAL.
+
+    DATA(lt_layout) = cl_salv_layout_service=>get_layouts( EXPORTING s_key =  VALUE salv_s_layout_key( report = sy-repid ) ).
+    TRY.
+        t_ldescr  = lt_layout[ layout =  p_layout ]-text.
+      CATCH cx_sy_itab_line_not_found.
+    ENDTRY.
+
+  ELSE.
+    CLEAR:t_ldescr.
+  ENDIF.
 
 
 ENDFORM.
@@ -688,7 +712,7 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM color_f4.
 
-    CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
       retfield     = 'COLOR'
       dynpprog     = sy-repid
@@ -769,70 +793,78 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
       lv_data_source = lcl_main_salv=>excel.
 
-      DATA: lt_records TYPE solix_tab.
-
-      CALL METHOD cl_gui_frontend_services=>gui_upload
+      CALL METHOD lcl_general_util=>upload_excel(
         EXPORTING
-          filename                = CONV #( im_filepath )
-          filetype                = 'BIN'
+          im_filepath   = im_filepath
+          im_sheet_name = im_sheet_name
         IMPORTING
-          filelength              = DATA(lv_filelength)
-          header                  = DATA(lv_headerxstring)
-        CHANGING
-          data_tab                = lt_records
-        EXCEPTIONS
-          file_open_error         = 1
-          file_read_error         = 2
-          no_batch                = 3
-          gui_refuse_filetransfer = 4
-          invalid_type            = 5
-          no_authority            = 6
-          unknown_error           = 7
-          bad_data_format         = 8
-          header_not_allowed      = 9
-          separator_not_allowed   = 10
-          header_too_long         = 11
-          unknown_dp_error        = 12
-          access_denied           = 13
-          dp_out_of_memory        = 14
-          disk_full               = 15
-          dp_timeout              = 16
-          not_supported_by_gui    = 17
-          error_no_gui            = 18
-          OTHERS                  = 19.
+          ex_table      = DATA(lo_data_ref) ).
 
+      "Create Dynamic Internal Table with Column Heading
+      DATA(lt_component) = VALUE cl_abap_structdescr=>component_table(
+                            ( name = lc_cell_style  type = CAST #( cl_abap_elemdescr=>describe_by_name( 'salv_t_int4_column' ) ) )
+                            ( name = lc_color_column type = CAST #( cl_abap_elemdescr=>describe_by_name( 'lvc_t_scol' ) ) ) ).
 
-      CALL FUNCTION 'SCMS_BINARY_TO_XSTRING'
-        EXPORTING
-          input_length = lv_filelength
-        IMPORTING
-          buffer       = lv_headerxstring
-        TABLES
-          binary_tab   = lt_records
-        EXCEPTIONS
-          failed       = 1
-          OTHERS       = 2.
-
-      TRY.
-          DATA(lo_excel_ref) = NEW cl_fdt_xl_spreadsheet(
-                                  document_name = CONV #( im_filepath )
-                                  xdocument     = lv_headerxstring ) .
-        CATCH cx_fdt_excel_core INTO DATA(ex_ref).
-          RAISE EXCEPTION TYPE lcx_exception EXPORTING text = | Error while Uploading Excel File |.
-      ENDTRY.
-
-
-      lo_excel_ref->if_fdt_doc_spreadsheet~get_worksheet_names( IMPORTING worksheet_names = DATA(t_worksheets) ).
-
-      IF im_sheet_name IS NOT INITIAL AND line_exists( t_worksheets[ table_line = im_sheet_name  ]  ) .
-        DATA(sheet) = VALUE #( t_worksheets[ table_line = im_sheet_name  ] DEFAULT space ).
-      ELSE.
-        sheet = VALUE #( t_worksheets[ 1 ] DEFAULT space ).
+      IF im_icon_column EQ abap_true.
+        APPEND VALUE abap_componentdescr( name = lc_icon_column type = cl_abap_elemdescr=>get_c( cl_mmim_maa_2=>gc_integer_8 ) ) TO lt_component.
       ENDIF.
 
-      DATA(lo_data_ref) = lo_excel_ref->if_fdt_doc_spreadsheet~get_itab_from_worksheet( sheet ).
+      IF im_checkbox_column EQ abap_true.
+        APPEND VALUE abap_componentdescr( name = lc_checkbox type = cl_abap_elemdescr=>get_c( cl_mmim_maa_2=>gc_integer_1 ) ) TO lt_component.
+      ENDIF.
 
-      ASSIGN lo_data_ref->* TO <fs_table>.
+      FIELD-SYMBOLS: <fs_tab> TYPE STANDARD TABLE.
+      ASSIGN lo_data_ref->* TO <fs_tab>.
+
+      DO.
+
+        ASSIGN COMPONENT sy-index OF STRUCTURE <fs_tab>[ 1 ] TO FIELD-SYMBOL(<fs>).
+        IF <fs> IS NOT INITIAL AND
+           sy-subrc EQ 0.
+
+          IF im_head EQ abap_true.
+            CONDENSE <fs> NO-GAPS.
+            APPEND VALUE #( name = |{ <fs> }| type = cl_abap_elemdescr=>get_c( 30 ) ) TO lt_component.
+          ELSE.
+            APPEND VALUE #( name = |column_{ sy-index }| type = cl_abap_elemdescr=>get_c( 30 ) ) TO lt_component.
+          ENDIF.
+
+        ELSE.
+
+          EXIT.
+
+        ENDIF.
+
+      ENDDO.
+
+      "Table type
+      TRY.
+          DATA(lo_new_table) = cl_abap_tabledescr=>create(
+                               p_line_type  = cl_abap_structdescr=>create( lt_component )
+                               p_table_kind = cl_abap_tabledescr=>tablekind_std
+                               p_unique     = abap_false ).
+        CATCH cx_sy_struct_attributes cx_sy_struct_comp_name INTO DATA(lo_exception). "#EC NO_HANDLER
+          RAISE EXCEPTION TYPE lcx_exception EXPORTING text = lo_exception->get_text( ).
+      ENDTRY.
+
+      "Data to handle the new table type
+      DATA:lo_data_table TYPE REF TO data.
+      CREATE DATA lo_data_table TYPE HANDLE lo_new_table.
+
+      "New internal table in fieldsymbol
+      ASSIGN lo_data_table->* TO <fs_table>.
+
+      "MAP VALUE TABLE TO STRUCTURED TABLE
+      CALL METHOD lcl_general_util=>get_structured_table_from_gen(
+        EXPORTING
+          im_map_by_structure = COND #( WHEN im_head EQ abap_true THEN abap_false
+                                        WHEN im_head EQ abap_false THEN abap_true )
+          im_start_line       = COND #( WHEN im_head EQ abap_true  THEN 2
+                                        WHEN im_head EQ abap_false THEN 1 )
+          im_table            = <fs_tab>
+        IMPORTING
+          ex_table            = <fs_table> ).
+
 
     ELSEIF im_data_source EQ lcl_main_salv=>database.
 
@@ -865,7 +897,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
                              p_line_type  = cl_abap_structdescr=>create( lt_tot_comp )
                              p_table_kind = cl_abap_tabledescr=>tablekind_std
                              p_unique     = abap_false ).
-        CATCH cx_sy_struct_attributes. "#EC NO_HANDLER
+        CATCH cx_sy_struct_attributes cx_sy_struct_comp_name. "#EC NO_HANDLER
+          RAISE EXCEPTION TYPE lcx_exception EXPORTING text = 'Error while Creating Dynamic Table'.
       ENDTRY.
 
       "Data to handle the new table type
@@ -898,7 +931,6 @@ CLASS lcl_main_salv IMPLEMENTATION.
     ENDIF.
 
   ENDMETHOD.
-
 
   METHOD process_data.
 
@@ -945,25 +977,25 @@ CLASS lcl_main_salv IMPLEMENTATION.
   METHOD display_data.
 
 *----------------------------INSTANTIATE ALV OBJECT----------------------------*
-  CALL METHOD me->create_alv.
+    CALL METHOD me->create_alv.
 *----------------------FIELD CATALOG-FIELD LABELS------------------------------*
-  CALL METHOD me->field_catalog.
+    CALL METHOD me->field_catalog.
 *-------------------COLUMN MANIPULATION-SORT-AGGREGATION-COLOUR----------------*
-  CALL METHOD me->column_properties.
+    CALL METHOD me->column_properties.
 *--------------------LAYOUTSETTINGS-DISPLAY SETTINGS-------------------*
-  CALL METHOD me->display_settings_header.
+    CALL METHOD me->display_settings_header.
 *--------------------------------HEADER----------------------------------------*
-  CALL METHOD me->header_creation.
+    CALL METHOD me->header_creation.
 *--------------------------------FOOTER----------------------------------------*
-  CALL METHOD me->footer_creation.
+    CALL METHOD me->footer_creation.
 *------------------------FUNCTIONS-TOOLBAR-CUSTOM STATUS-----------------------*
-  CALL METHOD me->toolbar_status.
+    CALL METHOD me->toolbar_status.
 *----------------------------Handle GUI Grid Events----------------------------*
-  CALL METHOD me->handle_gui_grid_events.
+    CALL METHOD me->handle_gui_grid_events.
 *---------------------------------EVENT HANDLING-------------------------------*
-  CALL METHOD me->event_handling.
+    CALL METHOD me->event_handling.
 *--------------------------------ALV DISPLAY-----------------------------------*
-  CALL METHOD me->display_alv.
+    CALL METHOD me->display_alv.
 
   ENDMETHOD.
 
@@ -1165,9 +1197,9 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     ENDIF.
 
-  IF lo_salv_alv IS NOT BOUND.
-    RAISE EXCEPTION TYPE lcx_exception EXPORTING text = 'Error while creating ALV Reference'.
-  ENDIF.
+    IF lo_salv_alv IS NOT BOUND.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING text = 'Error while creating ALV Reference'.
+    ENDIF.
 
   ENDMETHOD.
 
@@ -1175,54 +1207,54 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     IF  lv_data_source EQ lcl_main_salv=>database.
 
-    " Set information regarding currency and quantity.It is not set automatically
-    TRY.
-        "Quantity
-        DATA(o_column_quantity) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( 'CHANGE' ) )."Quantity Column
-        o_column_quantity->set_quantity_column( 'MEINS' ). "Unit of Measure Column
+      " Set information regarding currency and quantity.It is not set automatically
+      TRY.
+          "Quantity
+          DATA(o_column_quantity) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( 'CHANGE' ) )."Quantity Column
+          o_column_quantity->set_quantity_column( 'MEINS' ). "Unit of Measure Column
 
-        "Currency
-        DATA(o_column_currency) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( 'CHANGE' ) ). "Currency Value
-        o_column_currency->set_currency_column( 'WAERS' )."Currency Key
+          "Currency
+          DATA(o_column_currency) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( 'CHANGE' ) ). "Currency Value
+          o_column_currency->set_currency_column( 'WAERS' )."Currency Key
 
-      CATCH cx_salv_not_found cx_salv_data_error.         "#EC NO_HANDLER
-    ENDTRY.
+        CATCH cx_salv_not_found cx_salv_data_error.     "#EC NO_HANDLER
+      ENDTRY.
 
 *   Show technical and regular column names at the same time as column names
-    IF lv_technical_names EQ abap_true.
-      LOOP AT lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<c>).
-        <c>-r_column->set_short_text( |{ <c>-r_column->get_columnname( ) } [{ <c>-r_column->get_short_text( ) }]| ).
-        <c>-r_column->set_medium_text( |{ <c>-r_column->get_columnname( ) } [{ <c>-r_column->get_medium_text( ) }]| ).
-        <c>-r_column->set_long_text( |{ <c>-r_column->get_columnname( ) } [{ <c>-r_column->get_long_text( ) }]| ).
-      ENDLOOP.
-    ENDIF.
+      IF lv_technical_names EQ abap_true.
+        LOOP AT lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<c>).
+          <c>-r_column->set_short_text( |{ <c>-r_column->get_columnname( ) } [{ <c>-r_column->get_short_text( ) }]| ).
+          <c>-r_column->set_medium_text( |{ <c>-r_column->get_columnname( ) } [{ <c>-r_column->get_medium_text( ) }]| ).
+          <c>-r_column->set_long_text( |{ <c>-r_column->get_columnname( ) } [{ <c>-r_column->get_long_text( ) }]| ).
+        ENDLOOP.
+      ENDIF.
 
 *   For each column if Field Label is Initial set Column Name as Text
 
-    LOOP AT lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<fs_cols>).
+      LOOP AT lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<fs_cols>).
 
-      IF <fs_cols>-r_column->get_short_text( ) IS INITIAL.
-        <fs_cols>-r_column->set_short_text( CONV #( <fs_cols>-columnname ) ).
-      ENDIF.
+        IF <fs_cols>-r_column->get_short_text( ) IS INITIAL.
+          <fs_cols>-r_column->set_short_text( CONV #( <fs_cols>-columnname ) ).
+        ENDIF.
 
-      IF <fs_cols>-r_column->get_medium_text( ) IS INITIAL.
-        <fs_cols>-r_column->set_medium_text( CONV #( <fs_cols>-columnname ) ).
-      ENDIF.
+        IF <fs_cols>-r_column->get_medium_text( ) IS INITIAL.
+          <fs_cols>-r_column->set_medium_text( CONV #( <fs_cols>-columnname ) ).
+        ENDIF.
 
-      IF <fs_cols>-r_column->get_long_text( ) IS INITIAL.
-        <fs_cols>-r_column->set_long_text( CONV #( <fs_cols>-columnname ) ).
-      ENDIF.
+        IF <fs_cols>-r_column->get_long_text( ) IS INITIAL.
+          <fs_cols>-r_column->set_long_text( CONV #( <fs_cols>-columnname ) ).
+        ENDIF.
 
-    ENDLOOP.
+      ENDLOOP.
 
 *   Specify the name of the Column with No Field Labels-Build Field Catalog
-    TRY.
-        lo_salv_alv->get_columns( )->get_column('CHANGE' :
-         )->set_long_text('CHANGE'),
-         )->set_medium_text('CHANGE'),
-         )->set_short_text('CHANGE').
-      CATCH cx_salv_not_found .                           "#EC NO_HANDLER
-    ENDTRY.
+      TRY.
+          lo_salv_alv->get_columns( )->get_column('CHANGE' :
+           )->set_long_text('CHANGE'),
+           )->set_medium_text('CHANGE'),
+           )->set_short_text('CHANGE').
+        CATCH cx_salv_not_found .                       "#EC NO_HANDLER
+      ENDTRY.
 
 *  Dynamic Build Catalog of Table
 
@@ -1255,216 +1287,229 @@ CLASS lcl_main_salv IMPLEMENTATION.
 *      ENDIF.
 
 
-  ELSEIF lv_data_source EQ lcl_main_salv=>excel.
+    ELSEIF lv_data_source EQ lcl_main_salv=>excel.
 
+      LOOP AT lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<fs_col>).
 
+        IF <fs_col>-r_column->get_short_text( ) IS INITIAL.
+          <fs_col>-r_column->set_short_text( CONV #( <fs_col>-columnname ) ).
+        ENDIF.
 
-  ENDIF.
+        IF <fs_col>-r_column->get_medium_text( ) IS INITIAL.
+          <fs_col>-r_column->set_medium_text( CONV #( <fs_col>-columnname ) ).
+        ENDIF.
+
+        IF <fs_col>-r_column->get_long_text( ) IS INITIAL.
+          <fs_col>-r_column->set_long_text( CONV #( <fs_col>-columnname ) ).
+        ENDIF.
+
+      ENDLOOP.
+
+    ENDIF.
 
   ENDMETHOD.
 
   METHOD column_properties.
 
 * Center Columns
-  LOOP AT lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<c>).
-    <c>-r_column->set_alignment( if_salv_c_alignment=>centered  ).
-  ENDLOOP.
+    LOOP AT lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<c>).
+      <c>-r_column->set_alignment( if_salv_c_alignment=>centered  ).
+    ENDLOOP.
 
 * Optimize Columns Width
-  lo_salv_alv->get_columns( )->set_optimize( if_salv_c_bool_sap=>true ).
+    lo_salv_alv->get_columns( )->set_optimize( if_salv_c_bool_sap=>true ).
 
 * Hide Zeros from Specific Column
-  TRY.
-      lo_salv_alv->get_columns( )->get_column('CHANGE')->set_zero( space ).
-    CATCH cx_salv_not_found.                            "#EC NO_HANDLER
-  ENDTRY.
+    TRY.
+        lo_salv_alv->get_columns( )->get_column('CHANGE')->set_zero( space ).
+      CATCH cx_salv_not_found.                          "#EC NO_HANDLER
+    ENDTRY.
 
 *   Set Edit Mask(Conversion Exit) for a field
-   TRY.
-       "Use and Conversion Exit Function Module or Create your Own
-       lo_salv_alv->get_columns( )->get_column('CHANGE')->set_edit_mask( '==OUTPUT_CONVERSION' ).
-    CATCH cx_salv_not_found.                          "#EC NO_HANDLER
-  ENDTRY.
+    TRY.
+        "Use and Conversion Exit Function Module or Create your Own
+        lo_salv_alv->get_columns( )->get_column('CHANGE')->set_edit_mask( '==OUTPUT_CONVERSION' ).
+      CATCH cx_salv_not_found.                          "#EC NO_HANDLER
+    ENDTRY.
 
 *   Set the Cell Type
-  TRY.
-      lo_salv_alv->get_columns( )->set_cell_type_column( lc_cell_style ).
-    CATCH cx_salv_data_error.                           "#EC NO_HANDLER
-  ENDTRY.
+    TRY.
+        lo_salv_alv->get_columns( )->set_cell_type_column( lc_cell_style ).
+      CATCH cx_salv_data_error.                         "#EC NO_HANDLER
+    ENDTRY.
 
 *COLOR LINE
-  TRY.
-      "Instructions: Include in your alv table color TYPE lvc_t_scol. Then populate the specific table for
-      "every row that you want to color.Populate the line of the table by looping and add this code
-      "<fs_table_line>-color = VALUE #( ( color-col = 5 color-int = 0 color-inv = 0 ) ).
-      lo_salv_alv->get_columns( )->set_color_column(  lc_color_column ).
-    CATCH cx_salv_data_error cx_salv_invalid_input.     "#EC NO_HANDLER
-  ENDTRY.
+    TRY.
+        "Instructions: Include in your alv table color TYPE lvc_t_scol. Then populate the specific table for
+        "every row that you want to color.Populate the line of the table by looping and add this code
+        "<fs_table_line>-color = VALUE #( ( color-col = 5 color-int = 0 color-inv = 0 ) ).
+        lo_salv_alv->get_columns( )->set_color_column(  lc_color_column ).
+      CATCH cx_salv_data_error cx_salv_invalid_input.   "#EC NO_HANDLER
+    ENDTRY.
 
 *COLOR COLUMN
-  TRY.
-      DATA(o_column) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lv_hotspot_field ) ).
-      o_column->set_color( VALUE lvc_s_colo( col = lv_hotspot_color int = 1 inv = 1 ) ).
-    CATCH cx_salv_not_found.                            "#EC NO_HANDLER
-  ENDTRY.
+    TRY.
+        DATA(o_column) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lv_hotspot_field ) ).
+        o_column->set_color( VALUE lvc_s_colo( col = lv_hotspot_color int = 1 inv = 1 ) ).
+      CATCH cx_salv_not_found.                          "#EC NO_HANDLER
+    ENDTRY.
 
 * Add Icon To Column ICON
-  TRY.
+    TRY.
+        DATA(o_column_icon) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lc_icon_column ) ).
+        o_column_icon->set_icon( if_salv_c_bool_sap=>true ).
+        o_column_icon->set_alignment( if_salv_c_alignment=>centered ).
+        o_column_icon->set_long_text( 'Icon Status' ).
 
-      DATA(o_column_icon) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lc_icon_column ) ).
-      o_column_icon->set_icon( if_salv_c_bool_sap=>true ).
-      o_column_icon->set_alignment( if_salv_c_alignment=>centered ).
-      o_column_icon->set_long_text( 'Icon Status' ).
-
-    CATCH cx_salv_not_found.                            "#EC NO_HANDLER
-  ENDTRY.
+      CATCH cx_salv_not_found.                          "#EC NO_HANDLER
+    ENDTRY.
 
 * Add Checkbox Column
-  TRY.
-      DATA(o_column_checkbox) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lc_checkbox  ) ).
-      o_column_checkbox->set_cell_type( if_salv_c_cell_type=>checkbox_hotspot ).
-      o_column_checkbox->set_output_length( 10 ).
-      o_column_checkbox->set_long_text( 'Checkbox' ).
-    CATCH cx_salv_not_found.                            "#EC NO_HANDLER
-  ENDTRY.
+    TRY.
+        DATA(o_column_checkbox) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lc_checkbox  ) ).
+        o_column_checkbox->set_cell_type( if_salv_c_cell_type=>checkbox_hotspot ).
+        o_column_checkbox->set_output_length( 10 ).
+        o_column_checkbox->set_long_text( 'Checkbox' ).
+      CATCH cx_salv_not_found.                          "#EC NO_HANDLER
+    ENDTRY.
 
 * Add Tooltips to Icons
-  TRY.
-      lo_salv_alv->get_functional_settings( )->get_tooltips( )->add_tooltip( type = cl_salv_tooltip=>c_type_icon
-                                                                             value = |{ icon_green_light }|
-                                                                             tooltip = 'Text Under Specified Icon' ).
-    CATCH cx_salv_existing.                             "#EC NO_HANDLER
-  ENDTRY.
+    TRY.
+        lo_salv_alv->get_functional_settings( )->get_tooltips( )->add_tooltip( type = cl_salv_tooltip=>c_type_icon
+                                                                               value = |{ icon_green_light }|
+                                                                               tooltip = 'Text Under Specified Icon' ).
+      CATCH cx_salv_existing.                           "#EC NO_HANDLER
+    ENDTRY.
 
 *Add Tooltips to Fields
-  TRY.
-      lo_salv_alv->get_columns( )->get_column('CHANGE')->set_tooltip( 'Tooltip Text' ).
-    CATCH cx_salv_not_found.                            "#EC NO_HANDLER
-  ENDTRY.
+    TRY.
+        lo_salv_alv->get_columns( )->get_column('CHANGE')->set_tooltip( 'Tooltip Text' ).
+      CATCH cx_salv_not_found.                          "#EC NO_HANDLER
+    ENDTRY.
 
 * Hide Specified Column
-  TRY.
-      lo_salv_alv->get_columns( )->get_column( 'CHANGE' )->set_visible( abap_false ).
-    CATCH cx_salv_not_found.                            "#EC NO_HANDLER
-  ENDTRY.
+    TRY.
+        lo_salv_alv->get_columns( )->get_column( 'CHANGE' )->set_visible( abap_false ).
+      CATCH cx_salv_not_found.                          "#EC NO_HANDLER
+    ENDTRY.
 
 * display and fix column as key column
-  TRY.
-      "Define Column as Key Column
-      DATA(o_coltab) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( 'CHANGE' ) ).
-      o_coltab->set_key( abap_true ).
+    TRY.
+        "Define Column as Key Column
+        DATA(o_coltab) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( 'CHANGE' ) ).
+        o_coltab->set_key( abap_true ).
 
-      "Fix Key Columns
-      lo_salv_alv->get_columns( )->set_key_fixation( abap_true ).
-    CATCH cx_root.                                      "#EC NO_HANDLER
-  ENDTRY.
-
-
-  "Apply Filter for Column
-  TRY.
-
-      lo_salv_alv->get_filters(:
-      )->remove_filter( 'CHANGE' ),"Remove Filter
-      )->add_filter( columnname = 'CHANGE' sign = if_fsbp_const_range=>sign_include option = if_fsbp_const_range=>option_equal low = '100' ). "Add new Filter for Specific Column.
-
-    "Save Filter to Table
-      t_filter_selopt  = lo_salv_alv->get_filters( )->get_filter( 'CHANGE' )->get( ).
-
-    CATCH cx_salv_existing cx_salv_data_error cx_salv_not_found. "#EC NO_HANDLER
-  ENDTRY.
-
-  "AGGREGATIONS-TOTALS-----------------------------------------------------------------------
-  TRY.
-      "To add totals we need to use GET_AGGREGATIONS, once we get aggregations instance,
-      "we need to add aggregation by passing column name and aggregation type to method ADD_AGGREGATION.
-
-      lo_salv_alv->get_aggregations(:
-      )->add_aggregation( columnname  = 'CHANGE'   "aggregation column name
-                         aggregation = if_salv_c_aggregation=>total ),"aggregation type
-      )->set_aggregation_before_items( value = abap_true )."Bring Aggregation to Top
-
-    CATCH cx_salv_existing cx_salv_not_found cx_salv_data_error. "#EC NO_HANDLER
-  ENDTRY.
-
-*SORTS-SUBTOTALS----------------------------------------------------------------------
-  TRY.
-      "To add subtotals, we need to add sort to the columns and then we have to use SET_SUBTOTAL method to display subtotals.
-
-      "SORT
-      DATA(lr_sort_column) = lo_salv_alv->get_sorts( )->add_sort( columnname = 'CHANGE'
-                                                             "POSITION   =
-                                                             "SEQUENCE   = IF_SALV_C_SORT=>SORT_UP
-*                                                             SUBTOTAL   = IF_SALV_C_BOOL_SAP=>true
-                                                             "GROUP      = IF_SALV_C_SORT=>GROUP_NONE
-                                                             "OBLIGATORY = IF_SALV_C_BOOL_SAP=>FALSE
-                                                             ).
-*     SUBTOTALS
-      CALL METHOD lr_sort_column->set_subtotal
-        EXPORTING
-          value = if_salv_c_bool_sap=>true.
-
-    CATCH cx_salv_existing cx_salv_not_found cx_salv_data_error . "#EC NO_HANDLER
-  ENDTRY.
-
-*COLUMN SPECIFIC GROUPING----------------------------------------------------------------
-
-  "Create Groups
-  TRY.
-      lo_salv_alv->get_functional_settings( )->get_specific_groups(:
-                                                              )->add_specific_group( id   = 'AMOU' text = 'Amounts' ),
-                                                              )->add_specific_group( id   = 'DATE' text = 'Dates' ),
-                                                              )->add_specific_group( id   = 'NCHA'  text = 'Numerical Characters' ),
-                                                              )->add_specific_group( id   = 'CHAR'  text = 'Character Fields' ).
-
-    CATCH cx_salv_existing.                             "#EC NO_HANDLER
-  ENDTRY.
+        "Fix Key Columns
+        lo_salv_alv->get_columns( )->set_key_fixation( abap_true ).
+      CATCH cx_root.                                    "#EC NO_HANDLER
+    ENDTRY.
 
 
-  "Dynamic Assignment of Columns to Groups
-  DATA(lo_type_def)   = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( <fs_table> ) ).
-  DATA(lt_components) = CAST cl_abap_structdescr( lo_type_def->get_table_line_type( ) )->components.
+    "Apply Filter for Column
+    TRY.
 
-  LOOP AT lt_components ASSIGNING FIELD-SYMBOL(<ls_components>).
+        lo_salv_alv->get_filters(:
+        )->remove_filter( 'CHANGE' ),"Remove Filter
+        )->add_filter( columnname = 'CHANGE' sign = if_fsbp_const_range=>sign_include option = if_fsbp_const_range=>option_equal low = '100' ). "Add new Filter for Specific Column.
 
-    IF <ls_components>-type_kind EQ cl_abap_structdescr=>typekind_date.
+        "Save Filter to Table
+        t_filter_selopt  = lo_salv_alv->get_filters( )->get_filter( 'CHANGE' )->get( ).
 
-      TRY.
-          DATA(o_column_date) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) ).
-          o_column_date->set_specific_group( id = 'DATE' ).
-          o_column_date->set_visible( abap_true ).
-        CATCH cx_salv_not_found.
-      ENDTRY.
+      CATCH cx_salv_existing cx_salv_data_error cx_salv_not_found. "#EC NO_HANDLER
+    ENDTRY.
 
-    ELSEIF <ls_components>-type_kind EQ cl_abap_structdescr=>typekind_packed.
+    "AGGREGATIONS-TOTALS-----------------------------------------------------------------------
+    TRY.
+        "To add totals we need to use GET_AGGREGATIONS, once we get aggregations instance,
+        "we need to add aggregation by passing column name and aggregation type to method ADD_AGGREGATION.
 
-      TRY.
-          DATA(o_column_amount) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) ).
-          o_column_amount->set_specific_group( id = 'AMOU' ).
-          o_column_amount->set_visible( abap_true ).
-        CATCH cx_salv_not_found.
-      ENDTRY.
+        lo_salv_alv->get_aggregations(:
+        )->add_aggregation( columnname  = 'CHANGE'   "aggregation column name
+                           aggregation = if_salv_c_aggregation=>total ),"aggregation type
+        )->set_aggregation_before_items( value = abap_true )."Bring Aggregation to Top
 
-    ELSEIF <ls_components>-type_kind EQ cl_abap_structdescr=>typekind_num.
+      CATCH cx_salv_existing cx_salv_not_found cx_salv_data_error. "#EC NO_HANDLER
+    ENDTRY.
 
-      TRY.
-          DATA(o_column_nchar) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) ).
-          o_column_nchar->set_specific_group( id = 'NCHA' ).
-          o_column_nchar->set_visible( abap_true ).
-        CATCH cx_salv_not_found.
-      ENDTRY.
+    "SORTS-SUBTOTALS----------------------------------------------------------------------
+    TRY.
+        "To add subtotals, we need to add sort to the columns and then we have to use SET_SUBTOTAL method to display subtotals.
 
-    ELSEIF <ls_components>-type_kind EQ cl_abap_structdescr=>typekind_char.
+        "SORT
+        DATA(lr_sort_column) = lo_salv_alv->get_sorts( )->add_sort( columnname = 'CHANGE'
+                                                               "POSITION   =
+                                                               "SEQUENCE   = IF_SALV_C_SORT=>SORT_UP
+                                                               "SUBTOTAL   = IF_SALV_C_BOOL_SAP=>true
+                                                               "GROUP      = IF_SALV_C_SORT=>GROUP_NONE
+                                                               "OBLIGATORY = IF_SALV_C_BOOL_SAP=>FALSE
+                                                               ).
+        "SUBTOTALS
+        CALL METHOD lr_sort_column->set_subtotal
+          EXPORTING
+            value = if_salv_c_bool_sap=>true.
 
-      TRY.
-          DATA(o_column_char) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) ).
-          o_column_char->set_specific_group( id = 'CHAR' ).
-          o_column_char->set_visible( abap_true ).
-        CATCH cx_salv_not_found.
-      ENDTRY.
+      CATCH cx_salv_existing cx_salv_not_found cx_salv_data_error . "#EC NO_HANDLER
+    ENDTRY.
 
-    ENDIF.
+    "COLUMN SPECIFIC GROUPING----------------------------------------------------------------
 
-  ENDLOOP.
+    "Create Groups
+    TRY.
+        lo_salv_alv->get_functional_settings( )->get_specific_groups(:
+                                                                )->add_specific_group( id   = 'AMOU' text = 'Amounts' ),
+                                                                )->add_specific_group( id   = 'DATE' text = 'Dates' ),
+                                                                )->add_specific_group( id   = 'NCHA'  text = 'Numerical Characters' ),
+                                                                )->add_specific_group( id   = 'CHAR'  text = 'Character Fields' ).
+
+      CATCH cx_salv_existing.                           "#EC NO_HANDLER
+    ENDTRY.
+
+
+    "Dynamic Assignment of Columns to Groups
+    DATA(lo_type_def)   = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( <fs_table> ) ).
+    DATA(lt_components) = CAST cl_abap_structdescr( lo_type_def->get_table_line_type( ) )->components.
+
+    LOOP AT lt_components ASSIGNING FIELD-SYMBOL(<ls_components>).
+
+      IF <ls_components>-type_kind EQ cl_abap_structdescr=>typekind_date.
+
+        TRY.
+            DATA(o_column_date) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) ).
+            o_column_date->set_specific_group( id = 'DATE' ).
+            o_column_date->set_visible( abap_true ).
+          CATCH cx_salv_not_found.
+        ENDTRY.
+
+      ELSEIF <ls_components>-type_kind EQ cl_abap_structdescr=>typekind_packed.
+
+        TRY.
+            DATA(o_column_amount) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) ).
+            o_column_amount->set_specific_group( id = 'AMOU' ).
+            o_column_amount->set_visible( abap_true ).
+          CATCH cx_salv_not_found.
+        ENDTRY.
+
+      ELSEIF <ls_components>-type_kind EQ cl_abap_structdescr=>typekind_num.
+
+        TRY.
+            DATA(o_column_nchar) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) ).
+            o_column_nchar->set_specific_group( id = 'NCHA' ).
+            o_column_nchar->set_visible( abap_true ).
+          CATCH cx_salv_not_found.
+        ENDTRY.
+
+      ELSEIF <ls_components>-type_kind EQ cl_abap_structdescr=>typekind_char.
+
+        TRY.
+            DATA(o_column_char) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) ).
+            o_column_char->set_specific_group( id = 'CHAR' ).
+            o_column_char->set_visible( abap_true ).
+          CATCH cx_salv_not_found.
+        ENDTRY.
+
+      ENDIF.
+
+    ENDLOOP.
 
 
 
@@ -1472,63 +1517,63 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD display_settings_header.
 
-* Enable Multiple Selection in the ALV Layout and Enable Left Column for Selection
-  lo_salv_alv->get_selections( )->set_selection_mode( if_salv_c_selection_mode=>row_column )."cl_salv_selections=>multiple
+    "Enable Multiple Selection in the ALV Layout and Enable Left Column for Selection
+    lo_salv_alv->get_selections( )->set_selection_mode( if_salv_c_selection_mode=>row_column )."cl_salv_selections=>multiple
 
-* Change Display Settings to Stripped
-  lo_salv_alv->get_display_settings( )->set_striped_pattern( abap_true ).
+    "Change Display Settings to Stripped
+    lo_salv_alv->get_display_settings( )->set_striped_pattern( abap_true ).
 
-*Layout Settings
-  lo_salv_alv->get_layout(:
-  )->set_key( value = VALUE salv_s_layout_key( report = sy-repid ) ),"Save the Layout Key.Unique key identifies the Differenet ALVs
-  )->set_default( abap_true )," Set usage of default layouts
-  )->set_save_restriction( if_salv_c_layout=>restrict_none ),"Remove Save layout Restriction
-  )->set_initial_layout( lv_layout )."Set Initial Layout.If Layout doesnt exist it will display the default
+    "Layout Settings
+    lo_salv_alv->get_layout(:
+    )->set_key( value = VALUE salv_s_layout_key( report = sy-repid ) ),"Save the Layout Key.Unique key identifies the Differenet ALVs
+    )->set_default( abap_true )," Set usage of default layouts
+    )->set_save_restriction( if_salv_c_layout=>restrict_none ),"Remove Save layout Restriction
+    )->set_initial_layout( lv_layout )."Set Initial Layout.If Layout doesnt exist it will display the default
 
 
-* Activate/deactivate horizontal and vertical lines
-  lo_salv_alv->get_display_settings( :
-                                    )->set_horizontal_lines( abap_true ),
-                                    )->set_vertical_lines( abap_true ).
+    "Activate/deactivate horizontal and vertical lines
+    lo_salv_alv->get_display_settings( :
+                                      )->set_horizontal_lines( abap_true ),
+                                      )->set_vertical_lines( abap_true ).
 
 
   ENDMETHOD.
 
   METHOD header_creation.
 
-   IF lv_version EQ lcl_main_salv=>gui." ALV Header for Container
+    IF lv_version EQ lcl_main_salv=>gui." ALV Header for Container
 
-    lo_salv_alv->get_display_settings( :
-        )->set_list_header_size( cl_salv_display_settings=>c_header_size_medium ),
-        )->set_list_header( |The List Generated by { sy-uname  } at { sy-datum  DATE = USER } { sy-uzeit  TIME = USER }.Entries:{ lines( <fs_table> ) } | ).
+      lo_salv_alv->get_display_settings( :
+          )->set_list_header_size( cl_salv_display_settings=>c_header_size_medium ),
+          )->set_list_header( |The List Generated by { sy-uname  } at { sy-datum  DATE = USER } { sy-uzeit  TIME = USER }.Entries:{ lines( <fs_table> ) } | ).
 
-  ELSEIF lv_version EQ lcl_main_salv=>fiori." ALV Header for Fiori Version
+    ELSEIF lv_version EQ lcl_main_salv=>fiori." ALV Header for Fiori Version
 
-    lo_salv_alv->get_display_settings(:
-    )->set_list_header_size( cl_salv_display_settings=>c_header_size_medium ),
-    )->set_list_header( |Number of Retrieved Entries: { lines( <fs_table> ) } | ).
+      lo_salv_alv->get_display_settings(:
+      )->set_list_header_size( cl_salv_display_settings=>c_header_size_medium ),
+      )->set_list_header( |Number of Retrieved Entries: { lines( <fs_table> ) } | ).
 
-    CALL METHOD me->header_creation_fiori( ).
-  ENDIF.
+      CALL METHOD me->header_creation_fiori( ).
+    ENDIF.
 
   ENDMETHOD.
 
   METHOD header_creation_fiori.
 
-  DATA(lo_header) = NEW cl_salv_form_layout_grid( ).
+    DATA(lo_header) = NEW cl_salv_form_layout_grid( ).
 
-* Information in Bold
-  lo_header->create_label( row = 1 column = 1 )->set_text('ALV Report').
+    "Information in Bold
+    lo_header->create_label( row = 1 column = 1 )->set_text('ALV Report').
 
-* Information in tabular format
-  DATA(lv_text) = |The List was Generated by User { sy-uname } at { sy-datum  DATE = USER } { sy-uzeit  TIME = USER } | .
-  lo_header->create_flow( row = 2 column = 1 )->create_text( text = lv_text ).
+    "Information in tabular format
+    DATA(lv_text) = |The List was Generated by User { sy-uname } at { sy-datum  DATE = USER } { sy-uzeit  TIME = USER } | .
+    lo_header->create_flow( row = 2 column = 1 )->create_text( text = lv_text ).
 
-* Set the top of list using the header for Online
-  lo_salv_alv->set_top_of_list( lo_header ).
+    "Set the top of list using the header for Online
+    lo_salv_alv->set_top_of_list( lo_header ).
 
-* Set the top of list using the header for Print
-  lo_salv_alv->set_top_of_list_print( lo_header ).
+    "Set the top of list using the header for Print
+    lo_salv_alv->set_top_of_list_print( lo_header ).
 
 
   ENDMETHOD.
@@ -1541,117 +1586,117 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD footer_creation.
 
-  DATA(lo_footer) = NEW cl_salv_form_layout_grid( ).
+    DATA(lo_footer) = NEW cl_salv_form_layout_grid( ).
 
-  DATA(lo_f_label) = lo_footer->create_label( row = 1 column = 1 ) .
-  lo_f_label->set_text( 'Footer').
+    DATA(lo_f_label) = lo_footer->create_label( row = 1 column = 1 ) .
+    lo_f_label->set_text( 'Footer').
 
-  DATA(lo_f_flow) = lo_footer->create_flow( row = 2 column = 1 ).
+    DATA(lo_f_flow) = lo_footer->create_flow( row = 2 column = 1 ).
 
-  IF lv_data_source EQ lcl_main_salv=>database.
-    DATA(lv_text) = |Displaying Details of Table | .
-  ELSEIF lv_data_source EQ lcl_main_salv=>excel.
-    lv_text = |Displaying Details of Excel File | .
-  ELSE.
-    lv_text = |Footer Details | .
-  ENDIF.
+    IF lv_data_source EQ lcl_main_salv=>database.
+      DATA(lv_text) = |Displaying Details of Table | .
+    ELSEIF lv_data_source EQ lcl_main_salv=>excel.
+      lv_text = |Displaying Details of Excel File | .
+    ELSE.
+      lv_text = |Footer Details | .
+    ENDIF.
 
-  lo_f_flow->create_text( text = lv_text ).
-  lo_salv_alv->set_end_of_list( lo_footer ).
-  lo_salv_alv->set_end_of_list_print( lo_footer ).
+    lo_f_flow->create_text( text = lv_text ).
+    lo_salv_alv->set_end_of_list( lo_footer ).
+    lo_salv_alv->set_end_of_list_print( lo_footer ).
 
   ENDMETHOD.
 
   METHOD toolbar_status.
 
-  IF lv_status IS NOT INITIAL AND lv_version EQ lcl_main_salv=>fiori.
+    IF lv_status IS NOT INITIAL AND lv_version EQ lcl_main_salv=>fiori.
 
-    TRY.
-      lo_salv_alv->set_screen_status(
-        pfstatus      = lv_status
-        report        = syst-cprog
-        set_functions = lo_salv_alv->c_functions_all ).
-    CATCH cx_salv_method_not_supported cx_salv_object_not_found.
+      TRY.
+          lo_salv_alv->set_screen_status(
+            pfstatus      = lv_status
+            report        = syst-cprog
+            set_functions = lo_salv_alv->c_functions_all ).
+        CATCH cx_salv_method_not_supported cx_salv_object_not_found.
 
-    ENDTRY.
+      ENDTRY.
 
-  ELSE.
+    ELSE.
 
-    lo_salv_alv->get_functions( )->set_all( if_salv_c_bool_sap=>true ).
+      lo_salv_alv->get_functions( )->set_all( if_salv_c_bool_sap=>true ).
 
-    "Add Custom Buttons
-    TRY.
+      "Add Custom Buttons
+      TRY.
 
-        lo_salv_alv->get_functions(:
-                             )->add_function( name = 'DETAILS'"Custom Button Details
-                                              icon = |{ icon_overview }|
-                                              text = 'Details'
-                                              tooltip = 'Detail View'
-                                              position = if_salv_c_function_position=>right_of_salv_functions ),
-                             )->add_function( name = 'EDIT'"Custom Button Edit
-                                              icon = |{ icon_operation }|
-                                              text = 'Edit'
-                                              tooltip = 'Edit ALV Fields'
-                                              position = if_salv_c_function_position=>right_of_salv_functions ),
-                             )->add_function( name = 'COLUMNS'"Custom Button Columns
-                                              icon = |{ icon_businav_sysorgi }|
-                                              text = ''
-                                              tooltip = 'Show/Hide Empty Columns'
-                                              position = if_salv_c_function_position=>right_of_salv_functions ),
-                             )->add_function( name = 'DOCU' "Custom Button Documentation
-                                              icon = |{ icon_message_information_small }|
-                                              text = ''
-                                              tooltip = 'End User Documentation'
-                                              position = if_salv_c_function_position=>right_of_salv_functions ).
+          lo_salv_alv->get_functions(:
+                               )->add_function( name = 'DETAILS'"Custom Button Details
+                                                icon = |{ icon_overview }|
+                                                text = 'Details'
+                                                tooltip = 'Detail View'
+                                                position = if_salv_c_function_position=>right_of_salv_functions ),
+                               )->add_function( name = 'EDIT'"Custom Button Edit
+                                                icon = |{ icon_operation }|
+                                                text = 'Edit'
+                                                tooltip = 'Edit ALV Fields'
+                                                position = if_salv_c_function_position=>right_of_salv_functions ),
+                               )->add_function( name = 'COLUMNS'"Custom Button Columns
+                                                icon = |{ icon_businav_sysorgi }|
+                                                text = ''
+                                                tooltip = 'Show/Hide Empty Columns'
+                                                position = if_salv_c_function_position=>right_of_salv_functions ),
+                               )->add_function( name = 'DOCU' "Custom Button Documentation
+                                                icon = |{ icon_message_information_small }|
+                                                text = ''
+                                                tooltip = 'End User Documentation'
+                                                position = if_salv_c_function_position=>right_of_salv_functions ).
 
 
-      CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported. "#EC NO_HANDLER
-    ENDTRY.
+        CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported. "#EC NO_HANDLER
+      ENDTRY.
 
-    "Suppress the toolbar of the list output
-    cl_abap_list_layout=>suppress_toolbar( ).
+      "Suppress the toolbar of the list output
+      cl_abap_list_layout=>suppress_toolbar( ).
 
-  ENDIF.
+    ENDIF.
 
   ENDMETHOD.
 
   METHOD handle_gui_grid_events.
 
-   IF lv_handle_gui_grid_events EQ abap_true.
+    IF lv_handle_gui_grid_events EQ abap_true.
 
-    DATA(lo_gui_grid_event) = NEW lcl_event_handler( ).
-    SET HANDLER lo_gui_grid_event->event_after_refresh FOR ALL INSTANCES.
-    lo_salv_alv->refresh( ).
+      DATA(lo_gui_grid_event) = NEW lcl_event_handler( ).
+      SET HANDLER lo_gui_grid_event->event_after_refresh FOR ALL INSTANCES.
+      lo_salv_alv->refresh( ).
 
-   ENDIF.
+    ENDIF.
 
   ENDMETHOD.
 
- METHOD event_handling.
+  METHOD event_handling.
 
 *Handler for Double Click Event and User Command(Button) and Hotspot Handling
-  SET HANDLER: lcl_event_handler=>handle_double_click    FOR lo_salv_alv->get_event( ),
-               lcl_event_handler=>on_user_command        FOR lo_salv_alv->get_event( ),
-               lcl_event_handler=>handle_hotspot         FOR lo_salv_alv->get_event( ),
-               lcl_event_handler=>on_end_of_page         FOR lo_salv_alv->get_event( ),
-               lcl_event_handler=>on_top_of_page         FOR lo_salv_alv->get_event( ),
-               lcl_event_handler=>on_after_salv_function FOR lo_salv_alv->get_event( ).
+    SET HANDLER: lcl_event_handler=>handle_double_click    FOR lo_salv_alv->get_event( ),
+                 lcl_event_handler=>on_user_command        FOR lo_salv_alv->get_event( ),
+                 lcl_event_handler=>handle_hotspot         FOR lo_salv_alv->get_event( ),
+                 lcl_event_handler=>on_end_of_page         FOR lo_salv_alv->get_event( ),
+                 lcl_event_handler=>on_top_of_page         FOR lo_salv_alv->get_event( ),
+                 lcl_event_handler=>on_after_salv_function FOR lo_salv_alv->get_event( ).
 
 *Set Desired Field Hotspot Enabled
-  lcl_event_handler=>set_hotspot( EXPORTING im_alv = lo_salv_alv im_field = lv_hotspot_field ).
+    lcl_event_handler=>set_hotspot( EXPORTING im_alv = lo_salv_alv im_field = lv_hotspot_field ).
 
- ENDMETHOD.
+  ENDMETHOD.
 
- METHOD display_alv.
+  METHOD display_alv.
 
-  lo_salv_alv->display( ).
+    lo_salv_alv->display( ).
 
-  "----------------------------Force Container Generation------------------------*
-  IF lv_version EQ lcl_main_salv=>gui.
-    WRITE: space.
-  ENDIF.
+    "----------------------------Force Container Generation------------------------*
+    IF lv_version EQ lcl_main_salv=>gui.
+      WRITE: space.
+    ENDIF.
 
- ENDMETHOD.
+  ENDMETHOD.
 
 
 ENDCLASS.
@@ -1660,6 +1705,242 @@ ENDCLASS.
 *       CLASS lcl_general_util IMPLEMENTATION
 *----------------------------------------------------------------------*
 CLASS lcl_general_util IMPLEMENTATION.
+
+  METHOD upload_excel.
+
+    DATA: lt_records TYPE solix_tab.
+
+    CALL METHOD cl_gui_frontend_services=>gui_upload
+      EXPORTING
+        filename                = CONV #( im_filepath )
+        filetype                = 'BIN'
+      IMPORTING
+        filelength              = DATA(lv_filelength)
+        header                  = DATA(lv_headerxstring)
+      CHANGING
+        data_tab                = lt_records
+      EXCEPTIONS
+        file_open_error         = 1
+        file_read_error         = 2
+        no_batch                = 3
+        gui_refuse_filetransfer = 4
+        invalid_type            = 5
+        no_authority            = 6
+        unknown_error           = 7
+        bad_data_format         = 8
+        header_not_allowed      = 9
+        separator_not_allowed   = 10
+        header_too_long         = 11
+        unknown_dp_error        = 12
+        access_denied           = 13
+        dp_out_of_memory        = 14
+        disk_full               = 15
+        dp_timeout              = 16
+        not_supported_by_gui    = 17
+        error_no_gui            = 18
+        OTHERS                  = 19.
+
+    IF sy-subrc NE 0.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING text = | Error while Uploading Excel File |.
+    ENDIF.
+
+
+    CALL FUNCTION 'SCMS_BINARY_TO_XSTRING'
+      EXPORTING
+        input_length = lv_filelength
+      IMPORTING
+        buffer       = lv_headerxstring
+      TABLES
+        binary_tab   = lt_records
+      EXCEPTIONS
+        failed       = 1
+        OTHERS       = 2.
+
+    IF sy-subrc NE 0.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING text = | Error while Uploading Excel File |.
+    ENDIF.
+
+    TRY.
+        DATA(lo_excel_ref) = NEW cl_fdt_xl_spreadsheet(
+                                document_name = CONV #( im_filepath )
+                                xdocument     = lv_headerxstring ) .
+      CATCH cx_fdt_excel_core INTO DATA(ex_ref).
+        RAISE EXCEPTION TYPE lcx_exception EXPORTING text = | Error while Uploading Excel File |.
+    ENDTRY.
+
+
+    lo_excel_ref->if_fdt_doc_spreadsheet~get_worksheet_names( IMPORTING worksheet_names = DATA(t_worksheets) ).
+
+    IF im_sheet_name IS NOT INITIAL AND line_exists( t_worksheets[ table_line = im_sheet_name  ]  ) .
+      DATA(sheet) = VALUE #( t_worksheets[ table_line = im_sheet_name  ] DEFAULT space ).
+    ELSE.
+      sheet = VALUE #( t_worksheets[ 1 ] DEFAULT space ).
+    ENDIF.
+
+    ex_table = lo_excel_ref->if_fdt_doc_spreadsheet~get_itab_from_worksheet( sheet ).
+
+
+  ENDMETHOD.
+
+  METHOD get_structured_table_from_gen.
+
+    TYPES: BEGIN OF ty_column_structure,
+             component TYPE string,
+             column    TYPE i,
+           END OF ty_column_structure.
+
+    DATA: v_index        TYPE i,
+          v_column       TYPE i,
+          i_float        TYPE f,
+          e_dec          TYPE esecompavg,
+          s_column       TYPE          ty_column_structure,
+          t_column       TYPE TABLE OF ty_column_structure,
+          lr_struct      TYPE REF TO cl_abap_structdescr,
+          lr_elem        TYPE REF TO cl_abap_elemdescr,
+          ref_itab       TYPE REF TO data,
+          ref_wa         TYPE REF TO data,
+          lo_type_def    TYPE REF TO cl_abap_typedescr,
+          lo_struct_def  TYPE REF TO cl_abap_structdescr,
+          lo_table_def   TYPE REF TO cl_abap_tabledescr,
+          lo_data_def    TYPE REF TO cl_abap_datadescr,
+          lo_element_def TYPE REF TO cl_abap_elemdescr,
+          lt_components  TYPE abap_compdescr_tab.
+
+    FIELD-SYMBOLS: <fs_itab>    TYPE ANY TABLE,
+                   <fs_wa>      TYPE any,
+                   <fs_any_tab> TYPE any,
+                   <fs_any>     TYPE any.
+
+    "CHECK IMPORTING TABLE IS NOT INITIAL
+    CHECK im_table IS NOT INITIAL.
+
+    "CREATE A DYNAMIC TABLE WITH THE SAME STRUCTURE AS TARGETED TABLE
+    ASSIGN ex_table  TO <fs_itab>.
+
+    "DATA REFERENCE
+    CREATE DATA ref_wa LIKE LINE OF <fs_itab>.
+    ASSIGN ref_wa->* TO <fs_wa>.
+
+    IF im_map_by_structure IS INITIAL."GET STRUCTURE FROM TABLE ROW
+
+      "GET THE COLUMN NAMES FROM THE SPECIFIED ROW(IMPORTING PARAMETER)
+      REFRESH t_column.
+      CLEAR:v_index.
+      LOOP AT im_table ASSIGNING FIELD-SYMBOL(<s_tab>).
+        ADD 1 TO v_index.
+        CLEAR v_column.
+
+        IF v_index EQ im_structure_line."LOOP ONLY THE SPECIFIED STRUCTURE ROW
+          DO.
+            ADD 1 TO v_column.
+            ASSIGN COMPONENT v_column OF STRUCTURE <s_tab> TO <fs_any>.
+            IF sy-subrc EQ 0.
+              s_column-component = <fs_any> .
+              s_column-column    = v_column.
+              APPEND s_column TO t_column .
+            ELSE.
+              EXIT.
+            ENDIF.
+          ENDDO.
+          EXIT.
+        ENDIF.
+
+      ENDLOOP.
+
+    ELSE."GET STRUCTURE FROM TABLE COMPONENTS
+
+      " Using RTTS to get the runtime type information of the internal table
+      " Retrieves Components name and Type Kind
+      lo_type_def  = cl_abap_tabledescr=>describe_by_data( ex_table ).
+      lo_table_def ?= lo_type_def.
+      lo_data_def = lo_table_def->get_table_line_type( ).
+      lo_struct_def ?= lo_data_def.
+      lt_components = lo_struct_def->components.
+
+      CLEAR: v_column,s_column.
+      LOOP AT lt_components ASSIGNING FIELD-SYMBOL(<fs_components>) WHERE type_kind NE cl_abap_typedescr=>typekind_table AND
+                                                                          type_kind NE cl_abap_typedescr=>typekind_struct1 AND
+                                                                          name NE lcl_main_salv=>lc_checkbox AND
+                                                                          name NE lcl_main_salv=>lc_icon_column.
+        ADD 1 TO v_column.
+        s_column-component = <fs_components>-name .
+        s_column-column    = v_column.
+        APPEND s_column TO t_column .
+        CLEAR:s_column.
+      ENDLOOP.
+
+    ENDIF.
+
+    DELETE t_column WHERE component IS INITIAL.
+
+    "PASS DATA TO TABLE
+    CLEAR v_index.
+    LOOP AT im_table ASSIGNING <s_tab>.
+      ADD 1 TO v_index.
+
+      IF v_index LT im_start_line.
+        CONTINUE.
+      ENDIF.
+
+      "START FROM DATA LINE(IMPORTING PARAMETER)
+      CLEAR <fs_wa>.
+      LOOP AT t_column INTO s_column.
+
+        ASSIGN COMPONENT s_column-component OF STRUCTURE <fs_wa> TO <fs_any_tab>.
+        IF sy-subrc NE 0.
+          CONTINUE.
+        ENDIF.
+
+        ASSIGN COMPONENT s_column-column OF STRUCTURE <s_tab> TO <fs_any> .
+        IF sy-subrc NE 0.
+          CONTINUE.
+        ENDIF.
+
+        "CONVERT FIELD TO CHARACTER
+        lr_elem ?= cl_abap_elemdescr=>describe_by_data( <fs_any_tab> ).
+        IF lr_elem->type_kind EQ lr_elem->typekind_date."CONVERT DATE TO INTERNAL FORMAT
+
+          <fs_any_tab> = lcl_general_util=>date_external_to_internal( CONV #( <fs_any> ) ) .
+
+        ELSEIF lr_elem->type_kind EQ lr_elem->typekind_packed AND <fs_any>  CP '*E*'."CONVERT PACKED TO CHARACTER.E IS THE LAST NUMBER OF DECIMALS
+
+          CLEAR e_dec.
+          i_float = <fs_any>.
+          CALL FUNCTION 'C14W_NUMBER_CHAR_CONVERSION'
+            EXPORTING
+              i_float = i_float
+            IMPORTING
+              e_dec   = e_dec.
+          IF sy-subrc NE 0.
+          ENDIF.
+
+          <fs_any_tab> = e_dec .
+
+        ELSEIF lr_elem->type_kind EQ lr_elem->typekind_packed AND <fs_any> CP '-*'."CONVERT PACKED TO CHARACTER
+          <fs_any_tab> = |{  <fs_any>+1 }| && '-'.
+        ELSE."PASS THE VALUE AS IS
+          <fs_any_tab> = <fs_any> .
+        ENDIF.
+
+      ENDLOOP.
+
+      INSERT <fs_wa> INTO TABLE ex_table .
+
+    ENDLOOP.
+
+
+  ENDMETHOD.
+
+  METHOD f4_salv.
+
+    DATA(ls_layout) = cl_salv_layout_service=>f4_layouts(
+                  s_key    = VALUE salv_s_layout_key( report = sy-repid )
+                  restrict = if_salv_c_layout=>restrict_none  ).
+
+    cv_layout = ls_layout-layout.
+
+  ENDMETHOD.                    "f4_salv
+
 
   METHOD date_external_to_internal.
 
@@ -1775,8 +2056,8 @@ CLASS lcl_general_util IMPLEMENTATION.
     IF im_field IS NOT INITIAL AND im_comp IS NOT INITIAL AND im_val IS NOT INITIAL.
 
       "CHECK FIELD EXISTS IN CURRENT TABLE
-       DATA(lv_field_exists) = lcl_general_util=>check_field_exists_in_table( EXPORTING im_field = im_field im_table = im_table_name ).
-       CHECK lv_field_exists EQ abap_true.
+      DATA(lv_field_exists) = lcl_general_util=>check_field_exists_in_table( EXPORTING im_field = im_field im_table = im_table_name ).
+      CHECK lv_field_exists EQ abap_true.
 
       "Create Variable based on field Type
       DATA:dref TYPE REF TO data.
@@ -1785,18 +2066,18 @@ CLASS lcl_general_util IMPLEMENTATION.
       DATA(lv_data_type) =  cl_abap_typedescr=>describe_by_name( type )->type_kind.
 
       IF lv_data_type EQ 'D'."DATE
-         DATA(lv_internal) = lcl_general_util=>date_external_to_internal( EXPORTING im_date = im_val ).
+        DATA(lv_internal) = lcl_general_util=>date_external_to_internal( EXPORTING im_date = im_val ).
       ELSE."OTHER DATA TYPE
 
-         CREATE DATA dref TYPE (type).
-         ASSIGN dref->* TO FIELD-SYMBOL(<fs_val>).
+        CREATE DATA dref TYPE (type).
+        ASSIGN dref->* TO FIELD-SYMBOL(<fs_val>).
 
-         IF <fs_val> IS ASSIGNED.
-           <fs_val> = im_val.
-           lv_internal = lcl_general_util=>convert_to_internal_alpha( EXPORTING im_external = <fs_val> ).
-         ELSE.
-           lv_internal = im_val.
-         ENDIF.
+        IF <fs_val> IS ASSIGNED.
+          <fs_val> = im_val.
+          lv_internal = lcl_general_util=>convert_to_internal_alpha( EXPORTING im_external = <fs_val> ).
+        ELSE.
+          lv_internal = im_val.
+        ENDIF.
 
       ENDIF.
 
@@ -1821,8 +2102,8 @@ CLASS lcl_general_util IMPLEMENTATION.
 
   METHOD open_dialog_excel.
 
-    DATA:   lt_file_table TYPE filetable,
-            lv_return     TYPE i.
+    DATA: lt_file_table TYPE filetable,
+          lv_return     TYPE i.
 
     CLEAR:lt_file_table.
     CALL METHOD cl_gui_frontend_services=>file_open_dialog
@@ -1982,10 +2263,10 @@ CLASS lcl_event_handler IMPLEMENTATION.
     CHECK e_salv_function EQ '&ILT' OR  " Apply Filter
           e_salv_function EQ '&ILD'.    " Delete Filter
 
-      "STATIC FILTERS.CHECK FOR FILTER CHANGE OR DELETION.IF THE FILTER
-      "IS NOT THE SAME AS WHAT WE HAVE APPLIED INITIALLY THEN PUT BACK THE FILTER
+    "STATIC FILTERS.CHECK FOR FILTER CHANGE OR DELETION.IF THE FILTER
+    "IS NOT THE SAME AS WHAT WE HAVE APPLIED INITIALLY THEN PUT BACK THE FILTER
 
-      TRY.
+    TRY.
 
         DATA(lo_filters) = go_lcl_main->lo_salv_alv->get_filters( ).
         DATA(lo_filter)  = lo_filters->get_filter( 'FILTER' ).
@@ -2002,7 +2283,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
                   option     = 'EQ'
                   low        = 'VALUE'.
 
-              CATCH cx_salv_not_found cx_salv_data_error  cx_salv_existing.    "#EC NO_HANDLER
+            CATCH cx_salv_not_found cx_salv_data_error  cx_salv_existing. "#EC NO_HANDLER
 
           ENDTRY.
 
@@ -2020,7 +2301,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
                 option     = 'EQ'
                 low        = 'VALUE'.
 
-            CATCH cx_salv_not_found cx_salv_data_error  cx_salv_existing.    "#EC NO_HANDLER
+          CATCH cx_salv_not_found cx_salv_data_error  cx_salv_existing. "#EC NO_HANDLER
 
         ENDTRY.
 
@@ -2069,19 +2350,10 @@ CLASS lcl_event_handler IMPLEMENTATION.
         OTHERS     = 2 ).
 
 
-    sender->set_ready_for_input(
-        i_ready_for_input = 1 ).
+    sender->set_ready_for_input( i_ready_for_input = 1 ).
 
     handler_added = abap_true.
-    sender->refresh_table_display(
-*      exporting
-*        is_stable      =     " With Stable Rows/Columns
-*        i_soft_refresh =     " Without Sort, Filter, etc.
-*      exceptions
-*        finished       = 1
-*        others         = 2
-    ).
-
+    sender->refresh_table_display( ).
 
   ENDMETHOD.
 
@@ -2160,83 +2432,83 @@ CLASS lcl_event_handler IMPLEMENTATION.
 
     TRY.
 
-      DATA(lv_row_index) = lt_selected_rows[ 1 ].
-      ASSIGN <fs_table>[ lv_row_index ] TO FIELD-SYMBOL(<ls_data>).
+        DATA(lv_row_index) = lt_selected_rows[ 1 ].
+        ASSIGN <fs_table>[ lv_row_index ] TO FIELD-SYMBOL(<ls_data>).
 
-      IF <ls_data> IS ASSIGNED AND lo_struct_def IS NOT BOUND.
-        " Using RTTS to get the runtime type information of the internal table
-        DATA(lo_type_def)  = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( <fs_table> ) ).
-        lo_struct_def = CAST cl_abap_structdescr( lo_type_def->get_table_line_type( ) ).
-        "WHEN TYPE IS DEEP,YOU CAN USE GET_INCLUDED_VIEW TO GET ALL THE COMPONENTS.
+        IF <ls_data> IS ASSIGNED AND lo_struct_def IS NOT BOUND.
+          " Using RTTS to get the runtime type information of the internal table
+          DATA(lo_type_def)  = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( <fs_table> ) ).
+          lo_struct_def = CAST cl_abap_structdescr( lo_type_def->get_table_line_type( ) ).
+          "WHEN TYPE IS DEEP,YOU CAN USE GET_INCLUDED_VIEW TO GET ALL THE COMPONENTS.
 *        DATA(LT_COMPONENTS_C) = lo_struct_def->get_included_view( ).
-      ENDIF.
+        ENDIF.
 
-      "Populate LT_DETAILS Table with the Values from the Row Selected
-      DATA(lt_details) = VALUE se16n_selfields_t_in( ).
-      LOOP AT lo_struct_def->components INTO DATA(wa_components).
+        "Populate LT_DETAILS Table with the Values from the Row Selected
+        DATA(lt_details) = VALUE se16n_selfields_t_in( ).
+        LOOP AT lo_struct_def->components INTO DATA(wa_components).
 
-        "Check if Column is Displayed in ALV
-        TRY.
-            IF NOT go_lcl_main->lo_salv_alv->get_columns( )->get_column( wa_components-name )->is_visible( ).
-              CONTINUE.
+          "Check if Column is Displayed in ALV
+          TRY.
+              IF NOT go_lcl_main->lo_salv_alv->get_columns( )->get_column( wa_components-name )->is_visible( ).
+                CONTINUE.
+              ENDIF.
+            CATCH cx_salv_not_found.                    "#EC NO_HANDLER
+          ENDTRY.
+
+          "FIELD VALUE AS PREVIEWED AND UNCONVERTED
+          ASSIGN COMPONENT wa_components-name OF STRUCTURE <ls_data> TO FIELD-SYMBOL(<fs_value>).
+
+          "Check that <fs_value> is not structure or table
+          DATA(lo_type) = cl_abap_typedescr=>describe_by_data( <fs_value> ).
+          IF lo_type->type_kind EQ cl_abap_typedescr=>typekind_struct1 OR lo_type->type_kind EQ cl_abap_typedescr=>typekind_table .
+            CONTINUE.
+          ENDIF.
+
+          IF <fs_value> IS ASSIGNED.
+            DATA(value_out) = |{ <fs_value> ALPHA = OUT   }|.
+            DATA(value_in) =  |{ <fs_value> }|.
+          ENDIF.
+
+          "TECHNICAL FIELD NAME
+          DATA(fieldname) = wa_components-name.
+
+          "FIELD NAME DESCRIPTION
+          "Get Data Dictionary Type of the Component
+          DATA(lo_element_def) = CAST cl_abap_elemdescr( lo_struct_def->get_component_type( wa_components-name ) ).
+
+          IF NOT lo_element_def->is_ddic_type( ) ."Field is not Dictionary Data Type
+            DATA(scrtext_l) = wa_components-name.
+          ELSE."Field is Dictionary Data Type
+
+            DATA(lw_field_info) = lo_element_def->get_ddic_field( ).
+            SELECT SINGLE scrtext_l
+               FROM  dd04t
+               INTO  @scrtext_l
+               WHERE rollname EQ @lw_field_info-rollname AND
+                     ddlanguage  EQ @sy-langu.
+
+            IF scrtext_l IS INITIAL."If no Text Exist take Heading Information
+
+              SELECT SINGLE reptext
+               FROM  dd04t
+               INTO  @scrtext_l
+               WHERE rollname EQ @lw_field_info-rollname AND
+                     ddlanguage  EQ @sy-langu.
+
             ENDIF.
-          CATCH cx_salv_not_found.                      "#EC NO_HANDLER
-        ENDTRY.
-
-        "FIELD VALUE AS PREVIEWED AND UNCONVERTED
-        ASSIGN COMPONENT wa_components-name OF STRUCTURE <ls_data> TO FIELD-SYMBOL(<fs_value>).
-
-        "Check that <fs_value> is not structure or table
-        DATA(lo_type) = cl_abap_typedescr=>describe_by_data( <fs_value> ).
-        IF lo_type->type_kind EQ cl_abap_typedescr=>typekind_struct1 OR lo_type->type_kind EQ cl_abap_typedescr=>typekind_table .
-          CONTINUE.
-        ENDIF.
-
-        IF <fs_value> IS ASSIGNED.
-          DATA(value_out) = |{ <fs_value> ALPHA = OUT   }|.
-          DATA(value_in) =  |{ <fs_value> }|.
-        ENDIF.
-
-        "TECHNICAL FIELD NAME
-        DATA(fieldname) = wa_components-name.
-
-        "FIELD NAME DESCRIPTION
-        "Get Data Dictionary Type of the Component
-        DATA(lo_element_def) = CAST cl_abap_elemdescr( lo_struct_def->get_component_type( wa_components-name ) ).
-
-        IF NOT lo_element_def->is_ddic_type( ) ."Field is not Dictionary Data Type
-          DATA(scrtext_l) = wa_components-name.
-        ELSE."Field is Dictionary Data Type
-
-          DATA(lw_field_info) = lo_element_def->get_ddic_field( ).
-          SELECT SINGLE scrtext_l
-             FROM  dd04t
-             INTO  @scrtext_l
-             WHERE rollname EQ @lw_field_info-rollname AND
-                   ddlanguage  EQ @sy-langu.
-
-          IF scrtext_l IS INITIAL."If no Text Exist take Heading Information
-
-            SELECT SINGLE reptext
-             FROM  dd04t
-             INTO  @scrtext_l
-             WHERE rollname EQ @lw_field_info-rollname AND
-                   ddlanguage  EQ @sy-langu.
 
           ENDIF.
 
-        ENDIF.
+          APPEND VALUE #( low = value_out  low_noconv = value_in  scrtext_l = scrtext_l  fieldname = fieldname  ) TO lt_details.
 
-        APPEND VALUE #( low = value_out  low_noconv = value_in  scrtext_l = scrtext_l  fieldname = fieldname  ) TO lt_details.
+        ENDLOOP.
 
-      ENDLOOP.
+        CALL FUNCTION 'TSWUSL_SHOW_DETAIL'
+          TABLES
+            it_selfields = lt_details.
 
-      CALL FUNCTION 'TSWUSL_SHOW_DETAIL'
-        TABLES
-          it_selfields = lt_details.
-
-    CATCH cx_sy_itab_line_not_found.
-      MESSAGE 'Please Select a Row to Display Details' TYPE cl_cms_common=>con_msg_typ_i.
+      CATCH cx_sy_itab_line_not_found.
+        MESSAGE 'Please Select a Row to Display Details' TYPE cl_cms_common=>con_msg_typ_i.
     ENDTRY.
 
   ENDMETHOD.
@@ -2333,6 +2605,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
       WHEN '&&MARK&&'.
         CALL METHOD lcl_event_handler=>display_details_of_selection.
       WHEN OTHERS.
+
         "Flip Toggle TRUE-FALSE
         gv_editable = xsdbool( gv_editable EQ abap_false ).
 
@@ -2340,6 +2613,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
         lcl_salv_edit=>set_editable( i_fieldname = column i_salv_table = go_lcl_main->lo_salv_alv i_editable = gv_editable ).
 
     ENDCASE.
+
   ENDMETHOD. "handle_double_click
 
   METHOD on_user_command.
@@ -2348,10 +2622,10 @@ CLASS lcl_event_handler IMPLEMENTATION.
 
       WHEN 'EDIT'."BUTTON THAT THE USER PRESSES.
 
-*     Flip Toggle TRUE-FALSE
+        "Flip Toggle TRUE-FALSE
         gv_editable = xsdbool( gv_editable EQ abap_false ).
 
-*     OPEN ALV EDIT FOR WHOLE TABLE
+        "OPEN ALV EDIT FOR WHOLE TABLE
         lcl_salv_edit=>set_editable( i_salv_table = go_lcl_main->lo_salv_alv i_editable = gv_editable ).
 
       WHEN 'COLUMNS'.
@@ -2360,7 +2634,6 @@ CLASS lcl_event_handler IMPLEMENTATION.
 
       WHEN 'DETAILS'.
 
-*      MESSAGE 'DISPLAY DETAILS UNDER CONSTRUCTION' TYPE 'I'.
         CALL METHOD lcl_event_handler=>display_details_of_selection.
 
       WHEN 'DOCU'.
@@ -2377,13 +2650,13 @@ CLASS lcl_event_handler IMPLEMENTATION.
 
   METHOD set_hotspot." SET HOTSPOT CLICK FOR A SPECIFIC TABLE COLUMNS
 
-*   Get Column
+    "Get Column
     TRY.
         DATA(lo_hotspot_column) = CAST cl_salv_column_table( go_lcl_main->lo_salv_alv->get_columns( )->get_column( im_field ) )."CHANGE HOTSPOT COLUMN DEPENDING ON TABLE
-      CATCH cx_salv_not_found. "#EC NO_HANDLER
+      CATCH cx_salv_not_found.                          "#EC NO_HANDLER
     ENDTRY.
 
-    "   Set Hotspot
+    "Set Hotspot
     TRY.
         CALL METHOD lo_hotspot_column->set_cell_type
           EXPORTING
@@ -2429,25 +2702,6 @@ CLASS lcl_event_handler IMPLEMENTATION.
   ENDMETHOD.  "HANDLE_HOTSPOT
 
 ENDCLASS.                    "lcl_event_handler IMPLEMENTATION
-
-*&----------------------------------------------------------------------*
-*& CLASS lcl_event_handler IMPLEMENTATION
-*&----------------------------------------------------------------------*
-CLASS lcl_layout_f4 IMPLEMENTATION.
-
-  METHOD f4_salv.
-
-    DATA(ls_key) = VALUE salv_s_layout_key( report = sy-repid ).
-
-    DATA(ls_layout) = cl_salv_layout_service=>f4_layouts(
-                  s_key    = ls_key
-                  restrict = if_salv_c_layout=>restrict_none  ).
-
-    cv_layout = ls_layout-layout.
-
-  ENDMETHOD.                    "f4_salv
-
-ENDCLASS.                    "lcl_layout_f4 IMPLEMENTATION
 
 *&----------------------------------------------------------------------*
 *& CLASS LCX_EXCEPTION IMPLEMENTATION
