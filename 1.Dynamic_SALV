@@ -323,9 +323,9 @@ SELECTION-SCREEN COMMENT 38(50) t_desch MODIF ID id4.
 SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_coll FOR FIELD p_coll MODIF ID id4.
-PARAMETERS: p_coll TYPE lvc_col DEFAULT space MODIF ID id4.
-SELECTION-SCREEN COMMENT 38(50) t_descl MODIF ID id4.
+SELECTION-SCREEN COMMENT 1(22) t_coll FOR FIELD p_coll.
+PARAMETERS: p_coll TYPE lvc_col DEFAULT space.
+SELECTION-SCREEN COMMENT 38(50) t_descl.
 SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN BEGIN OF LINE.
@@ -789,7 +789,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD get_data.
 
-    IF im_data_source EQ lcl_main_salv=>excel.
+    IF im_data_source EQ lcl_main_salv=>excel AND im_filepath IS NOT INITIAL.
 
       lv_data_source = lcl_main_salv=>excel.
 
@@ -802,7 +802,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
       "Create Dynamic Internal Table with Column Heading
       DATA(lt_component) = VALUE cl_abap_structdescr=>component_table(
-                            ( name = lc_cell_style  type = CAST #( cl_abap_elemdescr=>describe_by_name( 'salv_t_int4_column' ) ) )
+                            ( name = lc_cell_style  type  = CAST #( cl_abap_elemdescr=>describe_by_name( 'salv_t_int4_column' ) ) )
                             ( name = lc_color_column type = CAST #( cl_abap_elemdescr=>describe_by_name( 'lvc_t_scol' ) ) ) ).
 
       IF im_icon_column EQ abap_true.
@@ -857,7 +857,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
       "MAP VALUE TABLE TO STRUCTURED TABLE
       CALL METHOD lcl_general_util=>get_structured_table_from_gen(
         EXPORTING
-          im_map_by_structure = COND #( WHEN im_head EQ abap_true THEN abap_false
+          im_map_by_structure = COND #( WHEN im_head EQ abap_true  THEN abap_false
                                         WHEN im_head EQ abap_false THEN abap_true )
           im_start_line       = COND #( WHEN im_head EQ abap_true  THEN 2
                                         WHEN im_head EQ abap_false THEN 1 )
@@ -866,7 +866,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
           ex_table            = <fs_table> ).
 
 
-    ELSEIF im_data_source EQ lcl_main_salv=>database.
+    ELSEIF im_data_source EQ lcl_main_salv=>database AND im_table IS NOT INITIAL.
 
       lv_data_source = lcl_main_salv=>database.
 
@@ -897,8 +897,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
                              p_line_type  = cl_abap_structdescr=>create( lt_tot_comp )
                              p_table_kind = cl_abap_tabledescr=>tablekind_std
                              p_unique     = abap_false ).
-        CATCH cx_sy_struct_attributes cx_sy_struct_comp_name. "#EC NO_HANDLER
-          RAISE EXCEPTION TYPE lcx_exception EXPORTING text = 'Error while Creating Dynamic Table'.
+        CATCH cx_sy_struct_attributes cx_sy_struct_comp_name INTO DATA(lo_exception2). "#EC NO_HANDLER
+          RAISE EXCEPTION TYPE lcx_exception EXPORTING text = lo_exception2->get_text( ).
       ENDTRY.
 
       "Data to handle the new table type
@@ -928,6 +928,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
         RAISE EXCEPTION TYPE lcx_exception EXPORTING text = 'Error while Creating Dynamic Table'.
       ENDIF.
 
+    ELSE.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING text = 'Missing Parameters for Data Retrieval'.
     ENDIF.
 
   ENDMETHOD.
@@ -1765,7 +1767,7 @@ CLASS lcl_general_util IMPLEMENTATION.
                                 document_name = CONV #( im_filepath )
                                 xdocument     = lv_headerxstring ) .
       CATCH cx_fdt_excel_core INTO DATA(ex_ref).
-        RAISE EXCEPTION TYPE lcx_exception EXPORTING text = | Error while Uploading Excel File |.
+        RAISE EXCEPTION TYPE lcx_exception EXPORTING text = ex_ref->get_text( ).
     ENDTRY.
 
 
@@ -1789,27 +1791,13 @@ CLASS lcl_general_util IMPLEMENTATION.
              column    TYPE i,
            END OF ty_column_structure.
 
-    DATA: v_index        TYPE i,
-          v_column       TYPE i,
-          i_float        TYPE f,
-          e_dec          TYPE esecompavg,
-          s_column       TYPE          ty_column_structure,
-          t_column       TYPE TABLE OF ty_column_structure,
-          lr_struct      TYPE REF TO cl_abap_structdescr,
-          lr_elem        TYPE REF TO cl_abap_elemdescr,
-          ref_itab       TYPE REF TO data,
-          ref_wa         TYPE REF TO data,
-          lo_type_def    TYPE REF TO cl_abap_typedescr,
-          lo_struct_def  TYPE REF TO cl_abap_structdescr,
-          lo_table_def   TYPE REF TO cl_abap_tabledescr,
-          lo_data_def    TYPE REF TO cl_abap_datadescr,
-          lo_element_def TYPE REF TO cl_abap_elemdescr,
-          lt_components  TYPE abap_compdescr_tab.
+    DATA: t_column TYPE TABLE OF ty_column_structure,
+          v_index  TYPE i,
+          v_column TYPE i,
+          ref_wa   TYPE REF TO data.
 
-    FIELD-SYMBOLS: <fs_itab>    TYPE ANY TABLE,
-                   <fs_wa>      TYPE any,
-                   <fs_any_tab> TYPE any,
-                   <fs_any>     TYPE any.
+    FIELD-SYMBOLS: <fs_itab> TYPE ANY TABLE,
+                   <fs_wa>   TYPE any.
 
     "CHECK IMPORTING TABLE IS NOT INITIAL
     CHECK im_table IS NOT INITIAL.
@@ -1821,23 +1809,21 @@ CLASS lcl_general_util IMPLEMENTATION.
     CREATE DATA ref_wa LIKE LINE OF <fs_itab>.
     ASSIGN ref_wa->* TO <fs_wa>.
 
-    IF im_map_by_structure IS INITIAL."GET STRUCTURE FROM TABLE ROW
+    IF im_map_by_structure EQ abap_false."GET STRUCTURE FROM TABLE ROW
 
       "GET THE COLUMN NAMES FROM THE SPECIFIED ROW(IMPORTING PARAMETER)
       REFRESH t_column.
       CLEAR:v_index.
       LOOP AT im_table ASSIGNING FIELD-SYMBOL(<s_tab>).
         ADD 1 TO v_index.
-        CLEAR v_column.
 
         IF v_index EQ im_structure_line."LOOP ONLY THE SPECIFIED STRUCTURE ROW
+          CLEAR v_column.
           DO.
             ADD 1 TO v_column.
-            ASSIGN COMPONENT v_column OF STRUCTURE <s_tab> TO <fs_any>.
+            ASSIGN COMPONENT v_column OF STRUCTURE <s_tab> TO FIELD-SYMBOL(<fs_any>).
             IF sy-subrc EQ 0.
-              s_column-component = <fs_any> .
-              s_column-column    = v_column.
-              APPEND s_column TO t_column .
+              APPEND VALUE #( component =  <fs_any> column = v_column ) TO t_column.
             ELSE.
               EXIT.
             ENDIF.
@@ -1847,26 +1833,18 @@ CLASS lcl_general_util IMPLEMENTATION.
 
       ENDLOOP.
 
-    ELSE."GET STRUCTURE FROM TABLE COMPONENTS
+    ELSEIF im_map_by_structure EQ abap_true."GET STRUCTURE FROM TABLE COMPONENTS
 
-      " Using RTTS to get the runtime type information of the internal table
-      " Retrieves Components name and Type Kind
-      lo_type_def  = cl_abap_tabledescr=>describe_by_data( ex_table ).
-      lo_table_def ?= lo_type_def.
-      lo_data_def = lo_table_def->get_table_line_type( ).
-      lo_struct_def ?= lo_data_def.
-      lt_components = lo_struct_def->components.
+      DATA(lo_type_def)   = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( ex_table ) ).
+      DATA(lo_struct_def) = CAST cl_abap_structdescr( lo_type_def->get_table_line_type( ) ).
 
-      CLEAR: v_column,s_column.
-      LOOP AT lt_components ASSIGNING FIELD-SYMBOL(<fs_components>) WHERE type_kind NE cl_abap_typedescr=>typekind_table AND
-                                                                          type_kind NE cl_abap_typedescr=>typekind_struct1 AND
-                                                                          name NE lcl_main_salv=>lc_checkbox AND
-                                                                          name NE lcl_main_salv=>lc_icon_column.
+      CLEAR: v_column.
+      LOOP AT lo_struct_def->components ASSIGNING FIELD-SYMBOL(<fs_components>) WHERE type_kind NE cl_abap_typedescr=>typekind_table AND
+                                                                                      type_kind NE cl_abap_typedescr=>typekind_struct1 AND
+                                                                                      name NE lcl_main_salv=>lc_checkbox AND
+                                                                                      name NE lcl_main_salv=>lc_icon_column.
         ADD 1 TO v_column.
-        s_column-component = <fs_components>-name .
-        s_column-column    = v_column.
-        APPEND s_column TO t_column .
-        CLEAR:s_column.
+        APPEND VALUE #( component =  <fs_components>-name column = v_column ) TO t_column.
       ENDLOOP.
 
     ENDIF.
@@ -1884,37 +1862,33 @@ CLASS lcl_general_util IMPLEMENTATION.
 
       "START FROM DATA LINE(IMPORTING PARAMETER)
       CLEAR <fs_wa>.
-      LOOP AT t_column INTO s_column.
+      LOOP AT t_column INTO DATA(s_column).
 
-        ASSIGN COMPONENT s_column-component OF STRUCTURE <fs_wa> TO <fs_any_tab>.
+        "GETS THE FIELD OF THE TABLE TO BE MAPPED
+        ASSIGN COMPONENT s_column-component OF STRUCTURE <fs_wa> TO FIELD-SYMBOL(<fs_any_tab>).
         IF sy-subrc NE 0.
           CONTINUE.
         ENDIF.
 
-        ASSIGN COMPONENT s_column-column OF STRUCTURE <s_tab> TO <fs_any> .
+        "GETS THE VALUE TO BE TRANSFERRED
+        ASSIGN COMPONENT s_column-column OF STRUCTURE <s_tab> TO <fs_any>.
         IF sy-subrc NE 0.
           CONTINUE.
         ENDIF.
 
         "CONVERT FIELD TO CHARACTER
-        lr_elem ?= cl_abap_elemdescr=>describe_by_data( <fs_any_tab> ).
+        DATA(lr_elem) =  cl_abap_elemdescr=>describe_by_data( <fs_any_tab> ).
         IF lr_elem->type_kind EQ lr_elem->typekind_date."CONVERT DATE TO INTERNAL FORMAT
 
           <fs_any_tab> = lcl_general_util=>date_external_to_internal( CONV #( <fs_any> ) ) .
 
         ELSEIF lr_elem->type_kind EQ lr_elem->typekind_packed AND <fs_any>  CP '*E*'."CONVERT PACKED TO CHARACTER.E IS THE LAST NUMBER OF DECIMALS
 
-          CLEAR e_dec.
-          i_float = <fs_any>.
           CALL FUNCTION 'C14W_NUMBER_CHAR_CONVERSION'
             EXPORTING
-              i_float = i_float
+              i_float = CONV f( <fs_any> )
             IMPORTING
-              e_dec   = e_dec.
-          IF sy-subrc NE 0.
-          ENDIF.
-
-          <fs_any_tab> = e_dec .
+              e_dec   = <fs_any_tab>.
 
         ELSEIF lr_elem->type_kind EQ lr_elem->typekind_packed AND <fs_any> CP '-*'."CONVERT PACKED TO CHARACTER
           <fs_any_tab> = |{  <fs_any>+1 }| && '-'.
@@ -1924,6 +1898,7 @@ CLASS lcl_general_util IMPLEMENTATION.
 
       ENDLOOP.
 
+      "APPEND TO EXPORTING TABLE
       INSERT <fs_wa> INTO TABLE ex_table .
 
     ENDLOOP.
