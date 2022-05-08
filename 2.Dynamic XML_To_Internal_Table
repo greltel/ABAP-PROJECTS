@@ -29,7 +29,7 @@ CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
     CLASS-METHODS:
 
-      open_dialog RETURNING VALUE(re_filepath)  TYPE file_table-filename.
+      open_dialog_xml RETURNING VALUE(re_filepath)  TYPE file_table-filename.
 
     METHODS:
 
@@ -62,12 +62,9 @@ CLASS lcl_xml DEFINITION CREATE PUBLIC.
                                  CHANGING  ex_table          TYPE ANY TABLE
                                  RAISING   lcx_xml,
 
-      display_xml                   RAISING   lcx_xml.
+      display_xml,
 
-    METHODS:
-
-      on_user_command FOR EVENT added_function OF cl_salv_events_table
-        IMPORTING e_salv_function.
+      on_user_command FOR EVENT added_function OF cl_salv_events_table IMPORTING e_salv_function.
 
 
 ENDCLASS.
@@ -97,7 +94,7 @@ INITIALIZATION.
 *& AT SELECTION SCREEN ON VALUE REQUESTS (F4)
 *&---------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
-  p_file =  lcl_xml=>open_dialog( ).
+  p_file =  lcl_xml=>open_dialog_xml( ).
 *&---------------------------------------------------------------------*
 *& EXECUTABLE CODE
 *&---------------------------------------------------------------------*
@@ -132,7 +129,7 @@ END-OF-SELECTION.
 *&---------------------------------------------------------------------*
 FORM screen_initialization.
 
-  title1  = 'XML Selection Criterua'.
+  title1  = 'XML Selection Criteria'.
 
   t_file  = icon_xml_doc &&  'XML Filepath'.
   t_attr  = icon_io_attribute && 'Attribute Node'.
@@ -170,7 +167,7 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 CLASS lcl_xml IMPLEMENTATION.
 
-  METHOD open_dialog.
+  METHOD open_dialog_xml.
 
     DATA: lt_file_table TYPE filetable,
           lv_return     TYPE i.
@@ -220,8 +217,8 @@ CLASS lcl_xml IMPLEMENTATION.
             lo_xml->render_2_string( EXPORTING
                                      pretty_print = abap_true
                                     IMPORTING
-                                     retcode = DATA(lv_rc)
-                                     size    = DATA(lv_size)
+                                     retcode = DATA(lv_rc) ##NEEDED
+                                     size    = DATA(lv_size) ##NEEDED
                                      stream  = lv_xml_string ).
 
           ENDIF.
@@ -251,8 +248,8 @@ CLASS lcl_xml IMPLEMENTATION.
       CALL METHOD lo_xml->render_2_xstring
         IMPORTING
           retcode = lv_subrc
-          stream  = DATA(lv_xml_xstring)
-          size    = DATA(lv_size).
+          stream  = DATA(lv_xml_xstring) ##NEEDED
+          size    = DATA(lv_size) ##NEEDED.
 
       IF lv_subrc EQ 0.
 
@@ -262,7 +259,9 @@ CLASS lcl_xml IMPLEMENTATION.
             xml_input = lv_xml_xstring
           TABLES
             xml_table = lv_xml_table
-            return    = lt_return.
+            return    = lt_return
+          EXCEPTIONS
+            OTHERS    = 1.
 
       ENDIF.
 
@@ -283,9 +282,6 @@ CLASS lcl_xml IMPLEMENTATION.
 
     FIELD-SYMBOLS: <fs_itab>  TYPE ANY TABLE.
 
-    "CHECK IMPORTING TABLE IS NOT INITIAL
-    CHECK lv_xml_table IS NOT INITIAL.
-
     me->get_dynamic_table_from_xml(
       EXPORTING
         im_attribute_node = im_attribute_node
@@ -300,22 +296,14 @@ CLASS lcl_xml IMPLEMENTATION.
       CHANGING
         ex_table = <fs_itab> ).
 
-    IF <fs_itab> IS ASSIGNED AND <fs_itab> IS NOT INITIAL.
-      GET REFERENCE OF <fs_itab> INTO ex_table.
-    ELSE.
-      RAISE EXCEPTION TYPE lcx_xml EXPORTING text = 'Error Mapping the XML to Internal Table'.
-    ENDIF.
-
+    GET REFERENCE OF <fs_itab> INTO ex_table.
 
   ENDMETHOD.
 
   METHOD get_dynamic_table_from_xml.
 
-    FIELD-SYMBOLS:<fs_itab> TYPE ANY TABLE.
-
-    DATA: lv_line_counter   TYPE sy-tabix,
-          lt_components     TYPE  cl_abap_structdescr=>component_table,
-          lv_data_reference TYPE REF TO data.
+    DATA: lv_line_counter TYPE sy-tabix,
+          lt_components   TYPE  cl_abap_structdescr=>component_table.
 
     "First get the Components of Internal Table
     LOOP AT lv_xml_table ASSIGNING FIELD-SYMBOL(<fs_xml_line>).
@@ -466,18 +454,17 @@ CLASS lcl_xml IMPLEMENTATION.
 
     ENDLOOP.
 
+    IF ex_table IS INITIAL.
+      RAISE EXCEPTION TYPE lcx_xml EXPORTING text = 'No values found for Mapping'.
+    ENDIF.
+
   ENDMETHOD.
 
   METHOD display_xml.
 
-    IF lv_xml_string IS INITIAL.
-      me->read_xml_to_string( ).
-    ENDIF.
-
     cl_abap_browser=>show_xml( xml_string = lv_xml_string
                                title      = 'XML'
                                size       = cl_abap_browser=>large ).
-
 
   ENDMETHOD.
 
