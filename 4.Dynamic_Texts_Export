@@ -5,7 +5,7 @@
 *   Created   by: GDRAKOS DVALOUXIS                                    *
 *                                                                      *
 ************************************************************************
-REPORT export_texts.
+REPORT dynamic_texts_export.
 
 TABLES:stxh.
 
@@ -14,6 +14,10 @@ CLASS: lcx_texts DEFINITION DEFERRED,
 
 *&---------------------------------------------------------------------*
 *& CLASS DEFINITIONS
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*& Class LCX_TEXTS
 *&---------------------------------------------------------------------*
 CLASS lcx_texts DEFINITION INHERITING FROM cx_static_check.
 
@@ -28,6 +32,9 @@ CLASS lcx_texts DEFINITION INHERITING FROM cx_static_check.
 
 ENDCLASS.
 
+*&---------------------------------------------------------------------*
+*& Class LCL_TEXTS
+*&---------------------------------------------------------------------*
 CLASS lcl_texts DEFINITION CREATE PUBLIC.
 
 
@@ -60,10 +67,10 @@ CLASS lcl_texts DEFINITION CREATE PUBLIC.
       END OF t_texts.
 
     DATA:
-          lt_texts         TYPE STANDARD TABLE OF t_texts INITIAL SIZE 0.
+          lt_texts TYPE STANDARD TABLE OF t_texts INITIAL SIZE 0.
 
     METHODS:
-      populate_texts  CHANGING im_texts LIKE lt_texts.
+      populate_texts CHANGING im_texts LIKE lt_texts.
 
 ENDCLASS.
 
@@ -258,11 +265,11 @@ CLASS lcl_texts IMPLEMENTATION.
 
       IF sy-subrc EQ 0.
 
-        LOOP AT lt_lines ASSIGNING FIELD-SYMBOL(<fs_text_line>) WHERE tdline IS NOT INITIAL.
+        LOOP AT lt_lines INTO DATA(fs_text_line) WHERE tdline IS NOT INITIAL.
 
-          REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>horizontal_tab IN <fs_text_line>-tdline WITH space .
-          CONDENSE <fs_text_line>-tdline.
-          CONCATENATE <fs_line>-text <fs_text_line>-tdline INTO <fs_line>-text SEPARATED BY space.
+          REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>horizontal_tab IN fs_text_line-tdline WITH space .
+          CONDENSE fs_text_line-tdline.
+          CONCATENATE <fs_line>-text fs_text_line-tdline INTO <fs_line>-text SEPARATED BY space.
 
         ENDLOOP.
 
