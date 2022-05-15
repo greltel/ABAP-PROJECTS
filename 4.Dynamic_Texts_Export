@@ -12,6 +12,9 @@ TABLES:stxh.
 CLASS: lcx_texts DEFINITION DEFERRED,
        lcl_texts DEFINITION DEFERRED.
 
+*&---------------------------------------------------------------------*
+*& CLASS DEFINITIONS
+*&---------------------------------------------------------------------*
 CLASS lcx_texts DEFINITION INHERITING FROM cx_static_check.
 
   PUBLIC SECTION.
@@ -36,7 +39,11 @@ CLASS lcl_texts DEFINITION CREATE PUBLIC.
                                 so_spras  TYPE STANDARD TABLE
                       RAISING   lcx_texts,
 
-      download_texts  IMPORTING im_filename TYPE file_table-filename
+      download_texts  IMPORTING im_filename                TYPE file_table-filename
+                                im_custom_header_structure TYPE any OPTIONAL
+                                im_field_labels_as_header  TYPE abap_bool DEFAULT space
+                                im_components_header       TYPE abap_bool DEFAULT space
+                                sheet_name                 TYPE string DEFAULT 'Sheet1'
                       RAISING   lcx_texts.
 
   PROTECTED SECTION.
@@ -45,20 +52,17 @@ CLASS lcl_texts DEFINITION CREATE PUBLIC.
   PRIVATE SECTION.
 
     TYPES: BEGIN OF t_texts_extract,
-
-             tdobject    TYPE tdobject,
-             tdname      TYPE tdobname,
-             tdid        TYPE tdid,
-             tdspras     TYPE spras,
-             tdtitle     TYPE tdtitle,
-             tdtxtlines  TYPE tdtxtlines,
-             line_number TYPE i,
-             text        TYPE string,
+             tdobject   TYPE tdobject,
+             tdname     TYPE tdobname,
+             tdid       TYPE tdid,
+             tdspras    TYPE spras,
+             tdtitle    TYPE tdtitle,
+             tdtxtlines TYPE tdtxtlines,
+             text       TYPE string,
            END OF t_texts_extract .
 
     DATA:lt_texts         TYPE STANDARD TABLE OF stxh INITIAL SIZE 0,
          lt_texts_extract TYPE STANDARD TABLE OF t_texts_extract INITIAL SIZE 0.
-
 
     CLASS-METHODS:move_corresponding_ignore_init IMPORTING i_str_source TYPE any
                                                  CHANGING  c_str_dest   TYPE any.
@@ -117,18 +121,13 @@ START-OF-SELECTION.
   DATA(lo_texts) = NEW lcl_texts( ).
 
   TRY.
-
       lo_texts->get_data( EXPORTING so_object = s_obj[] so_spras = s_spras[] so_tdid = s_tdid[] so_tdname = s_tdname[] ).
-
-      lo_texts->download_texts( EXPORTING im_filename = p_file ).
-
+      lo_texts->download_texts( EXPORTING im_filename = p_file  im_field_labels_as_header = abap_true ).
     CATCH lcx_texts INTO DATA(lo_exception).
       MESSAGE lo_exception->get_text( ) TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
   ENDTRY.
 
 END-OF-SELECTION.
-
-
 
 *&---------------------------------------------------------------------*
 *& SUBROUTINE CREATION
@@ -157,24 +156,26 @@ FORM get_export_filepath CHANGING lp_file.
         fullpath    TYPE string,
         user_action TYPE i.
 
-  CALL METHOD cl_gui_frontend_services=>file_save_dialog
-    EXPORTING
-      default_file_name    = 'Texts.txt'
-      default_extension    = 'TXT'
-    CHANGING
-      filename             = filename
-      path                 = path
-      fullpath             = fullpath
-      user_action          = user_action
-    EXCEPTIONS
-      cntl_error           = 1
-      error_no_gui         = 2
-      not_supported_by_gui = 3
-      OTHERS               = 4.
+  cl_gui_frontend_services=>file_save_dialog(
+          EXPORTING
+            window_title              = 'File System of Presentation Server'
+            default_extension         = cl_gui_frontend_services=>filetype_excel
+            prompt_on_overwrite       = abap_true
+            default_file_name         = 'Texts.XLSX'
+            file_filter               = 'All Files(*.*)|*.*|' && 'Excel Files (*.xlsx)|*.xlsx|' &&'Excel Files (*.xls)|*.xls|'
+          CHANGING
+            filename                  = filename          " File Name to Save
+            path                      = path              " Path to File
+            fullpath                  = fullpath          " Path + File Name
+            user_action               = user_action       " User Action (C Class Const ACTION_OK, ACTION_OVERWRITE etc)
+          EXCEPTIONS
+            cntl_error                = 1                 " Control error
+            error_no_gui              = 2                 " No GUI available
+            not_supported_by_gui      = 3                 " GUI does not support this
+            invalid_default_file_name = 4                 " Invalid default file name
+            OTHERS                    = 5 ).
 
-  IF user_action NE 0 OR
-     sy-subrc    NE 0 OR
-     fullpath IS INITIAL.
+  IF sy-subrc NE 0 OR user_action NE cl_gui_frontend_services=>action_ok.
     EXIT.
   ENDIF.
 
@@ -220,7 +221,7 @@ CLASS lcl_texts IMPLEMENTATION.
         AND tdname   IN  @so_tdname
         AND tdid     IN  @so_tdid
         AND tdspras  IN  @so_spras
-        INTO TABLE @lt_texts.
+        INTO CORRESPONDING FIELDS OF TABLE @lt_texts.
 
     IF sy-subrc EQ 4.
       RAISE EXCEPTION TYPE lcx_texts EXPORTING text = 'No Texts Found for the Specified Criteria'.
@@ -240,6 +241,7 @@ CLASS lcl_texts IMPLEMENTATION.
 
       me->move_corresponding_ignore_init( EXPORTING i_str_source = <fs_line> CHANGING  c_str_dest = <fs_extract_line> ).
 
+      CLEAR: lt_lines.
       CALL FUNCTION 'READ_TEXT'
         EXPORTING
           client                  = sy-mandt
@@ -263,7 +265,8 @@ CLASS lcl_texts IMPLEMENTATION.
 
         LOOP AT lt_lines ASSIGNING FIELD-SYMBOL(<fs_lines>).
 
-          REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>horizontal_tab IN <fs_lines>-tdline WITH '' .
+          REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>horizontal_tab IN <fs_lines>-tdline WITH space .
+          CONDENSE <fs_lines>-tdline.
           CONCATENATE <fs_extract_line>-text <fs_lines>-tdline INTO <fs_extract_line>-text SEPARATED BY space.
 
         ENDLOOP.
@@ -276,43 +279,175 @@ CLASS lcl_texts IMPLEMENTATION.
 
   METHOD download_texts.
 
+    TYPES: BEGIN OF ty_comp_detail,
+             name  TYPE abap_compname,
+             descr TYPE scrtext_m,
+           END OF ty_comp_detail.
+
+    DATA:lv_row         TYPE i,
+         lv_column      TYPE i VALUE 1,
+         ls_comp_detail TYPE ty_comp_detail.
+
+    FIELD-SYMBOLS: <fs_t>     TYPE ANY TABLE,
+                   <fs_value> TYPE any.
+
+    TRY.
+
+        DATA(xlsx_handling) = cl_ehfnd_xlsx=>get_instance( ).
+        DATA(xlsx_document) = xlsx_handling->create_doc( ).
+        DATA(xlsx_sheets) = xlsx_document->get_sheets( ).
+        DATA(first_xlsx_sheet) = xlsx_document->get_sheet_by_id( xlsx_sheets[ 1 ]-sheet_id ).
+
+      CATCH cx_openxml_format cx_openxml_not_found cx_openxml_not_allowed INTO DATA(lo_exception_xml).
+        RAISE EXCEPTION TYPE lcx_texts EXPORTING text = lo_exception_xml->get_text( ).
+    ENDTRY.
+
+    ASSIGN me->lt_texts_extract TO <fs_t>.
+
+    DATA(lo_type_def)   = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( me->lt_texts_extract ) ).
+    DATA(lo_struct_def) = CAST cl_abap_structdescr( lo_type_def->get_table_line_type( ) ).
+    DATA(lt_components) = lo_struct_def->components.
+
+    "BUILD EXCEL HEADER LINE
+    IF im_custom_header_structure IS NOT INITIAL.
+
+      lv_row = 2.
+      DATA(lv_component_number) = 1.
+
+      DO.
+        ASSIGN COMPONENT lv_component_number OF STRUCTURE im_custom_header_structure TO <fs_value>.
+        IF sy-subrc EQ 0.
+          first_xlsx_sheet->set_cell_content( iv_row = 1 iv_column = lv_column iv_value = <fs_value> ).
+          lv_column = lv_column + 1.
+          lv_component_number = lv_component_number + 1.
+        ELSE.
+          EXIT.
+        ENDIF.
+      ENDDO.
+
+    ELSEIF im_field_labels_as_header EQ abap_true.
+
+      lv_row = 2.
+
+      LOOP AT lt_components INTO DATA(wa_components).
+
+        DATA(lo_element_def) = CAST cl_abap_elemdescr( lo_struct_def->get_component_type( wa_components-name ) ).
+
+        IF NOT lo_element_def->is_ddic_type( ) ."Field is not Dictionary Data Type
+
+          ls_comp_detail-descr = wa_components-name.
+
+        ELSE."Field is Dictionary Data Type
+
+          DATA(lw_field_info) = lo_element_def->get_ddic_field( ).
+
+          SELECT SINGLE scrtext_l
+                         FROM  dd04t
+                         INTO  @ls_comp_detail-descr
+                         WHERE rollname EQ @lw_field_info-rollname AND
+                               ddlanguage  EQ @sy-langu.
+
+          IF sy-subrc NE 0."If no Text Exist take Heading Information
+
+            SELECT SINGLE reptext
+             FROM  dd04t
+             INTO  @ls_comp_detail-descr
+             WHERE rollname EQ @lw_field_info-rollname AND
+                   ddlanguage  EQ @sy-langu.
+
+          ENDIF.
+
+          IF ls_comp_detail-descr IS INITIAL.
+            ls_comp_detail-descr = wa_components-name.
+          ENDIF.
+
+        ENDIF.
+
+        first_xlsx_sheet->set_cell_content( iv_row = 1 iv_column = lv_column iv_value = ls_comp_detail-descr ).
+        lv_column = lv_column + 1.
+
+      ENDLOOP.
+
+    ELSEIF im_components_header EQ abap_true.
+
+      lv_row = 2.
+
+      LOOP AT lt_components INTO DATA(component).
+        first_xlsx_sheet->set_cell_content( iv_row = 1 iv_column = lv_column iv_value = component-name ).
+        lv_column = lv_column + 1.
+      ENDLOOP.
+
+    ELSE.
+
+      lv_row = 1.
+
+    ENDIF.
+
+    "EXCEL ROWS
+    CLEAR lv_column.
+    TRY.
+        LOOP AT me->lt_texts_extract ASSIGNING FIELD-SYMBOL(<fs_table>).
+
+          lv_column = 1.
+          LOOP AT lt_components INTO component.
+            ASSIGN COMPONENT component-name OF STRUCTURE <fs_table> TO FIELD-SYMBOL(<columnvalue>).
+            first_xlsx_sheet->set_cell_content( iv_row = lv_row iv_column = lv_column iv_value = <columnvalue> ).
+            lv_column += 1.
+          ENDLOOP.
+
+          lv_row += 1.
+
+        ENDLOOP.
+
+        DATA(filecontent) = xlsx_document->save( ).
+
+      CATCH cx_openxml_format cx_openxml_not_found cx_openxml_not_allowed  INTO lo_exception_xml.
+        RAISE EXCEPTION TYPE lcx_texts EXPORTING text = lo_exception_xml->get_text( ).
+    ENDTRY.
+
+
+    cl_scp_change_db=>xstr_to_xtab( EXPORTING im_xstring = filecontent
+                                    IMPORTING ex_xtab    = DATA(filecontenttab) ).
+
     cl_gui_frontend_services=>gui_download(
-    EXPORTING
-      filename                  = CONV #( im_filename )
-      filetype                  = 'ASC'
-      write_field_separator     = abap_true
-    CHANGING
-      data_tab                  = lt_texts
-    EXCEPTIONS
-      file_write_error          = 1
-      no_batch                  = 2
-      gui_refuse_filetransfer   = 3
-      invalid_type              = 4
-      no_authority              = 5
-      unknown_error             = 6
-      header_not_allowed        = 7
-      separator_not_allowed     = 8
-      filesize_not_allowed      = 9
-      header_too_long           = 10
-      dp_error_create           = 11
-      dp_error_send             = 12
-      dp_error_write            = 13
-      unknown_dp_error          = 14
-      access_denied             = 15
-      dp_out_of_memory          = 16
-      disk_full                 = 17
-      dp_timeout                = 18
-      file_not_found            = 19
-      dataprovider_exception    = 20
-      control_flush_error       = 21
-      not_supported_by_gui      = 22
-      error_no_gui              = 23
-      OTHERS                    = 24 ).
+          EXPORTING
+            bin_filesize              = xstrlen( filecontent )
+            filename                  = |{ im_filename }|
+            filetype                  = 'BIN'
+            confirm_overwrite         = abap_true
+          IMPORTING
+            filelength                = DATA(bytestransferred)
+          CHANGING
+            data_tab                  = filecontenttab
+          EXCEPTIONS
+            file_write_error          = 1
+            no_batch                  = 2
+            gui_refuse_filetransfer   = 3
+            invalid_type              = 4
+            no_authority              = 5
+            unknown_error             = 6
+            header_not_allowed        = 7
+            separator_not_allowed     = 8
+            filesize_not_allowed      = 9
+            header_too_long           = 10
+            dp_error_create           = 11
+            dp_error_send             = 12
+            dp_error_write            = 13
+            unknown_dp_error          = 14
+            access_denied             = 15
+            dp_out_of_memory          = 16
+            disk_full                 = 17
+            dp_timeout                = 18
+            file_not_found            = 19
+            dataprovider_exception    = 20
+            control_flush_error       = 21
+            not_supported_by_gui      = 22
+            error_no_gui              = 23
+            OTHERS                    = 24 ).
 
     IF sy-subrc NE 0.
       RAISE EXCEPTION TYPE lcx_texts EXPORTING text = 'Error Downloading Texts'.
     ENDIF.
-
 
   ENDMETHOD.
 
