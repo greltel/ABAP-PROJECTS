@@ -33,41 +33,37 @@ CLASS lcl_texts DEFINITION CREATE PUBLIC.
 
   PUBLIC SECTION.
 
-    METHODS: get_data IMPORTING so_object TYPE STANDARD TABLE
-                                so_tdname TYPE STANDARD TABLE
-                                so_tdid   TYPE STANDARD TABLE
-                                so_spras  TYPE STANDARD TABLE
-                      RAISING   lcx_texts,
+    METHODS:
+
+      get_data IMPORTING so_object TYPE STANDARD TABLE
+                         so_tdname TYPE STANDARD TABLE
+                         so_tdid   TYPE STANDARD TABLE
+                         so_spras  TYPE STANDARD TABLE
+               RAISING   lcx_texts,
 
       download_texts  IMPORTING im_filename                TYPE file_table-filename
                                 im_custom_header_structure TYPE any OPTIONAL
                                 im_field_labels_as_header  TYPE abap_bool DEFAULT space
                                 im_components_header       TYPE abap_bool DEFAULT space
-                                sheet_name                 TYPE string DEFAULT 'Sheet1'
                       RAISING   lcx_texts.
-
-  PROTECTED SECTION.
-
 
   PRIVATE SECTION.
 
-    TYPES: BEGIN OF t_texts_extract,
-             tdobject   TYPE tdobject,
-             tdname     TYPE tdobname,
-             tdid       TYPE tdid,
-             tdspras    TYPE spras,
-             tdtitle    TYPE tdtitle,
-             tdtxtlines TYPE tdtxtlines,
-             text       TYPE string,
-           END OF t_texts_extract .
+    TYPES:
+      BEGIN OF t_texts,
+        tdobject   TYPE tdobject,
+        tdname     TYPE tdobname,
+        tdid       TYPE tdid,
+        tdspras    TYPE spras,
+        tdtxtlines TYPE tdtxtlines,
+        text       TYPE string,
+      END OF t_texts.
 
-    DATA:lt_texts         TYPE STANDARD TABLE OF stxh INITIAL SIZE 0,
-         lt_texts_extract TYPE STANDARD TABLE OF t_texts_extract INITIAL SIZE 0.
+    DATA:
+          lt_texts         TYPE STANDARD TABLE OF t_texts INITIAL SIZE 0.
 
-    CLASS-METHODS:move_corresponding_ignore_init IMPORTING i_str_source TYPE any
-                                                 CHANGING  c_str_dest   TYPE any.
-
-    METHODS: process_texts IMPORTING im_texts LIKE lt_texts.
+    METHODS:
+      populate_texts  CHANGING im_texts LIKE lt_texts.
 
 ENDCLASS.
 
@@ -110,6 +106,9 @@ SELECTION-SCREEN END OF BLOCK b1.
 INITIALIZATION.
   PERFORM screen_initialization.
 
+*&---------------------------------------------------------------------*
+*& AT SELECTION SCREEN ON VALUE REQUESTS (F4)
+*&---------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
   PERFORM get_export_filepath CHANGING p_file.
 
@@ -216,7 +215,7 @@ CLASS lcl_texts IMPLEMENTATION.
   METHOD get_data.
 
     SELECT FROM stxh
-      FIELDS stxh~*
+      FIELDS tdobject, tdname, tdid, tdspras, tdtxtlines
       WHERE tdobject IN  @so_object
         AND tdname   IN  @so_tdname
         AND tdid     IN  @so_tdid
@@ -227,19 +226,15 @@ CLASS lcl_texts IMPLEMENTATION.
       RAISE EXCEPTION TYPE lcx_texts EXPORTING text = 'No Texts Found for the Specified Criteria'.
     ENDIF.
 
-    me->process_texts( EXPORTING im_texts = lt_texts ).
+    me->populate_texts( CHANGING im_texts = lt_texts ).
 
   ENDMETHOD.
 
-  METHOD process_texts.
+  METHOD populate_texts.
 
     DATA:lt_lines TYPE TABLE OF  tline.
 
     LOOP AT im_texts ASSIGNING FIELD-SYMBOL(<fs_line>).
-
-      APPEND INITIAL LINE TO me->lt_texts_extract ASSIGNING FIELD-SYMBOL(<fs_extract_line>).
-
-      me->move_corresponding_ignore_init( EXPORTING i_str_source = <fs_line> CHANGING  c_str_dest = <fs_extract_line> ).
 
       CLEAR: lt_lines.
       CALL FUNCTION 'READ_TEXT'
@@ -263,11 +258,11 @@ CLASS lcl_texts IMPLEMENTATION.
 
       IF sy-subrc EQ 0.
 
-        LOOP AT lt_lines ASSIGNING FIELD-SYMBOL(<fs_lines>).
+        LOOP AT lt_lines ASSIGNING FIELD-SYMBOL(<fs_text_line>) WHERE tdline IS NOT INITIAL.
 
-          REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>horizontal_tab IN <fs_lines>-tdline WITH space .
-          CONDENSE <fs_lines>-tdline.
-          CONCATENATE <fs_extract_line>-text <fs_lines>-tdline INTO <fs_extract_line>-text SEPARATED BY space.
+          REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>horizontal_tab IN <fs_text_line>-tdline WITH space .
+          CONDENSE <fs_text_line>-tdline.
+          CONCATENATE <fs_line>-text <fs_text_line>-tdline INTO <fs_line>-text SEPARATED BY space.
 
         ENDLOOP.
 
@@ -279,32 +274,20 @@ CLASS lcl_texts IMPLEMENTATION.
 
   METHOD download_texts.
 
-    TYPES: BEGIN OF ty_comp_detail,
-             name  TYPE abap_compname,
-             descr TYPE scrtext_m,
-           END OF ty_comp_detail.
-
     DATA:lv_row         TYPE i,
          lv_column      TYPE i VALUE 1,
-         ls_comp_detail TYPE ty_comp_detail.
-
-    FIELD-SYMBOLS: <fs_t>     TYPE ANY TABLE,
-                   <fs_value> TYPE any.
+         lv_shell_value TYPE c LENGTH 40.
 
     TRY.
-
         DATA(xlsx_handling) = cl_ehfnd_xlsx=>get_instance( ).
         DATA(xlsx_document) = xlsx_handling->create_doc( ).
         DATA(xlsx_sheets) = xlsx_document->get_sheets( ).
         DATA(first_xlsx_sheet) = xlsx_document->get_sheet_by_id( xlsx_sheets[ 1 ]-sheet_id ).
-
       CATCH cx_openxml_format cx_openxml_not_found cx_openxml_not_allowed INTO DATA(lo_exception_xml).
         RAISE EXCEPTION TYPE lcx_texts EXPORTING text = lo_exception_xml->get_text( ).
     ENDTRY.
 
-    ASSIGN me->lt_texts_extract TO <fs_t>.
-
-    DATA(lo_type_def)   = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( me->lt_texts_extract ) ).
+    DATA(lo_type_def)   = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( me->lt_texts ) ).
     DATA(lo_struct_def) = CAST cl_abap_structdescr( lo_type_def->get_table_line_type( ) ).
     DATA(lt_components) = lo_struct_def->components.
 
@@ -315,11 +298,11 @@ CLASS lcl_texts IMPLEMENTATION.
       DATA(lv_component_number) = 1.
 
       DO.
-        ASSIGN COMPONENT lv_component_number OF STRUCTURE im_custom_header_structure TO <fs_value>.
+        ASSIGN COMPONENT lv_component_number OF STRUCTURE im_custom_header_structure TO FIELD-SYMBOL(<fs_value>).
         IF sy-subrc EQ 0.
           first_xlsx_sheet->set_cell_content( iv_row = 1 iv_column = lv_column iv_value = <fs_value> ).
-          lv_column = lv_column + 1.
-          lv_component_number = lv_component_number + 1.
+          lv_column += 1.
+          lv_component_number += 1.
         ELSE.
           EXIT.
         ENDIF.
@@ -331,11 +314,12 @@ CLASS lcl_texts IMPLEMENTATION.
 
       LOOP AT lt_components INTO DATA(wa_components).
 
+        CLEAR:lv_shell_value.
         DATA(lo_element_def) = CAST cl_abap_elemdescr( lo_struct_def->get_component_type( wa_components-name ) ).
 
         IF NOT lo_element_def->is_ddic_type( ) ."Field is not Dictionary Data Type
 
-          ls_comp_detail-descr = wa_components-name.
+          lv_shell_value = wa_components-name.
 
         ELSE."Field is Dictionary Data Type
 
@@ -343,7 +327,7 @@ CLASS lcl_texts IMPLEMENTATION.
 
           SELECT SINGLE scrtext_l
                          FROM  dd04t
-                         INTO  @ls_comp_detail-descr
+                         INTO  @lv_shell_value
                          WHERE rollname EQ @lw_field_info-rollname AND
                                ddlanguage  EQ @sy-langu.
 
@@ -351,20 +335,20 @@ CLASS lcl_texts IMPLEMENTATION.
 
             SELECT SINGLE reptext
              FROM  dd04t
-             INTO  @ls_comp_detail-descr
+             INTO  @lv_shell_value
              WHERE rollname EQ @lw_field_info-rollname AND
                    ddlanguage  EQ @sy-langu.
 
           ENDIF.
 
-          IF ls_comp_detail-descr IS INITIAL.
-            ls_comp_detail-descr = wa_components-name.
+          IF lv_shell_value IS INITIAL.
+            lv_shell_value = wa_components-name.
           ENDIF.
 
         ENDIF.
 
-        first_xlsx_sheet->set_cell_content( iv_row = 1 iv_column = lv_column iv_value = ls_comp_detail-descr ).
-        lv_column = lv_column + 1.
+        first_xlsx_sheet->set_cell_content( iv_row = 1 iv_column = lv_column iv_value = lv_shell_value ).
+        lv_column += 1.
 
       ENDLOOP.
 
@@ -386,7 +370,7 @@ CLASS lcl_texts IMPLEMENTATION.
     "EXCEL ROWS
     CLEAR lv_column.
     TRY.
-        LOOP AT me->lt_texts_extract ASSIGNING FIELD-SYMBOL(<fs_table>).
+        LOOP AT me->lt_texts ASSIGNING FIELD-SYMBOL(<fs_table>).
 
           lv_column = 1.
           LOOP AT lt_components INTO component.
@@ -448,31 +432,6 @@ CLASS lcl_texts IMPLEMENTATION.
     IF sy-subrc NE 0.
       RAISE EXCEPTION TYPE lcx_texts EXPORTING text = 'Error Downloading Texts'.
     ENDIF.
-
-  ENDMETHOD.
-
-  METHOD move_corresponding_ignore_init.
-
-    DATA(l_rcl_abap_structdescr) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( i_str_source ) ).
-
-    LOOP AT l_rcl_abap_structdescr->components ASSIGNING FIELD-SYMBOL(<fs_str_component>).
-
-      ASSIGN COMPONENT <fs_str_component>-name OF STRUCTURE c_str_dest TO FIELD-SYMBOL(<fs_dest_field>).
-
-      IF sy-subrc EQ /accgo/if_cas_constants=>gc_sysubrc_success.
-
-        ASSIGN COMPONENT <fs_str_component>-name OF STRUCTURE i_str_source TO FIELD-SYMBOL(<fs_source_field>).
-
-        IF sy-subrc EQ /accgo/if_cas_constants=>gc_sysubrc_success  AND
-           <fs_source_field> IS NOT INITIAL.
-
-          <fs_dest_field> = <fs_source_field>.
-
-        ENDIF.
-
-      ENDIF.
-
-    ENDLOOP.
 
   ENDMETHOD.
 
