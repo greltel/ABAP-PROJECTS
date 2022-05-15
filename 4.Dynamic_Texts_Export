@@ -1,1 +1,344 @@
+************************************************************************
+*   Program name:                                                      *
+*   Description :                                                      *
+*                                                                      *
+*   Created   by: GDRAKOS DVALOUXIS                                    *
+*                                                                      *
+************************************************************************
+REPORT export_texts.
 
+TABLES:stxh.
+
+CLASS: lcx_texts DEFINITION DEFERRED,
+       lcl_texts DEFINITION DEFERRED.
+
+CLASS lcx_texts DEFINITION INHERITING FROM cx_static_check.
+
+  PUBLIC SECTION.
+
+    METHODS: constructor IMPORTING text TYPE string,
+      get_text REDEFINITION.
+
+  PRIVATE SECTION.
+
+    DATA: local_text TYPE string.
+
+ENDCLASS.
+
+CLASS lcl_texts DEFINITION CREATE PUBLIC.
+
+
+  PUBLIC SECTION.
+
+    METHODS: get_data IMPORTING so_object TYPE STANDARD TABLE
+                                so_tdname TYPE STANDARD TABLE
+                                so_tdid   TYPE STANDARD TABLE
+                                so_spras  TYPE STANDARD TABLE
+                      RAISING   lcx_texts,
+
+      download_texts  IMPORTING im_filename TYPE file_table-filename
+                      RAISING   lcx_texts.
+
+  PROTECTED SECTION.
+
+
+  PRIVATE SECTION.
+
+    TYPES: BEGIN OF t_texts_extract,
+
+             tdobject    TYPE tdobject,
+             tdname      TYPE tdobname,
+             tdid        TYPE tdid,
+             tdspras     TYPE spras,
+             tdtitle     TYPE tdtitle,
+             tdtxtlines  TYPE tdtxtlines,
+             line_number TYPE i,
+             text        TYPE string,
+           END OF t_texts_extract .
+
+    DATA:lt_texts         TYPE STANDARD TABLE OF stxh INITIAL SIZE 0,
+         lt_texts_extract TYPE STANDARD TABLE OF t_texts_extract INITIAL SIZE 0.
+
+
+    CLASS-METHODS:move_corresponding_ignore_init IMPORTING i_str_source TYPE any
+                                                 CHANGING  c_str_dest   TYPE any.
+
+    METHODS: process_texts IMPORTING im_texts LIKE lt_texts.
+
+ENDCLASS.
+
+*&---------------------------------------------------------------------*
+*& SELECTION SCREEN DESIGN
+*&---------------------------------------------------------------------*
+
+SELECTION-SCREEN: BEGIN OF BLOCK b02 WITH FRAME TITLE title1.
+SELECTION-SCREEN COMMENT 1(26) t_file FOR FIELD p_file.
+PARAMETERS : p_file TYPE file_table-filename OBLIGATORY.
+SELECTION-SCREEN: END OF BLOCK b02 .
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title2.
+
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_obj FOR FIELD s_obj.
+SELECT-OPTIONS: s_obj FOR stxh-tdobject OBLIGATORY.
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_tdname FOR FIELD s_tdname.
+SELECT-OPTIONS: s_tdname FOR stxh-tdname OBLIGATORY.
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_tdid FOR FIELD s_tdid.
+SELECT-OPTIONS: s_tdid FOR stxh-tdid OBLIGATORY.
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_spras FOR FIELD s_spras.
+SELECT-OPTIONS: s_spras FOR stxh-tdspras OBLIGATORY.
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN END OF BLOCK b1.
+
+*&---------------------------------------------------------------------*
+*& INITIALIZATION OF SELECTION SCREEN ELEMENTS
+*&---------------------------------------------------------------------*
+INITIALIZATION.
+  PERFORM screen_initialization.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
+  PERFORM get_export_filepath CHANGING p_file.
+
+*&---------------------------------------------------------------------*
+*& EXECUTABLE CODE
+*&---------------------------------------------------------------------*
+START-OF-SELECTION.
+
+  DATA(lo_texts) = NEW lcl_texts( ).
+
+  TRY.
+
+      lo_texts->get_data( EXPORTING so_object = s_obj[] so_spras = s_spras[] so_tdid = s_tdid[] so_tdname = s_tdname[] ).
+
+      lo_texts->download_texts( EXPORTING im_filename = p_file ).
+
+    CATCH lcx_texts INTO DATA(lo_exception).
+      MESSAGE lo_exception->get_text( ) TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
+  ENDTRY.
+
+END-OF-SELECTION.
+
+
+
+*&---------------------------------------------------------------------*
+*& SUBROUTINE CREATION
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*& Form SCREEN INITIALIZATION
+*&---------------------------------------------------------------------*
+FORM screen_initialization.
+
+  title1  = 'Export Filepath'.
+  title2  = 'Texts Selection'.
+
+  t_file   = 'Filepath'.
+  t_obj    = icon_object_list &&  'Text Object'.
+  t_tdname = icon_text_field && 'Text Name'.
+  t_tdid   = icon_text_ina && 'Text ID'.
+  t_spras  = icon_eu && 'Language'.
+
+ENDFORM.
+
+FORM get_export_filepath CHANGING lp_file.
+
+  DATA: filename    TYPE string,
+        path        TYPE string,
+        fullpath    TYPE string,
+        user_action TYPE i.
+
+  CALL METHOD cl_gui_frontend_services=>file_save_dialog
+    EXPORTING
+      default_file_name    = 'Texts.txt'
+      default_extension    = 'TXT'
+    CHANGING
+      filename             = filename
+      path                 = path
+      fullpath             = fullpath
+      user_action          = user_action
+    EXCEPTIONS
+      cntl_error           = 1
+      error_no_gui         = 2
+      not_supported_by_gui = 3
+      OTHERS               = 4.
+
+  IF user_action NE 0 OR
+     sy-subrc    NE 0 OR
+     fullpath IS INITIAL.
+    EXIT.
+  ENDIF.
+
+  lp_file = fullpath.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& CLASS IMPLEMENTATIONS
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*& Class LCX_TEXTS
+*&---------------------------------------------------------------------*
+CLASS lcx_texts IMPLEMENTATION.
+
+  METHOD constructor.
+
+    super->constructor( textid = CONV #( text ) ).
+    local_text = text.
+
+  ENDMETHOD.
+
+  METHOD get_text.
+
+    result = me->local_text.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+*&---------------------------------------------------------------------*
+*& Class LCL_TEXTS
+*&---------------------------------------------------------------------*
+CLASS lcl_texts IMPLEMENTATION.
+
+
+  METHOD get_data.
+
+    SELECT FROM stxh
+      FIELDS stxh~*
+      WHERE tdobject IN  @so_object
+        AND tdname   IN  @so_tdname
+        AND tdid     IN  @so_tdid
+        AND tdspras  IN  @so_spras
+        INTO TABLE @lt_texts.
+
+    IF sy-subrc EQ 4.
+      RAISE EXCEPTION TYPE lcx_texts EXPORTING text = 'No Texts Found for the Specified Criteria'.
+    ENDIF.
+
+    me->process_texts( EXPORTING im_texts = lt_texts ).
+
+  ENDMETHOD.
+
+  METHOD process_texts.
+
+    DATA:lt_lines TYPE TABLE OF  tline.
+
+    LOOP AT im_texts ASSIGNING FIELD-SYMBOL(<fs_line>).
+
+      APPEND INITIAL LINE TO me->lt_texts_extract ASSIGNING FIELD-SYMBOL(<fs_extract_line>).
+
+      me->move_corresponding_ignore_init( EXPORTING i_str_source = <fs_line> CHANGING  c_str_dest = <fs_extract_line> ).
+
+      CALL FUNCTION 'READ_TEXT'
+        EXPORTING
+          client                  = sy-mandt
+          id                      = <fs_line>-tdid
+          language                = <fs_line>-tdspras
+          name                    = <fs_line>-tdname
+          object                  = <fs_line>-tdobject
+        TABLES
+          lines                   = lt_lines
+        EXCEPTIONS
+          id                      = 1
+          language                = 2
+          name                    = 3
+          not_found               = 4
+          object                  = 5
+          reference_check         = 6
+          wrong_access_to_archive = 7
+          OTHERS                  = 8.
+
+      IF sy-subrc EQ 0.
+
+        LOOP AT lt_lines ASSIGNING FIELD-SYMBOL(<fs_lines>).
+
+          REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>horizontal_tab IN <fs_lines>-tdline WITH '' .
+          CONCATENATE <fs_extract_line>-text <fs_lines>-tdline INTO <fs_extract_line>-text SEPARATED BY space.
+
+        ENDLOOP.
+
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD download_texts.
+
+    cl_gui_frontend_services=>gui_download(
+    EXPORTING
+      filename                  = CONV #( im_filename )
+      filetype                  = 'ASC'
+      write_field_separator     = abap_true
+    CHANGING
+      data_tab                  = lt_texts
+    EXCEPTIONS
+      file_write_error          = 1
+      no_batch                  = 2
+      gui_refuse_filetransfer   = 3
+      invalid_type              = 4
+      no_authority              = 5
+      unknown_error             = 6
+      header_not_allowed        = 7
+      separator_not_allowed     = 8
+      filesize_not_allowed      = 9
+      header_too_long           = 10
+      dp_error_create           = 11
+      dp_error_send             = 12
+      dp_error_write            = 13
+      unknown_dp_error          = 14
+      access_denied             = 15
+      dp_out_of_memory          = 16
+      disk_full                 = 17
+      dp_timeout                = 18
+      file_not_found            = 19
+      dataprovider_exception    = 20
+      control_flush_error       = 21
+      not_supported_by_gui      = 22
+      error_no_gui              = 23
+      OTHERS                    = 24 ).
+
+    IF sy-subrc NE 0.
+      RAISE EXCEPTION TYPE lcx_texts EXPORTING text = 'Error Downloading Texts'.
+    ENDIF.
+
+
+  ENDMETHOD.
+
+  METHOD move_corresponding_ignore_init.
+
+    DATA(l_rcl_abap_structdescr) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( i_str_source ) ).
+
+    LOOP AT l_rcl_abap_structdescr->components ASSIGNING FIELD-SYMBOL(<fs_str_component>).
+
+      ASSIGN COMPONENT <fs_str_component>-name OF STRUCTURE c_str_dest TO FIELD-SYMBOL(<fs_dest_field>).
+
+      IF sy-subrc EQ /accgo/if_cas_constants=>gc_sysubrc_success.
+
+        ASSIGN COMPONENT <fs_str_component>-name OF STRUCTURE i_str_source TO FIELD-SYMBOL(<fs_source_field>).
+
+        IF sy-subrc EQ /accgo/if_cas_constants=>gc_sysubrc_success  AND
+           <fs_source_field> IS NOT INITIAL.
+
+          <fs_dest_field> = <fs_source_field>.
+
+        ENDIF.
+
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+ENDCLASS.
