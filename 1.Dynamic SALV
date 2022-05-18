@@ -1351,27 +1351,29 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
 *COLOR COLUMN
     TRY.
-        DATA(o_column) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lv_hotspot_field ) ).
-        o_column->set_color( VALUE lvc_s_colo( col = lv_hotspot_color int = 1 inv = 1 ) ).
+        CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lv_hotspot_field ) )->set_color( VALUE lvc_s_colo( col = lv_hotspot_color int = 1 inv = 1 ) ).
       CATCH cx_salv_not_found.                          "#EC NO_HANDLER
     ENDTRY.
 
 * Add Icon To Column ICON
     TRY.
-        DATA(o_column_icon) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lc_icon_column ) ).
-        o_column_icon->set_icon( if_salv_c_bool_sap=>true ).
-        o_column_icon->set_alignment( if_salv_c_alignment=>centered ).
-        o_column_icon->set_long_text( 'Icon Status' ).
-
+        CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lc_icon_column ):
+          )->set_icon( if_salv_c_bool_sap=>true ),
+          )->set_alignment( if_salv_c_alignment=>centered ),
+          )->set_short_text( 'Icon' ),
+          )->set_medium_text( 'Icon Status' ),
+          )->set_long_text( 'Icon Status' ).
       CATCH cx_salv_not_found.                          "#EC NO_HANDLER
     ENDTRY.
 
 * Add Checkbox Column
     TRY.
-        DATA(o_column_checkbox) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lc_checkbox  ) ).
-        o_column_checkbox->set_cell_type( if_salv_c_cell_type=>checkbox_hotspot ).
-        o_column_checkbox->set_output_length( 10 ).
-        o_column_checkbox->set_long_text( 'Checkbox' ).
+        CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lc_checkbox  ):
+         )->set_cell_type( if_salv_c_cell_type=>checkbox_hotspot ),
+         )->set_output_length( 10 ),
+         )->set_short_text( 'Checkbox' ),
+         )->set_medium_text( 'Checkbox' ),
+         )->set_long_text( 'Checkbox' ).
       CATCH cx_salv_not_found.                          "#EC NO_HANDLER
     ENDTRY.
 
@@ -1398,8 +1400,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 * display and fix column as key column
     TRY.
         "Define Column as Key Column
-        DATA(o_coltab) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( 'CHANGE' ) ).
-        o_coltab->set_key( abap_true ).
+        CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( 'CHANGE' ) )->set_key( abap_true ).
 
         "Fix Key Columns
         lo_salv_alv->get_columns( )->set_key_fixation( abap_true ).
