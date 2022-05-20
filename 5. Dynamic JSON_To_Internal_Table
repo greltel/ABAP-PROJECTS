@@ -33,7 +33,13 @@ CLASS lcl_json DEFINITION CREATE PUBLIC.
 
     DATA: lr_source_editor TYPE REF TO cl_gui_textedit.
 
-    METHODS:get_structure_from_json.
+    METHODS:build_table_from_json RAISING lcx_json.
+
+  PRIVATE SECTION.
+
+    DATA:lo_json_structure TYPE REF TO data.
+
+    METHODS:get_structure_from_json RAISING lcx_json.
 
 ENDCLASS.
 
@@ -108,10 +114,24 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 CLASS lcl_json IMPLEMENTATION.
 
+
+  METHOD build_table_from_json.
+
+    me->get_structure_from_json( ).
+
+    ASSIGN lo_json_structure->* TO FIELD-SYMBOL(<fs_json_structure>).
+
+    DO.
+
+      EXIT.
+
+    ENDDO.
+
+  ENDMETHOD.
+
   METHOD get_structure_from_json.
 
-    DATA: lv_json_lines     TYPE soli_tab,
-          lo_json_structure TYPE REF TO data.
+    DATA: lv_json_lines     TYPE soli_tab.
 
     lr_source_editor->get_text_as_stream(
       IMPORTING
@@ -120,6 +140,10 @@ CLASS lcl_json IMPLEMENTATION.
         error_dp               = 1
         error_cntl_call_method = 2
         OTHERS                 = 3 ).
+
+    IF sy-subrc NE 0.
+      RAISE EXCEPTION TYPE lcx_json EXPORTING text = 'Error Reading Lines of JSON'.
+    ENDIF.
 
     TRY.
 
@@ -131,15 +155,10 @@ CLASS lcl_json IMPLEMENTATION.
             data  = lo_json_structure ).
 
       CATCH cx_sy_move_cast_error INTO DATA(lx_sy_move_cast_error).
-
+        RAISE EXCEPTION TYPE lcx_json EXPORTING text = lx_sy_move_cast_error->get_text( ).
     ENDTRY.
 
-    IF lo_json_structure IS BOUND.
-      ASSIGN lo_json_structure->* TO FIELD-SYMBOL(<fs_json_structure>).
-    ENDIF.
-
   ENDMETHOD.
-
 
 ENDCLASS.
 
@@ -178,7 +197,7 @@ MODULE process_after_input INPUT.
     WHEN 'BACK' OR 'UP' OR 'EXIT'.
       LEAVE PROGRAM.
     WHEN 'CONVERT'.
-      lo_json->get_structure_from_json( ).
+      lo_json->build_table_from_json( ).
   ENDCASE.
 
 ENDMODULE.
