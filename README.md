@@ -23,13 +23,14 @@ seeking to learn and develop our skills in ABAP and SAP area in general.
 * Public repository
 * No Text Elements-Selection Texts must be created.
 
-## Project 1: Dynamic SALV
+## Project 1: Dynamic SALV Console
 
 Display any table using cl_salv_Table alv. Scope of this project is to create a cl_salv_table based alv which is
 as dynamic as possible. There are no data declarations(wherever possible), no custom screen, no gui status etc.
 Also many custom functions have been added to ALV toolbar like custom details screen( se16n inspired ), 
 hide/show empty columns of table and edit button. The whole point of this project is to reveal the real potential of 
-cl_salv_table based ALV even though there are limitations compared to cl_gui_alv_grid.
+cl_salv_table based ALV even though there are limitations compared to cl_gui_alv_grid. We call this project Console because
+you can use it as a utility to display any table of the system plus display your own Excel file.
 
 ## Project 2: XML to Internal Table
 
