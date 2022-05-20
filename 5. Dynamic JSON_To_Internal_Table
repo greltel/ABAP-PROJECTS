@@ -5,7 +5,7 @@
 *   Created   by: GDRAKOS DVALOUXIS                                    *
 *                                                                      *
 ************************************************************************
-REPORT json_serialize_deserialize.
+REPORT dynamic_json_to_internal.
 
 CLASS: lcx_exception DEFINITION DEFERRED,
        lcl_json_serialize_deserialize DEFINITION DEFERRED.
