@@ -1,1 +1,102 @@
+************************************************************************
+*   Program name:                                                      *
+*   Description :                                                      *
+*                                                                      *
+*   Created   by: GDRAKOS DVALOUXIS                                    *
+*                                                                      *
+************************************************************************
+REPORT json_serialize_deserialize.
 
+CLASS: lcx_exception DEFINITION DEFERRED,
+       lcl_json_serialize_deserialize DEFINITION DEFERRED.
+
+CLASS lcx_exception DEFINITION INHERITING FROM cx_static_check.
+
+  PUBLIC SECTION.
+
+    METHODS: constructor IMPORTING text TYPE string,
+      get_text REDEFINITION.
+
+  PRIVATE SECTION.
+
+    DATA: local_text TYPE string.
+
+ENDCLASS.
+
+CLASS lcl_json_serialize_deserialize DEFINITION CREATE PUBLIC.
+
+  PUBLIC SECTION.
+
+ENDCLASS.
+
+*&---------------------------------------------------------------------*
+*& SELECTION SCREEN DESIGN
+*&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
+
+
+SELECTION-SCREEN END OF BLOCK b1.
+*&---------------------------------------------------------------------*
+*& INITIALIZATION OF SELECTION SCREEN ELEMENTS
+*&---------------------------------------------------------------------*
+INITIALIZATION.
+  PERFORM screen_initialization.
+*&---------------------------------------------------------------------*
+*& EXECUTABLE CODE
+*&---------------------------------------------------------------------*
+START-OF-SELECTION.
+
+  TRY.
+
+    CATCH lcx_exception INTO DATA(lo_exception).
+      MESSAGE lo_exception->get_text( ) TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
+  ENDTRY.
+
+END-OF-SELECTION.
+
+*&---------------------------------------------------------------------*
+*& SUBROUTINE CREATION
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*& Form SCREEN INITIALIZATION
+*&---------------------------------------------------------------------*
+FORM screen_initialization.
+
+  title1  = 'Selection Criteria'.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& CLASS IMPLEMENTATIONS
+*&---------------------------------------------------------------------*
+
+
+*&---------------------------------------------------------------------*
+*& Class LCX_XML
+*&---------------------------------------------------------------------*
+CLASS lcx_exception IMPLEMENTATION.
+
+  METHOD constructor.
+
+    super->constructor( textid = CONV #( text ) ).
+    local_text = text.
+
+  ENDMETHOD.
+
+  METHOD get_text.
+
+    result = me->local_text.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+*&---------------------------------------------------------------------*
+*& Class LCL_XML
+*&---------------------------------------------------------------------*
+CLASS lcl_json_serialize_deserialize IMPLEMENTATION.
+
+
+ENDCLASS.
