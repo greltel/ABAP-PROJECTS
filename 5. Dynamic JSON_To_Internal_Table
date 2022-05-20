@@ -7,14 +7,15 @@
 ************************************************************************
 REPORT dynamic_json_to_internal.
 
-CLASS: lcx_exception DEFINITION DEFERRED,
-       lcl_json_serialize_deserialize DEFINITION DEFERRED.
+CLASS: lcx_json DEFINITION DEFERRED,
+       lcl_json DEFINITION DEFERRED.
 
-CLASS lcx_exception DEFINITION INHERITING FROM cx_static_check.
+CLASS lcx_json DEFINITION INHERITING FROM cx_static_check.
 
   PUBLIC SECTION.
 
-    METHODS: constructor IMPORTING text TYPE string,
+    METHODS:
+      constructor IMPORTING text TYPE string,
       get_text REDEFINITION.
 
   PRIVATE SECTION.
@@ -23,9 +24,13 @@ CLASS lcx_exception DEFINITION INHERITING FROM cx_static_check.
 
 ENDCLASS.
 
-CLASS lcl_json_serialize_deserialize DEFINITION CREATE PUBLIC.
+CLASS lcl_json DEFINITION CREATE PUBLIC.
 
   PUBLIC SECTION.
+
+    DATA: lr_source_editor TYPE REF TO cl_gui_textedit.
+
+    METHODS:get_table_from_json.
 
 ENDCLASS.
 
@@ -46,9 +51,14 @@ INITIALIZATION.
 *&---------------------------------------------------------------------*
 START-OF-SELECTION.
 
+
   TRY.
 
-    CATCH lcx_exception INTO DATA(lo_exception).
+      DATA(lo_json) = NEW lcl_json( ).
+
+      CALL SCREEN 0100.
+
+    CATCH lcx_json INTO DATA(lo_exception).
       MESSAGE lo_exception->get_text( ) TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
   ENDTRY.
 
@@ -67,16 +77,14 @@ FORM screen_initialization.
 
 ENDFORM.
 
-
 *&---------------------------------------------------------------------*
 *& CLASS IMPLEMENTATIONS
 *&---------------------------------------------------------------------*
 
-
 *&---------------------------------------------------------------------*
 *& Class LCX_XML
 *&---------------------------------------------------------------------*
-CLASS lcx_exception IMPLEMENTATION.
+CLASS lcx_json IMPLEMENTATION.
 
   METHOD constructor.
 
@@ -94,9 +102,85 @@ CLASS lcx_exception IMPLEMENTATION.
 ENDCLASS.
 
 *&---------------------------------------------------------------------*
-*& Class LCL_XML
+*& Class LCL_JSON
 *&---------------------------------------------------------------------*
-CLASS lcl_json_serialize_deserialize IMPLEMENTATION.
+CLASS lcl_json IMPLEMENTATION.
+
+
+  METHOD get_table_from_json.
+
+    DATA: lv_json_lines     TYPE soli_tab,
+          lo_data           TYPE REF TO data,
+          lv_data_reference TYPE REF TO data.
+
+    FIELD-SYMBOLS <fs> TYPE STANDARD TABLE.
+
+    lr_source_editor->get_text_as_stream(
+      IMPORTING
+        text                   =  lv_json_lines
+      EXCEPTIONS
+        error_dp               = 1
+        error_cntl_call_method = 2
+        OTHERS                 = 3 ).
+
+    TRY.
+
+        DATA(lo_json) = NEW /ui2/cl_json( ).
+        lo_json->deserialize_int(
+          EXPORTING
+            json = cl_bcs_convert=>txt_to_string( EXPORTING it_soli = lv_json_lines )
+          CHANGING
+            data  = lo_data ).
+
+      CATCH cx_sy_move_cast_error INTO DATA(lx_sy_move_cast_error).
+
+    ENDTRY.
+
+    IF lo_data IS BOUND.
+      ASSIGN lo_data->* TO FIELD-SYMBOL(<fs_json_structure>).
+    ENDIF.
+
+  ENDMETHOD.
 
 
 ENDCLASS.
+
+
+*&---------------------------------------------------------------------*
+*& Module PROCESS_BEFORE_OUTPUT OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE process_before_output OUTPUT.
+
+  SET PF-STATUS 'ZSTATUS_0100'.
+  SET TITLEBAR 'ZTITLE_0100'.
+
+  IF lo_json->lr_source_editor IS NOT BOUND.
+
+    lo_json->lr_source_editor = NEW cl_gui_textedit( parent =  NEW cl_gui_docking_container( side = cl_gui_docking_container=>dock_at_left
+                                                                                              no_autodef_progid_dynnr = abap_true
+                                                                                              extension = 600 ) ) .
+
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  PROCESS_AFTER_INPUT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE process_after_input INPUT.
+
+  DATA: ok_code_0100 TYPE sy-ucomm.
+
+  CLEAR sy-ucomm.
+
+  CASE ok_code_0100.
+    WHEN 'BACK' OR 'UP' OR 'EXIT'.
+      LEAVE PROGRAM.
+    WHEN 'CONVERT'.
+      lo_json->get_table_from_json( ).
+  ENDCASE.
+
+ENDMODULE.
