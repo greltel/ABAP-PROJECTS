@@ -45,11 +45,11 @@ It is under construction so stay tuned...
 
 Download any Texts of SAP System into Excel File directly.
 
-## Project 5: Serialize-Deserialize
+## Project 5: Dynamic Grid ALV
 
 Under Development....
 
-## Project 6: Dynamic Grid ALV
+## Project 6: Dynamic JSON to Internal Table
 
 Under Development....
 
