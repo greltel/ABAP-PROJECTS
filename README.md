@@ -43,7 +43,7 @@ It is under construction so stay tuned...
 
 ## Project 4: Dynamic Texts Export
 
-Under Development....
+Download any Texts of SAP System into Excel File directly.
 
 ## Project 5: Serialize-Deserialize
 
