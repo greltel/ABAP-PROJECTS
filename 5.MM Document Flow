@@ -1,1 +1,508 @@
+************************************************************************
+*   Program name: MM Document Flow                                     *
+*   Description :                                                      *
+*                                                                      *
+*   Created   by: GDRAKOS DVALOUXIS                                    *
+*                                                                      *
+************************************************************************
+REPORT mm_document_flow.
 
+TABLES:stxh.
+
+CLASS: lcx_exceptions  DEFINITION DEFERRED,
+       lcl_utilities   DEFINITION DEFERRED,
+       lcl_mm_doc_flow DEFINITION DEFERRED.
+
+*&---------------------------------------------------------------------*
+*& CLASS DEFINITIONS
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*& Class LCX_TEXTS
+*&---------------------------------------------------------------------*
+CLASS lcx_exceptions DEFINITION INHERITING FROM cx_static_check.
+
+  PUBLIC SECTION.
+
+    METHODS:
+      constructor IMPORTING text TYPE string,
+      get_text REDEFINITION.
+
+  PRIVATE SECTION.
+
+    DATA:
+          local_text TYPE string.
+
+ENDCLASS.
+
+
+*&---------------------------------------------------------------------*
+*& Class LCL_MM_DOC_FLOW
+*&---------------------------------------------------------------------*
+CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
+
+  PUBLIC SECTION.
+
+    METHODS:
+      constructor IMPORTING im_document  TYPE ekko-ebeln,
+
+      create_tree.
+
+
+  PRIVATE SECTION.
+
+    "PRIVATE METHODS
+    METHODS:
+      determine_document_category IMPORTING im_document_                TYPE ekko-ebeln
+                                  RETURNING VALUE(re_document_category) TYPE string,
+
+      get_mm_document_flow.
+
+    "EVENT METHODS
+    METHODS:
+      handle_node_double_click FOR EVENT node_double_click OF cl_gui_simple_tree IMPORTING node_key,
+      handle_expand_no_children FOR EVENT expand_no_children OF cl_gui_simple_tree IMPORTING node_key.
+
+    "PRIVATE DATA
+    DATA:
+      lv_document TYPE ekko-ebeln,
+      lo_tree     TYPE REF TO cl_gui_simple_tree.
+
+
+ENDCLASS.
+
+*&---------------------------------------------------------------------*
+*& Class lcl_utilities
+*&---------------------------------------------------------------------*
+CLASS lcl_utilities DEFINITION CREATE PUBLIC FINAL.
+
+  PUBLIC SECTION.
+
+    CLASS-METHODS:
+
+      dynamic_where_clause IMPORTING im_field                TYPE char5
+                                     im_comp                 TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal
+                                     im_val                  TYPE string
+                                     im_table_name           TYPE tabname
+                           RETURNING VALUE(re_select_clause) TYPE hrtb_cond,
+
+      date_external_to_internal IMPORTING im_date                 TYPE string
+                                RETURNING VALUE(re_date_internal) TYPE tumls_date,
+
+
+      convert_to_internal_alpha IMPORTING im_external        TYPE any
+                                RETURNING VALUE(re_internal) TYPE string.
+
+  PRIVATE SECTION.
+
+    CLASS-METHODS:
+
+      check_field_exists_in_table IMPORTING im_field         TYPE char5
+                                            im_table         TYPE tabname30
+                                  RETURNING VALUE(re_exists) TYPE abap_bool.
+
+
+
+ENDCLASS.
+*&---------------------------------------------------------------------*
+*& SELECTION SCREEN DESIGN
+*&---------------------------------------------------------------------*
+
+SELECTION-SCREEN: BEGIN OF BLOCK b00 WITH FRAME TITLE title1.
+
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_doc FOR FIELD p_doc.
+PARAMETERS : p_doc TYPE ekpo-ebeln OBLIGATORY.
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN: END OF BLOCK b00.
+
+*&---------------------------------------------------------------------*
+*& INITIALIZATION OF SELECTION SCREEN ELEMENTS
+*&---------------------------------------------------------------------*
+INITIALIZATION.
+  PERFORM screen_initialization.
+
+*&---------------------------------------------------------------------*
+*& EXECUTABLE CODE
+*&---------------------------------------------------------------------*
+START-OF-SELECTION.
+
+
+  DATA(lo_mm_document_flow) = NEW lcl_mm_doc_flow( im_document = p_doc ).
+*  DATA(lt_vgabe_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'VGABE' ) )->get_ddic_fixed_values( sy-langu ).
+*  DATA(lt_bsart_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'BSART' ) )->get_ddic_fixed_values( sy-langu ).
+*
+*  "Purchase Requisition
+*  SELECT DISTINCT ( eban~banfn ) AS document_number,
+*    'Purchase Requisition' AS document_type,
+*    ' ' AS movement_type,' ' AS movement_type_description,
+*    ' ' AS transaction_type,
+*    ' ' AS transaction_type_description
+*
+*    FROM ekpo
+*    INNER JOIN eban ON eban~banfn EQ ekpo~banfn
+*    WHERE ekpo~ebeln EQ @p_po AND
+*            eban~bstyp EQ 'B'
+*
+*  UNION
+*
+*  "Purchase Order
+*  SELECT DISTINCT ( EKKO_EBELN ) AS DOCUMENT_NUMBER,
+*        'Purchase Order' AS document_type,
+*    ' ' AS movement_type,' ' AS movement_type_description,
+*    ' ' AS transaction_type,
+*    ' ' AS transaction_type_description
+*
+*  from EKKO
+*  INNER JOIN EKPO ON EKPO~EBELN EQ EKKO~EBELN
+*  WHERE ekKo~ebeln EQ @p_po
+*
+*
+*  "Material Document and Invoice
+*  SELECT DISTINCT ( ekbe~belnr ) AS document_number,
+*
+*   CASE WHEN  ekbe~bwart IS INITIAL THEN 'Invoice'
+*        WHEN  ekbe~bwart IS NOT INITIAL THEN 'Material Document'  END AS document_type,
+*   ekbe~bwart AS movement_type,t156ht~btext AS movement_type_description,ekbe~vgabe AS transaction_type, a~ddtext AS transaction_type_description
+*
+*  FROM ekbe
+*  LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+*  LEFT OUTER JOIN @lt_vgabe_domain_values AS a ON a~low EQ ekbe~vgabe ##ITAB_KEY_IN_SELECT
+*  WHERE ebeln EQ @p_po
+*
+*  INTO TABLE @DATA(lt_po_flow).
+*
+*  BREAK-POINT.
+
+END-OF-SELECTION.
+
+*&---------------------------------------------------------------------*
+*& SUBROUTINE CREATION
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*& Form SCREEN INITIALIZATION
+*&---------------------------------------------------------------------*
+FORM screen_initialization.
+
+  title1  = 'Purchasing Document Selection'.
+
+  t_doc   = 'MM Document'.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& CLASS IMPLEMENTATIONS
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*& Class lcx_Exceptions
+*&---------------------------------------------------------------------*
+CLASS lcx_exceptions IMPLEMENTATION.
+
+  METHOD constructor.
+
+    super->constructor( textid = CONV #( text ) ).
+    local_text = text.
+
+  ENDMETHOD.
+
+  METHOD get_text.
+
+    result = me->local_text.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+*&---------------------------------------------------------------------*
+*& Class LCL_MM_DOC_FLOW
+*&---------------------------------------------------------------------*
+CLASS lcl_mm_doc_flow IMPLEMENTATION.
+
+  METHOD constructor.
+
+
+
+    lv_document = im_document.
+
+
+  ENDMETHOD.
+
+  METHOD create_tree.
+
+    IF lo_tree IS NOT BOUND.
+
+      DATA: l_event_tab TYPE cntl_simple_events,
+            l_event     LIKE LINE OF l_event_tab,
+            o_cont_tree TYPE REF TO cl_gui_custom_container.
+
+      "create a container for the tree control
+      CREATE OBJECT o_cont_tree
+        EXPORTING
+          container_name              = 'CC_0100_TREE'
+        EXCEPTIONS
+          cntl_error                  = 1
+          cntl_system_error           = 2
+          create_error                = 3
+          lifetime_error              = 4
+          lifetime_dynpro_dynpro_link = 5.
+
+
+      "CREATE TREE OBJECTS
+      CREATE OBJECT lo_tree
+        EXPORTING
+          parent              = o_cont_tree
+          node_selection_mode = cl_gui_simple_tree=>node_sel_mode_single.
+
+      "EVENT HANGLING
+      l_event-eventid = cl_gui_simple_tree=>eventid_node_double_click.
+      l_event-appl_event = ' '.   "system event, does not trigger PAI
+      APPEND l_event TO l_event_tab.
+
+      lo_tree->set_registered_events( EXPORTING events = l_event_tab ).
+      SET HANDLER me->handle_node_double_click FOR lo_tree.
+
+*      "ADD NODES TO TREE
+*      lo_tree->add_nodes(
+*        EXPORTING
+*          table_structure_name           = 'MTREESNODE'" Name of Structure of Node Table
+*          node_table                     = t_node " Node table
+*        EXCEPTIONS
+*          error_in_node_table            = 1
+*          failed                         = 2
+*          dp_error                       = 3
+*          table_structure_name_not_found = 4
+*          OTHERS                         = 5 ).
+
+      "EXPAND NODES
+      lo_tree->expand_root_nodes(
+        EXPORTING
+          level_count         =  3  " Number of Levels to be Expanded
+          expand_subtree      = 'X' ": Expand all Subsequent Nodes
+      EXCEPTIONS
+        failed              = 1
+        illegal_level_count = 2
+        cntl_system_error   = 3
+        OTHERS              = 4 ).
+
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD determine_document_category.
+
+
+
+
+
+  ENDMETHOD.
+
+  METHOD get_mm_document_flow.
+
+
+
+  ENDMETHOD.
+
+  METHOD  handle_node_double_click.
+
+
+    cl_gui_cfw=>set_new_ok_code( EXPORTING new_code = 'FOO' ).
+
+  ENDMETHOD.
+
+  METHOD handle_expand_no_children.
+
+
+  ENDMETHOD.
+
+
+
+ENDCLASS.
+
+*&---------------------------------------------------------------------*
+*& Class lcl_utilities
+*&---------------------------------------------------------------------*
+CLASS lcl_utilities IMPLEMENTATION.
+
+  METHOD dynamic_where_clause.
+
+    IF im_field IS NOT INITIAL AND im_comp IS NOT INITIAL AND im_val IS NOT INITIAL.
+
+      "CHECK FIELD EXISTS IN CURRENT TABLE
+      DATA(lv_field_exists) = lcl_utilities=>check_field_exists_in_table( EXPORTING im_field = im_field im_table = im_table_name ).
+      CHECK lv_field_exists EQ abap_true.
+
+      "Create Variable based on field Type
+      DATA:dref TYPE REF TO data.
+
+      DATA(type) = im_table_name && '-' && im_field.
+      DATA(lv_data_type) =  cl_abap_typedescr=>describe_by_name( type )->type_kind.
+
+      IF lv_data_type EQ 'D'."DATE
+        DATA(lv_internal) = lcl_utilities=>date_external_to_internal( EXPORTING im_date = im_val ).
+      ELSE."OTHER DATA TYPE
+
+        CREATE DATA dref TYPE (type).
+        ASSIGN dref->* TO FIELD-SYMBOL(<fs_val>).
+
+        IF <fs_val> IS ASSIGNED.
+          <fs_val> = im_val.
+          lv_internal = lcl_utilities=>convert_to_internal_alpha( EXPORTING im_external = <fs_val> ).
+        ELSE.
+          lv_internal = im_val.
+        ENDIF.
+
+      ENDIF.
+
+      DATA(lt_condtab) = VALUE hrtb_cond( ( field = im_field opera = im_comp low = lv_internal ) ).
+
+      CALL FUNCTION 'RH_DYNAMIC_WHERE_BUILD'
+        EXPORTING
+          dbtable         = im_table_name
+        TABLES
+          condtab         = lt_condtab
+          where_clause    = re_select_clause
+        EXCEPTIONS
+          empty_condtab   = 1
+          no_db_field     = 2
+          unknown_db      = 3
+          wrong_condition = 4
+          OTHERS          = 5.
+
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD check_field_exists_in_table.
+
+    SELECT SINGLE @abap_true
+      FROM dd03l
+      INTO @re_exists
+      WHERE tabname EQ   @im_table AND
+            fieldname EQ @im_field.
+
+  ENDMETHOD.
+
+  METHOD convert_to_internal_alpha.
+
+    DATA:wf_data      TYPE REF TO data.
+
+*   Determine the mask(Conversion Exit) and Output Length of the Field
+    DATA(lv_edit_mask) = CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_data( im_external ) )->edit_mask.
+    DATA(lv_output_length) = CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_data( im_external ) )->output_length.
+
+    IF lv_edit_mask IS INITIAL."ALPHA ROUTINE DOES NO EXISTS
+      re_internal = |{ im_external ALPHA = IN }|.
+      RETURN.
+    ENDIF.
+
+    REPLACE '==' IN lv_edit_mask WITH space.
+    CONDENSE lv_edit_mask NO-GAPS.
+
+    CREATE DATA wf_data TYPE c LENGTH lv_output_length.
+    IF wf_data IS BOUND.
+      ASSIGN wf_data->* TO FIELD-SYMBOL(<fs_t>).
+      IF <fs_t> IS NOT ASSIGNED.
+        IF re_internal IS INITIAL.
+          re_internal = im_external.
+        ENDIF.
+        EXIT.
+      ENDIF.
+    ELSE.
+      IF re_internal IS INITIAL.
+        re_internal = im_external.
+      ENDIF.
+      EXIT.
+    ENDIF.
+
+    CONCATENATE 'CONVERSION_EXIT_' lv_edit_mask '_INPUT' INTO DATA(lv_convexit).
+
+    CALL FUNCTION lv_convexit
+      EXPORTING
+        input  = im_external
+      IMPORTING
+        output = <fs_t>.
+
+    IF sy-subrc NE 0.
+      re_internal = im_external.
+    ELSE.
+      re_internal = <fs_t>.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD date_external_to_internal.
+
+    DATA: lv_convert_date TYPE c LENGTH 10.
+
+    CLEAR:lv_convert_date.
+    lv_convert_date = im_date.
+
+    "date format YYYY/MM/DD
+    FIND REGEX '^\d{4}[/|-|.|-]\d{1,2}[/|-|.|-]\d{1,2}$' IN lv_convert_date.
+    IF sy-subrc = 0.
+      CALL FUNCTION '/SAPDMC/LSM_DATE_CONVERT'
+        EXPORTING
+          date_in             = lv_convert_date
+          date_format_in      = 'DYMD'
+          to_output_format    = ' '
+          to_internal_format  = 'X'
+        IMPORTING
+          date_out            = re_date_internal
+        EXCEPTIONS
+          illegal_date        = 1
+          illegal_date_format = 2
+          no_user_date_format = 3
+          OTHERS              = 4.
+
+    ELSE.
+
+      " date format DD/MM/YYYY
+      FIND REGEX '^\d{1,2}[/|-|.|-]\d{1,2}[/|-|.|-]\d{4}$' IN lv_convert_date.
+      IF sy-subrc = 0.
+        CALL FUNCTION '/SAPDMC/LSM_DATE_CONVERT'
+          EXPORTING
+            date_in             = lv_convert_date
+            date_format_in      = 'DDMY'
+            to_output_format    = ' '
+            to_internal_format  = 'X'
+          IMPORTING
+            date_out            = re_date_internal
+          EXCEPTIONS
+            illegal_date        = 1
+            illegal_date_format = 2
+            no_user_date_format = 3
+            OTHERS              = 4.
+      ELSE.
+        re_date_internal = lv_convert_date.
+      ENDIF.
+
+    ENDIF.
+
+  ENDMETHOD.
+
+
+ENDCLASS.
+*&---------------------------------------------------------------------*
+*& Module PROCESS_BEFORE_OUTPUT OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE pbo_0100 OUTPUT.
+* SET PF-STATUS 'xxxxxxxx'.
+* SET TITLEBAR 'xxx'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  PAI_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE pai_0100 INPUT.
+
+
+
+
+
+ENDMODULE.
