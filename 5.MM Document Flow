@@ -5,17 +5,22 @@
 *   Created   by: GDRAKOS DVALOUXIS                                    *
 *                                                                      *
 ************************************************************************
-REPORT mm_document_flow.
+REPORT mm_document_flow NO STANDARD PAGE HEADING LINE-SIZE 255.
 
-TABLES:stxh.
-
-CLASS: lcx_exceptions  DEFINITION DEFERRED,
-       lcl_utilities   DEFINITION DEFERRED,
-       lcl_mm_doc_flow DEFINITION DEFERRED.
+*&---------------------------------------------------------------------*
+*& CONSTANTS
+*&---------------------------------------------------------------------*
+CONSTANTS: gc_tree_container TYPE char30     VALUE 'CC_0100_TREE',
+           gc_screen_number  TYPE syst-dynnr VALUE '0100',
+           gc_screen_status  TYPE gui_status VALUE 'SCREEN_STATUS',
+           gc_screen_title   TYPE gui_title  VALUE 'SCREEN_TITLE'.
 
 *&---------------------------------------------------------------------*
 *& CLASS DEFINITIONS
 *&---------------------------------------------------------------------*
+CLASS: lcx_exceptions  DEFINITION DEFERRED,
+       lcl_utilities   DEFINITION DEFERRED,
+       lcl_mm_doc_flow DEFINITION DEFERRED.
 
 *&---------------------------------------------------------------------*
 *& Class LCX_TEXTS
@@ -43,30 +48,65 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
 
   PUBLIC SECTION.
 
+    "PUBLIC METHODS
     METHODS:
-      constructor IMPORTING im_document  TYPE ekko-ebeln,
+      constructor IMPORTING im_document TYPE ekko-ebeln
+                  RAISING   lcx_exceptions,
 
-      create_tree.
+      process_before_output RAISING   lcx_exceptions,
 
+      process_after_input   RAISING   lcx_exceptions.
 
   PRIVATE SECTION.
 
-    "PRIVATE METHODS
-    METHODS:
-      determine_document_category IMPORTING im_document_                TYPE ekko-ebeln
-                                  RETURNING VALUE(re_document_category) TYPE string,
+    "PRIVATE TYPES
+    TYPES:
+      BEGIN OF ENUM ty_enum_mm_document_category STRUCTURE mm_document_category BASE TYPE char03,
+        purchase_requisition  VALUE 'PR',
+        request_for_quotation VALUE 'RFQ',
+        contract              VALUE 'CN',
+        scheduling_agreement  VALUE 'SA',
+        purchase_order        VALUE 'PO',
+        material_document     VALUE 'MD',
+        invoice               VALUE 'INV',
+        undefined             VALUE IS INITIAL,
+      END OF ENUM ty_enum_mm_document_category STRUCTURE mm_document_category ,
 
-      get_mm_document_flow.
-
-    "EVENT METHODS
-    METHODS:
-      handle_node_double_click FOR EVENT node_double_click OF cl_gui_simple_tree IMPORTING node_key,
-      handle_expand_no_children FOR EVENT expand_no_children OF cl_gui_simple_tree IMPORTING node_key.
+      BEGIN OF ty_mm_document_flow,
+        document_number              TYPE ebeln,
+        document_category            TYPE ty_enum_mm_document_category,
+        movement_type                TYPE bwart,
+        movement_type_description    TYPE btext,
+        transaction_type             TYPE vgabe,
+        transaction_type_description TYPE ddtext,
+      END OF ty_mm_document_flow.
 
     "PRIVATE DATA
     DATA:
-      lv_document TYPE ekko-ebeln,
-      lo_tree     TYPE REF TO cl_gui_simple_tree.
+      lv_document          TYPE ekko-ebeln,
+      lv_document_category TYPE ty_enum_mm_document_category,
+      lt_mm_document_flow  TYPE TABLE OF ty_mm_document_flow WITH DEFAULT KEY INITIAL SIZE 0,
+      lt_tree_nodes        TYPE TABLE OF mtreesnode WITH DEFAULT KEY INITIAL SIZE 0,
+      lo_tree              TYPE REF TO cl_gui_simple_tree.
+
+    "PRIVATE METHODS
+    METHODS:
+
+      create_tree IMPORTING im_container_name TYPE char30
+                  RAISING   lcx_exceptions,
+
+      determine_document_category IMPORTING im_document                 TYPE ekko-ebeln
+                                  RETURNING VALUE(re_document_category) TYPE ty_enum_mm_document_category
+                                  RAISING   lcx_exceptions,
+
+      get_mm_document_flow,
+
+      get_flow_from_po.
+
+    "PRIVATE EVENT METHODS
+    METHODS:
+      handle_node_double_click  FOR EVENT node_double_click  OF cl_gui_simple_tree IMPORTING node_key,
+      handle_expand_no_children FOR EVENT expand_no_children OF cl_gui_simple_tree IMPORTING node_key.
 
 
 ENDCLASS.
@@ -128,52 +168,11 @@ INITIALIZATION.
 *&---------------------------------------------------------------------*
 START-OF-SELECTION.
 
-
-  DATA(lo_mm_document_flow) = NEW lcl_mm_doc_flow( im_document = p_doc ).
-*  DATA(lt_vgabe_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'VGABE' ) )->get_ddic_fixed_values( sy-langu ).
-*  DATA(lt_bsart_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'BSART' ) )->get_ddic_fixed_values( sy-langu ).
-*
-*  "Purchase Requisition
-*  SELECT DISTINCT ( eban~banfn ) AS document_number,
-*    'Purchase Requisition' AS document_type,
-*    ' ' AS movement_type,' ' AS movement_type_description,
-*    ' ' AS transaction_type,
-*    ' ' AS transaction_type_description
-*
-*    FROM ekpo
-*    INNER JOIN eban ON eban~banfn EQ ekpo~banfn
-*    WHERE ekpo~ebeln EQ @p_po AND
-*            eban~bstyp EQ 'B'
-*
-*  UNION
-*
-*  "Purchase Order
-*  SELECT DISTINCT ( EKKO_EBELN ) AS DOCUMENT_NUMBER,
-*        'Purchase Order' AS document_type,
-*    ' ' AS movement_type,' ' AS movement_type_description,
-*    ' ' AS transaction_type,
-*    ' ' AS transaction_type_description
-*
-*  from EKKO
-*  INNER JOIN EKPO ON EKPO~EBELN EQ EKKO~EBELN
-*  WHERE ekKo~ebeln EQ @p_po
-*
-*
-*  "Material Document and Invoice
-*  SELECT DISTINCT ( ekbe~belnr ) AS document_number,
-*
-*   CASE WHEN  ekbe~bwart IS INITIAL THEN 'Invoice'
-*        WHEN  ekbe~bwart IS NOT INITIAL THEN 'Material Document'  END AS document_type,
-*   ekbe~bwart AS movement_type,t156ht~btext AS movement_type_description,ekbe~vgabe AS transaction_type, a~ddtext AS transaction_type_description
-*
-*  FROM ekbe
-*  LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
-*  LEFT OUTER JOIN @lt_vgabe_domain_values AS a ON a~low EQ ekbe~vgabe ##ITAB_KEY_IN_SELECT
-*  WHERE ebeln EQ @p_po
-*
-*  INTO TABLE @DATA(lt_po_flow).
-*
-*  BREAK-POINT.
+  TRY.
+      DATA(lo_mm_document_flow) = NEW lcl_mm_doc_flow( im_document = p_doc ).
+      CALL SCREEN gc_screen_number.
+    CATCH lcx_exceptions.
+  ENDTRY.
 
 END-OF-SELECTION.
 
@@ -187,7 +186,6 @@ END-OF-SELECTION.
 FORM screen_initialization.
 
   title1  = 'Purchasing Document Selection'.
-
   t_doc   = 'MM Document'.
 
 ENDFORM.
@@ -223,9 +221,25 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD constructor.
 
-
+    CLEAR:lv_document_category,lv_document.
 
     lv_document = im_document.
+    lv_document_category = me->determine_document_category( EXPORTING im_document = lv_document ).
+
+    me->get_mm_document_flow( ).
+
+
+  ENDMETHOD.
+
+  METHOD process_before_output.
+
+    me->create_tree( im_container_name = gc_tree_container ).
+
+  ENDMETHOD.
+
+
+  METHOD process_after_input.
+
 
 
   ENDMETHOD.
@@ -234,58 +248,49 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     IF lo_tree IS NOT BOUND.
 
-      DATA: l_event_tab TYPE cntl_simple_events,
-            l_event     LIKE LINE OF l_event_tab,
-            o_cont_tree TYPE REF TO cl_gui_custom_container.
-
-      "create a container for the tree control
-      CREATE OBJECT o_cont_tree
-        EXPORTING
-          container_name              = 'CC_0100_TREE'
-        EXCEPTIONS
-          cntl_error                  = 1
-          cntl_system_error           = 2
-          create_error                = 3
-          lifetime_error              = 4
-          lifetime_dynpro_dynpro_link = 5.
-
+      DATA: lt_event_tab TYPE cntl_simple_events.
 
       "CREATE TREE OBJECTS
       CREATE OBJECT lo_tree
         EXPORTING
-          parent              = o_cont_tree
+          parent              = NEW cl_gui_custom_container( container_name = im_container_name )
           node_selection_mode = cl_gui_simple_tree=>node_sel_mode_single.
 
       "EVENT HANGLING
-      l_event-eventid = cl_gui_simple_tree=>eventid_node_double_click.
-      l_event-appl_event = ' '.   "system event, does not trigger PAI
-      APPEND l_event TO l_event_tab.
-
-      lo_tree->set_registered_events( EXPORTING events = l_event_tab ).
+      APPEND VALUE #( eventid = cl_gui_simple_tree=>eventid_node_double_click appl_event = ' ' ) TO lt_event_tab.
+      lo_tree->set_registered_events( EXPORTING events = lt_event_tab ).
       SET HANDLER me->handle_node_double_click FOR lo_tree.
 
 *      "ADD NODES TO TREE
-*      lo_tree->add_nodes(
-*        EXPORTING
-*          table_structure_name           = 'MTREESNODE'" Name of Structure of Node Table
-*          node_table                     = t_node " Node table
-*        EXCEPTIONS
-*          error_in_node_table            = 1
-*          failed                         = 2
-*          dp_error                       = 3
-*          table_structure_name_not_found = 4
-*          OTHERS                         = 5 ).
+      lo_tree->add_nodes(
+        EXPORTING
+          table_structure_name           = 'MTREESNODE'
+          node_table                     = lt_tree_nodes
+        EXCEPTIONS
+          error_in_node_table            = 1
+          failed                         = 2
+          dp_error                       = 3
+          table_structure_name_not_found = 4
+          OTHERS                         = 5 ).
+
+      IF sy-subrc NE 0.
+        RAISE EXCEPTION TYPE lcx_exceptions EXPORTING text = 'Error Creating Tree'.
+      ENDIF.
 
       "EXPAND NODES
       lo_tree->expand_root_nodes(
         EXPORTING
           level_count         =  3  " Number of Levels to be Expanded
-          expand_subtree      = 'X' ": Expand all Subsequent Nodes
+          expand_subtree      = abap_true ": Expand all Subsequent Nodes
       EXCEPTIONS
         failed              = 1
         illegal_level_count = 2
         cntl_system_error   = 3
         OTHERS              = 4 ).
+
+      IF sy-subrc NE 0.
+        RAISE EXCEPTION TYPE lcx_exceptions EXPORTING text = 'Error Creating Tree'.
+      ENDIF.
 
     ENDIF.
 
@@ -293,20 +298,109 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD determine_document_category.
 
+    "PURCHASE REQUISITION
+    SELECT SINGLE @abap_true FROM eban WHERE banfn EQ @im_document AND bstyp EQ 'B' INTO @DATA(lv_exists).
 
+    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+      re_document_category = me->mm_document_category-purchase_requisition.
+      RETURN.
+    ENDIF.
 
+    "CONTRACT
 
+    "RFQ
+
+    "SCHEDULING AGREEMENT
+
+    "PURCHASE ORDER
+    CLEAR:lv_exists.
+    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @im_document AND bstyp EQ 'F' INTO @lv_exists.
+
+    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+      re_document_category = me->mm_document_category-purchase_order.
+      RETURN.
+    ENDIF.
+
+    "MATERIAL DOCUMENT
+    CLEAR:lv_exists.
+    SELECT SINGLE @abap_true FROM mkpf WHERE mblnr EQ @im_document INTO @lv_exists.
+
+    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+      re_document_category = me->mm_document_category-material_document.
+      RETURN.
+    ENDIF.
+
+    "INVOICE
+    CLEAR:lv_exists.
+    SELECT SINGLE @abap_true FROM rbkp WHERE belnr EQ @im_document INTO @lv_exists.
+
+    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+      re_document_category = me->mm_document_category-invoice.
+      RETURN.
+    ENDIF.
+
+    "NOT FOUND
+    RAISE EXCEPTION TYPE lcx_exceptions EXPORTING text = 'Document Not Found'.
 
   ENDMETHOD.
 
   METHOD get_mm_document_flow.
 
+    CASE me->lv_document_category.
+
+      WHEN me->mm_document_category-purchase_requisition.
+
+      WHEN me->mm_document_category-purchase_order.
+
+        me->get_flow_from_po( ).
+
+      WHEN me->mm_document_category-invoice.
+
+      WHEN me->mm_document_category-material_document.
+
+    ENDCASE.
 
 
   ENDMETHOD.
 
-  METHOD  handle_node_double_click.
+  METHOD get_flow_from_po.
 
+    DATA(lt_vgabe_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'VGABE' ) )->get_ddic_fixed_values( sy-langu ).
+    DATA(lt_bsart_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'BSART' ) )->get_ddic_fixed_values( sy-langu ).
+
+*    "Purchase Requisition
+*    SELECT DISTINCT ( eban~banfn ) AS document_number,
+*      mm_document_category-purchase_requisition AS document_category,
+*      ' ' AS movement_type,' ' AS movement_type_description,
+*      ' ' AS transaction_type,
+*      ' ' AS transaction_type_description
+*
+*      FROM ekpo
+*      INNER JOIN eban ON eban~banfn EQ ekpo~banfn
+*      WHERE ekpo~ebeln EQ @lv_document AND
+*              eban~bstyp EQ 'B'
+*
+*    UNION DISTINCT
+*
+*    "Material Document and Invoice
+*    SELECT DISTINCT ( ekbe~belnr ) AS document_number,
+*
+*     CASE WHEN  ekbe~bwart IS INITIAL THEN @lv_invoice
+*          WHEN  ekbe~bwart IS NOT INITIAL THEN @lv_material_doc END AS document_category,
+*     ekbe~bwart AS movement_type,t156ht~btext AS movement_type_description,ekbe~vgabe AS transaction_type, a~ddtext AS transaction_type_description
+*
+*    FROM ekbe
+*    LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+*    LEFT OUTER JOIN @lt_vgabe_domain_values AS a ON a~low EQ ekbe~vgabe ##ITAB_KEY_IN_SELECT
+*    WHERE ebeln EQ @lv_document
+*
+*    INTO TABLE @lt_mm_document_flow .
+*
+*    BREAK-POINT.
+
+  ENDMETHOD.
+
+  METHOD  handle_node_double_click.
 
     cl_gui_cfw=>set_new_ok_code( EXPORTING new_code = 'FOO' ).
 
@@ -316,7 +410,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
 
   ENDMETHOD.
-
 
 
 ENDCLASS.
@@ -491,8 +584,12 @@ ENDCLASS.
 *&
 *&---------------------------------------------------------------------*
 MODULE pbo_0100 OUTPUT.
-* SET PF-STATUS 'xxxxxxxx'.
-* SET TITLEBAR 'xxx'.
+
+* SET PF-STATUS gv_screen_status.
+* SET TITLEBAR gv_screen_title.
+
+  lo_mm_document_flow->process_before_output( ).
+
 ENDMODULE.
 *&---------------------------------------------------------------------*
 *&      Module  PAI_0100  INPUT
@@ -501,8 +598,6 @@ ENDMODULE.
 *----------------------------------------------------------------------*
 MODULE pai_0100 INPUT.
 
-
-
-
+  lo_mm_document_flow->process_after_input( ).
 
 ENDMODULE.
