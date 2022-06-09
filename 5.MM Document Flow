@@ -12,8 +12,8 @@ REPORT mm_document_flow NO STANDARD PAGE HEADING LINE-SIZE 255.
 *&---------------------------------------------------------------------*
 CONSTANTS: gc_tree_container TYPE char30     VALUE 'CC_0100_TREE',
            gc_screen_number  TYPE syst-dynnr VALUE '0100',
-           gc_screen_status  TYPE gui_status VALUE 'SCREEN_STATUS',
-           gc_screen_title   TYPE gui_title  VALUE 'SCREEN_TITLE'.
+           gc_screen_status  TYPE gui_status VALUE 'Z_SCREEN_STATUS',
+           gc_screen_title   TYPE gui_title  VALUE 'Z_SCREEN_TITLE'.
 
 *&---------------------------------------------------------------------*
 *& CLASS DEFINITIONS
@@ -55,7 +55,10 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
 
       process_before_output RAISING   lcx_exceptions,
 
-      process_after_input   RAISING   lcx_exceptions.
+      process_after_input IMPORTING screen_okcode TYPE syst-ucomm
+                          RAISING   lcx_exceptions.
+
+  PROTECTED SECTION.
 
   PRIVATE SECTION.
 
@@ -70,7 +73,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
         material_document     VALUE 'MD',
         invoice               VALUE 'INV',
         undefined             VALUE IS INITIAL,
-      END OF ENUM ty_enum_mm_document_category STRUCTURE mm_document_category ,
+      END OF ENUM ty_enum_mm_document_category STRUCTURE mm_document_category,
 
       BEGIN OF ty_mm_document_flow,
         document_number              TYPE ebeln,
@@ -79,14 +82,19 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
         movement_type_description    TYPE btext,
         transaction_type             TYPE vgabe,
         transaction_type_description TYPE ddtext,
-      END OF ty_mm_document_flow.
+        document_creation_date       TYPE datum,
+        document_creation_time       TYPE tims,
+      END OF ty_mm_document_flow,
+
+      tt_mm_document_flow TYPE TABLE OF ty_mm_document_flow WITH DEFAULT KEY INITIAL SIZE 0,
+      tt_trees_node       TYPE TABLE OF mtreesnode WITH DEFAULT KEY INITIAL SIZE 0.
 
     "PRIVATE DATA
     DATA:
       lv_document          TYPE ekko-ebeln,
       lv_document_category TYPE ty_enum_mm_document_category,
-      lt_mm_document_flow  TYPE TABLE OF ty_mm_document_flow WITH DEFAULT KEY INITIAL SIZE 0,
-      lt_tree_nodes        TYPE TABLE OF mtreesnode WITH DEFAULT KEY INITIAL SIZE 0,
+      lt_mm_document_flow  TYPE tt_mm_document_flow,
+      lt_tree_nodes        TYPE tt_trees_node,
       lo_tree              TYPE REF TO cl_gui_simple_tree.
 
     "PRIVATE METHODS
@@ -99,15 +107,16 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
                                   RETURNING VALUE(re_document_category) TYPE ty_enum_mm_document_category
                                   RAISING   lcx_exceptions,
 
-      get_mm_document_flow,
+      get_mm_document_flow RETURNING VALUE(re_document_flow) TYPE tt_mm_document_flow,
 
-      get_flow_from_po.
+      build_node_table     RETURNING VALUE(re_trees_nodes) TYPE tt_trees_node,
+
+      get_flow_from_po     RETURNING VALUE(re_document_flow_po) TYPE tt_mm_document_flow.
 
     "PRIVATE EVENT METHODS
     METHODS:
       handle_node_double_click  FOR EVENT node_double_click  OF cl_gui_simple_tree IMPORTING node_key,
       handle_expand_no_children FOR EVENT expand_no_children OF cl_gui_simple_tree IMPORTING node_key.
-
 
 ENDCLASS.
 
@@ -225,9 +234,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     lv_document = im_document.
     lv_document_category = me->determine_document_category( EXPORTING im_document = lv_document ).
-
     me->get_mm_document_flow( ).
-
+    me->build_node_table( ).
 
   ENDMETHOD.
 
@@ -240,6 +248,10 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD process_after_input.
 
+    CASE screen_okcode.
+      WHEN 'BACK' OR 'EXIT' OR 'CANCEL'.
+        LEAVE TO SCREEN 0.
+    ENDCASE.
 
 
   ENDMETHOD.
@@ -352,7 +364,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       WHEN me->mm_document_category-purchase_order.
 
-        me->get_flow_from_po( ).
+        re_document_flow = me->get_flow_from_po( ).
 
       WHEN me->mm_document_category-invoice.
 
@@ -363,40 +375,179 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD build_node_table.
+
+    "TYPES DEFINITION
+    TYPES: node_table_type TYPE STANDARD TABLE OF mtreesnode WITH DEFAULT KEY.
+
+    TYPES: BEGIN OF ty_child,
+             node_key TYPE tv_nodekey,
+             text     TYPE text30,
+           END OF ty_child.
+
+    TYPES: tty_child TYPE TABLE OF ty_child WITH DEFAULT KEY.
+
+    TYPES: BEGIN OF ty_nodes,
+             node_key TYPE tv_nodekey,
+             text     TYPE text30,
+             child    TYPE tty_child,
+           END OF ty_nodes.
+
+    TYPES: tty_nodes TYPE TABLE OF ty_nodes WITH DEFAULT KEY.
+
+    TYPES: BEGIN OF ty_root,
+             node_key TYPE tv_nodekey,
+             text     TYPE text30,
+             nodes    TYPE tty_nodes,
+           END OF ty_root.
+
+    TYPES: BEGIN OF ty_scenario,
+
+             " Tree data
+             node_key       TYPE        tv_nodekey,
+             text           TYPE        text30,
+             node_image     TYPE        tv_image,
+             child_key      TYPE        tv_nodekey,
+             child_text     TYPE        text30,
+             child_image    TYPE        tv_image,
+             sub_select     TYPE        sy-repid,
+
+             " header data
+             o_header_table TYPE REF TO cl_gui_alv_grid,
+             hd_fcat        TYPE        lvc_t_fcat,
+             hd_data_table  TYPE        c LENGTH 50,
+             selectio_scr   TYPE        sy-dynnr,
+             template_path  TYPE        string,
+             file_name      TYPE        string,
+
+           END OF ty_scenario.
+
+    DATA: t_nods TYPE tty_nodes,
+          s_root TYPE ty_root,
+          s_node TYPE LINE OF node_table_type.
+
+    "ROOT NODE
+    s_root-text     = 'MM Document Flow'.
+    s_root-node_key = 'MM'.
+    s_root-nodes    = t_nods.
+    s_node-hidden   = ' '." The node is visible,
+    s_node-disabled = ' '." selectable,
+    s_node-isfolder = 'X'.
+    s_node-node_key = s_root-node_key.
+    s_node-text     = s_root-text.
+    s_node-n_image  =
+    s_node-exp_image = icon_system_favorites.
+    APPEND s_node TO lt_tree_nodes.
+
+    "Construct Nodes Table with Scenario Nodes
+
+    LOOP AT lt_mm_document_flow ASSIGNING FIELD-SYMBOL(<fs_mm_document_flow>).
+
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
   METHOD get_flow_from_po.
 
     DATA(lt_vgabe_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'VGABE' ) )->get_ddic_fixed_values( sy-langu ).
     DATA(lt_bsart_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'BSART' ) )->get_ddic_fixed_values( sy-langu ).
 
-*    "Purchase Requisition
-*    SELECT DISTINCT ( eban~banfn ) AS document_number,
-*      mm_document_category-purchase_requisition AS document_category,
-*      ' ' AS movement_type,' ' AS movement_type_description,
-*      ' ' AS transaction_type,
-*      ' ' AS transaction_type_description
-*
-*      FROM ekpo
-*      INNER JOIN eban ON eban~banfn EQ ekpo~banfn
-*      WHERE ekpo~ebeln EQ @lv_document AND
-*              eban~bstyp EQ 'B'
-*
-*    UNION DISTINCT
-*
-*    "Material Document and Invoice
-*    SELECT DISTINCT ( ekbe~belnr ) AS document_number,
-*
-*     CASE WHEN  ekbe~bwart IS INITIAL THEN @lv_invoice
-*          WHEN  ekbe~bwart IS NOT INITIAL THEN @lv_material_doc END AS document_category,
-*     ekbe~bwart AS movement_type,t156ht~btext AS movement_type_description,ekbe~vgabe AS transaction_type, a~ddtext AS transaction_type_description
-*
-*    FROM ekbe
-*    LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
-*    LEFT OUTER JOIN @lt_vgabe_domain_values AS a ON a~low EQ ekbe~vgabe ##ITAB_KEY_IN_SELECT
-*    WHERE ebeln EQ @lv_document
-*
-*    INTO TABLE @lt_mm_document_flow .
-*
-*    BREAK-POINT.
+    "Purchase Requisition
+    SELECT SINGLE
+      eban~banfn  AS document_number,
+      cdhdr~udate AS document_creation_date,
+      cdhdr~utime AS document_creation_time
+
+      FROM ekpo
+      INNER JOIN eban ON eban~banfn EQ ekpo~banfn
+      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ eban~banfn AND cdhdr~change_ind EQ 'I'
+      WHERE ekpo~ebeln EQ @lv_document AND
+            eban~bstyp EQ 'B'
+      INTO @DATA(ls_pr).
+
+    IF sy-subrc EQ 0 AND ls_pr IS NOT INITIAL.
+      APPEND VALUE #( document_number        = ls_pr-document_number
+                      document_category      = mm_document_category-purchase_requisition
+                      document_creation_date = ls_pr-document_creation_date
+                      document_creation_time = ls_pr-document_creation_time ) TO lt_mm_document_flow.
+    ENDIF.
+
+    "Purchase Order
+    SELECT SINGLE
+    ekko~ebeln  AS document_number,
+    cdhdr~udate AS document_creation_date,
+    cdhdr~utime AS document_creation_time
+
+    FROM ekko
+    INNER JOIN ekpo ON ekko~ebeln EQ ekpo~ebeln
+    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ 'I'
+    WHERE ekpo~ebeln EQ @lv_document
+    INTO @DATA(ls_po).
+
+    IF sy-subrc EQ 0 AND ls_po IS NOT INITIAL.
+      APPEND VALUE #( document_number        = ls_po-document_number
+                      document_category      = mm_document_category-purchase_order
+                      document_creation_date = ls_po-document_creation_date
+                      document_creation_time = ls_po-document_creation_time ) TO lt_mm_document_flow.
+    ENDIF.
+
+    "Material Document
+    SELECT SINGLE
+     ( ekbe~belnr ) AS document_number,
+     ekbe~bwart AS movement_type,
+     t156ht~btext AS movement_type_description,
+     ekbe~vgabe AS transaction_type,
+     a~ddtext AS transaction_type_description,
+     ekbe~cpudt AS document_creation_date,
+     ekbe~cputm AS document_creation_time
+
+      FROM ekbe
+      LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+      LEFT OUTER JOIN @lt_vgabe_domain_values AS a ON a~low EQ ekbe~vgabe ##ITAB_KEY_IN_SELECT
+      WHERE ebeln EQ @lv_document AND
+            ekbe~bwart IS NOT INITIAL
+      INTO @DATA(ls_md).
+
+    IF sy-subrc EQ 0 AND ls_md IS NOT INITIAL.
+      APPEND VALUE #( document_number              = ls_md-document_number
+                      document_category            = mm_document_category-material_document
+                      movement_type                = ls_md-movement_type
+                      movement_type_description    =  ls_md-movement_type_description
+                      transaction_type             = ls_md-transaction_type
+                      transaction_type_description = ls_md-transaction_type_description
+                      document_creation_date       = ls_md-document_creation_date
+                      document_creation_time       = ls_md-document_creation_time ) TO lt_mm_document_flow.
+    ENDIF.
+
+    "INVOICE
+    SELECT SINGLE
+    ( ekbe~belnr ) AS document_number,
+    ekbe~bwart AS movement_type,
+    t156ht~btext AS movement_type_description,
+    ekbe~vgabe AS transaction_type,
+    a~ddtext AS transaction_type_description,
+    ekbe~cpudt AS document_creation_date,
+    ekbe~cputm AS document_creation_time
+
+   FROM ekbe
+   LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+   LEFT OUTER JOIN @lt_vgabe_domain_values AS a ON a~low EQ ekbe~vgabe ##ITAB_KEY_IN_SELECT
+   WHERE ebeln EQ @lv_document AND
+         ekbe~bwart IS INITIAL
+   INTO @DATA(ls_inv).
+
+    IF sy-subrc EQ 0 AND ls_inv IS NOT INITIAL.
+      APPEND VALUE #( document_number              = ls_inv-document_number
+                      document_category            = mm_document_category-invoice
+                      movement_type                = ls_inv-movement_type
+                      movement_type_description    = ls_inv-movement_type_description
+                      transaction_type             = ls_inv-transaction_type
+                      transaction_type_description = ls_inv-transaction_type_description
+                      document_creation_date       = ls_inv-document_creation_date
+                      document_creation_time       = ls_inv-document_creation_time ) TO lt_mm_document_flow.
+    ENDIF.
+
 
   ENDMETHOD.
 
@@ -585,8 +736,8 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 MODULE pbo_0100 OUTPUT.
 
-* SET PF-STATUS gv_screen_status.
-* SET TITLEBAR gv_screen_title.
+  SET PF-STATUS gc_screen_status.
+  SET TITLEBAR  gc_screen_title.
 
   lo_mm_document_flow->process_before_output( ).
 
@@ -598,6 +749,8 @@ ENDMODULE.
 *----------------------------------------------------------------------*
 MODULE pai_0100 INPUT.
 
-  lo_mm_document_flow->process_after_input( ).
+  DATA:ok_code TYPE sy-ucomm.
+
+  lo_mm_document_flow->process_after_input( EXPORTING screen_okcode = ok_code ).
 
 ENDMODULE.
