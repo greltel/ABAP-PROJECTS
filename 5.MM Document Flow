@@ -99,7 +99,6 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
 
     "PRIVATE METHODS
     METHODS:
-
       create_tree IMPORTING im_container_name TYPE char30
                   RAISING   lcx_exceptions,
 
@@ -107,17 +106,21 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
                                   RETURNING VALUE(re_document_category) TYPE ty_enum_mm_document_category
                                   RAISING   lcx_exceptions,
 
-      get_mm_document_flow RETURNING VALUE(re_document_flow) TYPE tt_mm_document_flow,
+      get_mm_document_flow,
 
-      build_node_table     RETURNING VALUE(re_trees_nodes) TYPE tt_trees_node,
+      get_flow_from_pr,
 
-      get_flow_from_po     RETURNING VALUE(re_document_flow_po) TYPE tt_mm_document_flow.
+      get_flow_from_po,
+
+      get_flow_from_md,
+
+      get_flow_from_inv,
+
+      build_node_table.
 
     "PRIVATE EVENT METHODS
     METHODS:
-
-      handle_node_double_click  FOR EVENT node_double_click  OF cl_gui_simple_tree IMPORTING node_key,
-      handle_expand_no_children FOR EVENT expand_no_children OF cl_gui_simple_tree IMPORTING node_key.
+      handle_node_double_click  FOR EVENT node_double_click  OF cl_gui_simple_tree IMPORTING node_key.
 
 ENDCLASS.
 
@@ -257,58 +260,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD create_tree.
-
-    IF lo_tree IS NOT BOUND.
-
-      DATA: lt_event_tab TYPE cntl_simple_events.
-
-      "CREATE TREE OBJECTS
-      CREATE OBJECT lo_tree
-        EXPORTING
-          parent              = NEW cl_gui_custom_container( container_name = im_container_name )
-          node_selection_mode = cl_gui_simple_tree=>node_sel_mode_single.
-
-      "EVENT HANGLING
-      APPEND VALUE #( eventid = cl_gui_simple_tree=>eventid_node_double_click appl_event = ' ' ) TO lt_event_tab.
-      lo_tree->set_registered_events( EXPORTING events = lt_event_tab ).
-      SET HANDLER me->handle_node_double_click FOR lo_tree.
-
-*      "ADD NODES TO TREE
-      lo_tree->add_nodes(
-        EXPORTING
-          table_structure_name           = 'MTREESNODE'
-          node_table                     = lt_tree_nodes
-        EXCEPTIONS
-          error_in_node_table            = 1
-          failed                         = 2
-          dp_error                       = 3
-          table_structure_name_not_found = 4
-          OTHERS                         = 5 ).
-
-      IF sy-subrc NE 0.
-        RAISE EXCEPTION TYPE lcx_exceptions EXPORTING text = 'Error Creating Tree'.
-      ENDIF.
-
-      "EXPAND NODES
-      lo_tree->expand_root_nodes(
-        EXPORTING
-          level_count         =  3  " Number of Levels to be Expanded
-          expand_subtree      = abap_true ": Expand all Subsequent Nodes
-      EXCEPTIONS
-        failed              = 1
-        illegal_level_count = 2
-        cntl_system_error   = 3
-        OTHERS              = 4 ).
-
-      IF sy-subrc NE 0.
-        RAISE EXCEPTION TYPE lcx_exceptions EXPORTING text = 'Error Creating Tree'.
-      ENDIF.
-
-    ENDIF.
-
-  ENDMETHOD.
-
   METHOD determine_document_category.
 
     "PURCHASE REQUISITION
@@ -363,9 +314,11 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       WHEN me->mm_document_category-pr.
 
+        me->get_flow_from_pr( ).
+
       WHEN me->mm_document_category-po.
 
-        re_document_flow = me->get_flow_from_po( ).
+        me->get_flow_from_po( ).
 
       WHEN me->mm_document_category-inv.
 
@@ -376,48 +329,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD build_node_table.
+  METHOD get_flow_from_pr.
 
-    "ROOT NODE
-    APPEND VALUE #( hidden    = space
-                    disabled  = space
-                    isfolder  = abap_true
-                    node_key  = 'MM'
-                    text      = 'MM Document Flow'
-                    n_image   =  icon_system_favorites
-                    exp_image = icon_system_favorites ) TO lt_tree_nodes.
-
-    "Construct Nodes Table with Scenario Nodes
-    LOOP AT lt_mm_document_flow ASSIGNING FIELD-SYMBOL(<fs_mm_document_flow>).
-
-      APPEND VALUE #( hidden    = space
-                      disabled  = space
-                      isfolder  = abap_true
-                      relatkey  = lt_tree_nodes[ 1 ]-node_key
-                      relatship = cl_gui_simple_tree=>relat_last_child
-                      node_key  = <fs_mm_document_flow>-document_category
-                      text      = COND #( WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-po  THEN 'Purchase Order'
-                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-pr  THEN 'Purchase Requisition'
-                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-md  THEN 'Material Document'
-                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-inv THEN 'Invoice'
-                                          ELSE <fs_mm_document_flow>-document_category )
-                      expander  = abap_true
-                      n_image   = icon_biw_formula
-                      exp_image = icon_biw_formula ) TO lt_tree_nodes.
-
-      APPEND VALUE #( hidden    = space
-                      disabled  = space
-                      isfolder  = space
-                      relatkey  = <fs_mm_document_flow>-document_category
-                      relatship = cl_gui_simple_tree=>relat_last_child
-                      node_key  = <fs_mm_document_flow>-document_number && <fs_mm_document_flow>-document_category
-                      text      = CONV text30( <fs_mm_document_flow>-document_number )
-                      expander  = space
-                      n_image   = icon_patient_smartcard
-                      exp_image = icon_patient_smartcard ) TO lt_tree_nodes.
-
-
-    ENDLOOP.
 
   ENDMETHOD.
 
@@ -524,8 +437,119 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD get_flow_from_md.
+
+
+
+  ENDMETHOD.
+
+
+  METHOD get_flow_from_inv.
+
+
+
+  ENDMETHOD.
+
+  METHOD build_node_table.
+
+    "ROOT NODE
+    APPEND VALUE #( hidden    = space
+                    disabled  = space
+                    isfolder  = abap_true
+                    node_key  = 'MM'
+                    text      = 'MM Document Flow'
+                    n_image   =  icon_system_favorites
+                    exp_image = icon_system_favorites ) TO lt_tree_nodes.
+
+    "Construct Nodes Table with Scenario Nodes
+    LOOP AT lt_mm_document_flow ASSIGNING FIELD-SYMBOL(<fs_mm_document_flow>).
+
+      APPEND VALUE #( hidden    = space
+                      disabled  = space
+                      isfolder  = abap_true
+                      relatkey  = lt_tree_nodes[ 1 ]-node_key
+                      relatship = cl_gui_simple_tree=>relat_last_child
+                      node_key  = <fs_mm_document_flow>-document_category
+                      text      = COND #( WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-po  THEN 'Purchase Order'
+                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-pr  THEN 'Purchase Requisition'
+                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-md  THEN 'Material Document'
+                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-inv THEN 'Invoice'
+                                          ELSE <fs_mm_document_flow>-document_category )
+                      expander  = abap_true
+                      n_image   = icon_biw_formula
+                      exp_image = icon_biw_formula ) TO lt_tree_nodes.
+
+      APPEND VALUE #( hidden    = space
+                      disabled  = space
+                      isfolder  = space
+                      relatkey  = <fs_mm_document_flow>-document_category
+                      relatship = cl_gui_simple_tree=>relat_last_child
+                      node_key  = <fs_mm_document_flow>-document_number && <fs_mm_document_flow>-document_category
+                      text      = CONV text30( <fs_mm_document_flow>-document_number )
+                      expander  = space
+                      n_image   = icon_patient_smartcard
+                      exp_image = icon_patient_smartcard ) TO lt_tree_nodes.
+
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD create_tree.
+
+    IF lo_tree IS NOT BOUND.
+
+      DATA: lt_event_tab TYPE cntl_simple_events.
+
+      "CREATE TREE OBJECTS
+      CREATE OBJECT lo_tree
+        EXPORTING
+          parent              = NEW cl_gui_custom_container( container_name = im_container_name )
+          node_selection_mode = cl_gui_simple_tree=>node_sel_mode_single.
+
+      "EVENT HANGLING
+      APPEND VALUE #( eventid = cl_gui_simple_tree=>eventid_node_double_click appl_event = ' ' ) TO lt_event_tab.
+      lo_tree->set_registered_events( EXPORTING events = lt_event_tab ).
+      SET HANDLER me->handle_node_double_click FOR lo_tree.
+
+*      "ADD NODES TO TREE
+      lo_tree->add_nodes(
+        EXPORTING
+          table_structure_name           = 'MTREESNODE'
+          node_table                     = lt_tree_nodes
+        EXCEPTIONS
+          error_in_node_table            = 1
+          failed                         = 2
+          dp_error                       = 3
+          table_structure_name_not_found = 4
+          OTHERS                         = 5 ).
+
+      IF sy-subrc NE 0.
+        RAISE EXCEPTION TYPE lcx_exceptions EXPORTING text = 'Error Creating Tree'.
+      ENDIF.
+
+      "EXPAND NODES
+      lo_tree->expand_root_nodes(
+        EXPORTING
+          level_count         =  3  " Number of Levels to be Expanded
+          expand_subtree      = abap_true ": Expand all Subsequent Nodes
+      EXCEPTIONS
+        failed              = 1
+        illegal_level_count = 2
+        cntl_system_error   = 3
+        OTHERS              = 4 ).
+
+      IF sy-subrc NE 0.
+        RAISE EXCEPTION TYPE lcx_exceptions EXPORTING text = 'Error Creating Tree'.
+      ENDIF.
+
+    ENDIF.
+
+  ENDMETHOD.
+
   METHOD  handle_node_double_click.
 
+    "RESET SELECTION STYLE
     LOOP AT lt_tree_nodes ASSIGNING FIELD-SYMBOL(<fs_node>).
 
       lo_tree->node_set_style(
@@ -535,12 +559,14 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     ENDLOOP.
 
+    "RETRIEVE DATA FROM LINE SELECTED
     TRY.
         DATA(ls_selection) = lt_tree_nodes[ node_key = node_key ] .
       CATCH cx_sy_itab_line_not_found.
         RETURN.
     ENDTRY.
 
+    "MARK LINE SELECTED
     lo_tree->node_set_style(
     EXPORTING
       node_key          = ls_selection-node_key
@@ -548,12 +574,11 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "CALL ALV HEADER-ITEM FOR PURCHASING DOCUMENT
 
+
+
+
+    "REFRESH DATA
     cl_gui_cfw=>set_new_ok_code( EXPORTING new_code = 'FOO' ).
-
-  ENDMETHOD.
-
-  METHOD handle_expand_no_children.
-
 
   ENDMETHOD.
 
