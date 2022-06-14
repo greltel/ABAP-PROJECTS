@@ -65,14 +65,14 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
     "PRIVATE TYPES
     TYPES:
       BEGIN OF ENUM ty_enum_mm_document_category STRUCTURE mm_document_category BASE TYPE char03,
-        purchase_requisition  VALUE 'PR',
-        request_for_quotation VALUE 'RFQ',
-        contract              VALUE 'CN',
-        scheduling_agreement  VALUE 'SA',
-        purchase_order        VALUE 'PO',
-        material_document     VALUE 'MD',
-        invoice               VALUE 'INV',
-        undefined             VALUE IS INITIAL,
+        pr        VALUE 'PR',
+        rfq       VALUE 'RFQ',
+        cn        VALUE 'CN',
+        sa        VALUE 'SA',
+        po        VALUE 'PO',
+        md        VALUE 'MD',
+        inv       VALUE 'INV',
+        undefined VALUE IS INITIAL,
       END OF ENUM ty_enum_mm_document_category STRUCTURE mm_document_category,
 
       BEGIN OF ty_mm_document_flow,
@@ -115,6 +115,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
 
     "PRIVATE EVENT METHODS
     METHODS:
+
       handle_node_double_click  FOR EVENT node_double_click  OF cl_gui_simple_tree IMPORTING node_key,
       handle_expand_no_children FOR EVENT expand_no_children OF cl_gui_simple_tree IMPORTING node_key.
 
@@ -314,7 +315,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     SELECT SINGLE @abap_true FROM eban WHERE banfn EQ @im_document AND bstyp EQ 'B' INTO @DATA(lv_exists).
 
     IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
-      re_document_category = me->mm_document_category-purchase_requisition.
+      re_document_category = me->mm_document_category-pr.
       RETURN.
     ENDIF.
 
@@ -329,7 +330,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @im_document AND bstyp EQ 'F' INTO @lv_exists.
 
     IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
-      re_document_category = me->mm_document_category-purchase_order.
+      re_document_category = me->mm_document_category-po.
       RETURN.
     ENDIF.
 
@@ -338,7 +339,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     SELECT SINGLE @abap_true FROM mkpf WHERE mblnr EQ @im_document INTO @lv_exists.
 
     IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
-      re_document_category = me->mm_document_category-material_document.
+      re_document_category = me->mm_document_category-md.
       RETURN.
     ENDIF.
 
@@ -347,7 +348,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     SELECT SINGLE @abap_true FROM rbkp WHERE belnr EQ @im_document INTO @lv_exists.
 
     IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
-      re_document_category = me->mm_document_category-invoice.
+      re_document_category = me->mm_document_category-inv.
       RETURN.
     ENDIF.
 
@@ -360,15 +361,15 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     CASE me->lv_document_category.
 
-      WHEN me->mm_document_category-purchase_requisition.
+      WHEN me->mm_document_category-pr.
 
-      WHEN me->mm_document_category-purchase_order.
+      WHEN me->mm_document_category-po.
 
         re_document_flow = me->get_flow_from_po( ).
 
-      WHEN me->mm_document_category-invoice.
+      WHEN me->mm_document_category-inv.
 
-      WHEN me->mm_document_category-material_document.
+      WHEN me->mm_document_category-md.
 
     ENDCASE.
 
@@ -377,71 +378,43 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD build_node_table.
 
-    "TYPES DEFINITION
-    TYPES: node_table_type TYPE STANDARD TABLE OF mtreesnode WITH DEFAULT KEY.
-
-    TYPES: BEGIN OF ty_child,
-             node_key TYPE tv_nodekey,
-             text     TYPE text30,
-           END OF ty_child.
-
-    TYPES: tty_child TYPE TABLE OF ty_child WITH DEFAULT KEY.
-
-    TYPES: BEGIN OF ty_nodes,
-             node_key TYPE tv_nodekey,
-             text     TYPE text30,
-             child    TYPE tty_child,
-           END OF ty_nodes.
-
-    TYPES: tty_nodes TYPE TABLE OF ty_nodes WITH DEFAULT KEY.
-
-    TYPES: BEGIN OF ty_root,
-             node_key TYPE tv_nodekey,
-             text     TYPE text30,
-             nodes    TYPE tty_nodes,
-           END OF ty_root.
-
-    TYPES: BEGIN OF ty_scenario,
-
-             " Tree data
-             node_key       TYPE        tv_nodekey,
-             text           TYPE        text30,
-             node_image     TYPE        tv_image,
-             child_key      TYPE        tv_nodekey,
-             child_text     TYPE        text30,
-             child_image    TYPE        tv_image,
-             sub_select     TYPE        sy-repid,
-
-             " header data
-             o_header_table TYPE REF TO cl_gui_alv_grid,
-             hd_fcat        TYPE        lvc_t_fcat,
-             hd_data_table  TYPE        c LENGTH 50,
-             selectio_scr   TYPE        sy-dynnr,
-             template_path  TYPE        string,
-             file_name      TYPE        string,
-
-           END OF ty_scenario.
-
-    DATA: t_nods TYPE tty_nodes,
-          s_root TYPE ty_root,
-          s_node TYPE LINE OF node_table_type.
-
     "ROOT NODE
-    s_root-text     = 'MM Document Flow'.
-    s_root-node_key = 'MM'.
-    s_root-nodes    = t_nods.
-    s_node-hidden   = ' '." The node is visible,
-    s_node-disabled = ' '." selectable,
-    s_node-isfolder = 'X'.
-    s_node-node_key = s_root-node_key.
-    s_node-text     = s_root-text.
-    s_node-n_image  =
-    s_node-exp_image = icon_system_favorites.
-    APPEND s_node TO lt_tree_nodes.
+    APPEND VALUE #( hidden    = space
+                    disabled  = space
+                    isfolder  = abap_true
+                    node_key  = 'MM'
+                    text      = 'MM Document Flow'
+                    n_image   =  icon_system_favorites
+                    exp_image = icon_system_favorites ) TO lt_tree_nodes.
 
     "Construct Nodes Table with Scenario Nodes
-
     LOOP AT lt_mm_document_flow ASSIGNING FIELD-SYMBOL(<fs_mm_document_flow>).
+
+      APPEND VALUE #( hidden    = space
+                      disabled  = space
+                      isfolder  = abap_true
+                      relatkey  = lt_tree_nodes[ 1 ]-node_key
+                      relatship = cl_gui_simple_tree=>relat_last_child
+                      node_key  = <fs_mm_document_flow>-document_category
+                      text      = COND #( WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-po  THEN 'Purchase Order'
+                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-pr  THEN 'Purchase Requisition'
+                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-md  THEN 'Material Document'
+                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-inv THEN 'Invoice'
+                                          ELSE <fs_mm_document_flow>-document_category )
+                      expander  = abap_true
+                      n_image   = icon_biw_formula
+                      exp_image = icon_biw_formula ) TO lt_tree_nodes.
+
+      APPEND VALUE #( hidden    = space
+                      disabled  = space
+                      isfolder  = space
+                      relatkey  = <fs_mm_document_flow>-document_category
+                      relatship = cl_gui_simple_tree=>relat_last_child
+                      node_key  = <fs_mm_document_flow>-document_number && <fs_mm_document_flow>-document_category
+                      text      = CONV text30( <fs_mm_document_flow>-document_number )
+                      expander  = space
+                      n_image   = icon_patient_smartcard
+                      exp_image = icon_patient_smartcard ) TO lt_tree_nodes.
 
 
     ENDLOOP.
@@ -468,7 +441,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     IF sy-subrc EQ 0 AND ls_pr IS NOT INITIAL.
       APPEND VALUE #( document_number        = ls_pr-document_number
-                      document_category      = mm_document_category-purchase_requisition
+                      document_category      = mm_document_category-pr
                       document_creation_date = ls_pr-document_creation_date
                       document_creation_time = ls_pr-document_creation_time ) TO lt_mm_document_flow.
     ENDIF.
@@ -487,7 +460,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     IF sy-subrc EQ 0 AND ls_po IS NOT INITIAL.
       APPEND VALUE #( document_number        = ls_po-document_number
-                      document_category      = mm_document_category-purchase_order
+                      document_category      = mm_document_category-po
                       document_creation_date = ls_po-document_creation_date
                       document_creation_time = ls_po-document_creation_time ) TO lt_mm_document_flow.
     ENDIF.
@@ -511,7 +484,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     IF sy-subrc EQ 0 AND ls_md IS NOT INITIAL.
       APPEND VALUE #( document_number              = ls_md-document_number
-                      document_category            = mm_document_category-material_document
+                      document_category            = mm_document_category-md
                       movement_type                = ls_md-movement_type
                       movement_type_description    =  ls_md-movement_type_description
                       transaction_type             = ls_md-transaction_type
@@ -539,7 +512,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     IF sy-subrc EQ 0 AND ls_inv IS NOT INITIAL.
       APPEND VALUE #( document_number              = ls_inv-document_number
-                      document_category            = mm_document_category-invoice
+                      document_category            = mm_document_category-inv
                       movement_type                = ls_inv-movement_type
                       movement_type_description    = ls_inv-movement_type_description
                       transaction_type             = ls_inv-transaction_type
@@ -552,6 +525,28 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD  handle_node_double_click.
+
+    LOOP AT lt_tree_nodes ASSIGNING FIELD-SYMBOL(<fs_node>).
+
+      lo_tree->node_set_style(
+        EXPORTING
+          node_key          = <fs_node>-node_key
+          style             = cl_gui_simple_tree=>style_default ).
+
+    ENDLOOP.
+
+    TRY.
+        DATA(ls_selection) = lt_tree_nodes[ node_key = node_key ] .
+      CATCH cx_sy_itab_line_not_found.
+        RETURN.
+    ENDTRY.
+
+    lo_tree->node_set_style(
+    EXPORTING
+      node_key          = ls_selection-node_key
+      style             = cl_gui_simple_tree=>style_emphasized_positive ).
+
+    "CALL ALV HEADER-ITEM FOR PURCHASING DOCUMENT
 
     cl_gui_cfw=>set_new_ok_code( EXPORTING new_code = 'FOO' ).
 
