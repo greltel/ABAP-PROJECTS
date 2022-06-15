@@ -617,8 +617,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                         document_creation_time       = <fs_inv>-document_creation_time ) TO lt_mm_document_flow.
 
       ENDLOOP.
-    ENDIF.
 
+    ENDIF.
 
   ENDMETHOD.
 
@@ -706,10 +706,10 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       SET HANDLER me->handle_node_double_click FOR lo_tree.
 
-*      "ADD NODES TO TREE
+      "ADD NODES TO TREE
       lo_tree->add_nodes(
         EXPORTING
-          table_structure_name           = 'MTREESNODE'
+          table_structure_name           = CONV #( CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( lt_tree_nodes[ 1 ] ) )->absolute_name+6 )
           node_table                     = lt_tree_nodes
         EXCEPTIONS
           error_in_node_table            = 1
@@ -725,7 +725,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       "EXPAND NODES
       lo_tree->expand_root_nodes(
         EXPORTING
-          level_count         =  3  " Number of Levels to be Expanded
+          level_count         = 3  " Number of Levels to be Expanded
           expand_subtree      = abap_true ": Expand all Subsequent Nodes
       EXCEPTIONS
         failed              = 1
