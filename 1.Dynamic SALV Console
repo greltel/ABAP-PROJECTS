@@ -1468,43 +1468,41 @@ CLASS lcl_main_salv IMPLEMENTATION.
     "Dynamic Assignment of Columns to Groups
     LOOP AT CAST cl_abap_structdescr( CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( <fs_table> ) )->get_table_line_type( ) )->components ASSIGNING FIELD-SYMBOL(<ls_components>).
 
-      IF <ls_components>-type_kind EQ cl_abap_structdescr=>typekind_date.
+      CASE <ls_components>-type_kind.
 
-        TRY.
-            DATA(o_column_date) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) ).
-            o_column_date->set_specific_group( id = 'DATE' ).
-            o_column_date->set_visible( abap_true ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
+        WHEN cl_abap_structdescr=>typekind_date.
 
-      ELSEIF <ls_components>-type_kind EQ cl_abap_structdescr=>typekind_packed.
+          TRY.
+              CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) )->set_specific_group( id = 'DATE' ).
+              CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) )->set_visible( abap_true ).
+            CATCH cx_salv_not_found.
+          ENDTRY.
 
-        TRY.
-            DATA(o_column_amount) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) ).
-            o_column_amount->set_specific_group( id = 'AMOU' ).
-            o_column_amount->set_visible( abap_true ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
+        WHEN cl_abap_structdescr=>typekind_packed.
 
-      ELSEIF <ls_components>-type_kind EQ cl_abap_structdescr=>typekind_num.
+          TRY.
+              CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) )->set_specific_group( id = 'AMOU' ).
+              CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) )->set_visible( abap_true ).
+            CATCH cx_salv_not_found.
+          ENDTRY.
 
-        TRY.
-            DATA(o_column_nchar) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) ).
-            o_column_nchar->set_specific_group( id = 'NCHA' ).
-            o_column_nchar->set_visible( abap_true ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
+        WHEN cl_abap_structdescr=>typekind_num.
 
-      ELSEIF <ls_components>-type_kind EQ cl_abap_structdescr=>typekind_char.
+          TRY.
+              CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) )->set_specific_group( id = 'NCHA' ).
+              CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) )->set_visible( abap_true ).
+            CATCH cx_salv_not_found.
+          ENDTRY.
 
-        TRY.
-            DATA(o_column_char) = CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) ).
-            o_column_char->set_specific_group( id = 'CHAR' ).
-            o_column_char->set_visible( abap_true ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
+        WHEN cl_abap_structdescr=>typekind_char.
 
-      ENDIF.
+          TRY.
+              CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) )->set_specific_group( id = 'CHAR' ).
+              CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( <ls_components>-name ) )->set_visible( abap_true ).
+            CATCH cx_salv_not_found.
+          ENDTRY.
+
+      ENDCASE.
 
     ENDLOOP.
 
@@ -1516,21 +1514,17 @@ CLASS lcl_main_salv IMPLEMENTATION.
     "Enable Multiple Selection in the ALV Layout and Enable Left Column for Selection
     lo_salv_alv->get_selections( )->set_selection_mode( if_salv_c_selection_mode=>row_column )."cl_salv_selections=>multiple
 
-    "Change Display Settings to Stripped
-    lo_salv_alv->get_display_settings( )->set_striped_pattern( abap_true ).
-
-    "Layout Settings
-    lo_salv_alv->get_layout(:
-    )->set_key( value = VALUE salv_s_layout_key( report = sy-repid ) ),"Save the Layout Key.Unique key identifies the Differenet ALVs
-    )->set_default( abap_true )," Set usage of default layouts
-    )->set_save_restriction( if_salv_c_layout=>restrict_none ),"Remove Save layout Restriction
-    )->set_initial_layout( lv_layout )."Set Initial Layout.If Layout doesnt exist it will display the default
-
-
-    "Activate/deactivate horizontal and vertical lines
-    lo_salv_alv->get_display_settings( :
+    "Change Display Settings to Stripped and Activate/deactivate horizontal and vertical lines
+    lo_salv_alv->get_display_settings(:
+                                      )->set_striped_pattern( abap_true ),
                                       )->set_horizontal_lines( abap_true ),
                                       )->set_vertical_lines( abap_true ).
+    "Layout Settings
+    lo_salv_alv->get_layout(:
+                            )->set_key( value = VALUE salv_s_layout_key( report = sy-repid ) ),"Save the Layout Key.Unique key identifies the Differenet ALVs
+                            )->set_default( abap_true )," Set usage of default layouts
+                            )->set_save_restriction( if_salv_c_layout=>restrict_none ),"Remove Save layout Restriction
+                            )->set_initial_layout( lv_layout )."Set Initial Layout.If Layout doesnt exist it will display the default
 
 
   ENDMETHOD.
@@ -1576,20 +1570,14 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     DATA(lo_footer) = NEW cl_salv_form_layout_grid( ).
 
-    DATA(lo_f_label) = lo_footer->create_label( row = 1 column = 1 ) .
+    DATA(lo_f_label) = lo_footer->create_label( row = 1 column = 1 )  .
     lo_f_label->set_text( 'Footer').
 
     DATA(lo_f_flow) = lo_footer->create_flow( row = 2 column = 1 ).
 
-    IF lv_data_source EQ lcl_main_salv=>database.
-      DATA(lv_text) = |Displaying Details of Table | .
-    ELSEIF lv_data_source EQ lcl_main_salv=>excel.
-      lv_text = |Displaying Details of Excel File | .
-    ELSE.
-      lv_text = |Footer Details | .
-    ENDIF.
-
-    lo_f_flow->create_text( text = lv_text ).
+    lo_f_flow->create_text( text = COND #( WHEN lv_data_source EQ lcl_main_salv=>database THEN |Displaying Details of Table |
+                                           WHEN lv_data_source EQ lcl_main_salv=>excel   THEN  |Displaying Details of Excel File |
+                                           ELSE |Footer Details | ) ).
     lo_salv_alv->set_end_of_list( lo_footer ).
     lo_salv_alv->set_end_of_list_print( lo_footer ).
 
