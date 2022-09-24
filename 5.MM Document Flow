@@ -2,7 +2,7 @@
 *   Program name: MM Document Flow                                     *
 *   Description :                                                      *
 *                                                                      *
-*   Created   by: GDRAKOS DVALOUXIS                                    *
+*   Created   by: GDRAKOS                                              *
 *                                                                      *
 ************************************************************************
 REPORT mm_document_flow NO STANDARD PAGE HEADING LINE-SIZE 255.
@@ -12,15 +12,15 @@ REPORT mm_document_flow NO STANDARD PAGE HEADING LINE-SIZE 255.
 *&---------------------------------------------------------------------*
 CONSTANTS: gc_tree_container TYPE char30     VALUE 'CC_0100_TREE',
            gc_screen_number  TYPE syst-dynnr VALUE '0100',
-           gc_screen_status  TYPE gui_status VALUE 'Z_SCREEN_STATUS',
-           gc_screen_title   TYPE gui_title  VALUE 'Z_SCREEN_TITLE'.
+           gc_screen_status  TYPE gui_status VALUE 'Z_SCREEN_STATUS_0100',
+           gc_screen_title   TYPE gui_title  VALUE 'Z_SCREEN_TITLE_0100'.
 
 *&---------------------------------------------------------------------*
 *& CLASS DEFINITIONS
 *&---------------------------------------------------------------------*
-CLASS: lcx_exceptions  DEFINITION DEFERRED,
-       lcl_utilities   DEFINITION DEFERRED,
-       lcl_mm_doc_flow DEFINITION DEFERRED.
+CLASS: lcl_mm_doc_flow DEFINITION DEFERRED,
+       lcx_exceptions  DEFINITION DEFERRED,
+       lcl_utilities   DEFINITION DEFERRED.
 
 *&---------------------------------------------------------------------*
 *& Class LCX_TEXTS
@@ -50,7 +50,10 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
 
     "PUBLIC METHODS
     METHODS:
-      constructor IMPORTING im_document TYPE ekko-ebeln
+      constructor IMPORTING im_document       TYPE ekko-ebeln
+                            im_tree_container TYPE char30
+                            im_screen_status  TYPE gui_status
+                            im_screen_title   TYPE gui_title
                   RAISING   lcx_exceptions,
 
       process_before_output RAISING   lcx_exceptions,
@@ -64,6 +67,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
 
     "PRIVATE TYPES
     TYPES:
+
       BEGIN OF ENUM ty_enum_mm_document_category STRUCTURE mm_document_category BASE TYPE char03,
         pr        VALUE 'PR',
         rfq       VALUE 'RFQ',
@@ -94,6 +98,9 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
     DATA:
       lv_document          TYPE ekko-ebeln,
       lv_document_category TYPE ty_enum_mm_document_category,
+      lv_tree_container    TYPE char30,
+      lv_screen_status     TYPE gui_status,
+      lv_screen_title      TYPE gui_title,
       lt_mm_document_flow  TYPE tt_mm_document_flow,
       lt_tree_nodes        TYPE tt_trees_node,
       lo_tree              TYPE REF TO cl_gui_simple_tree.
@@ -103,21 +110,19 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
       create_tree IMPORTING im_container_name TYPE char30
                   RAISING   lcx_exceptions,
 
-      determine_document_category IMPORTING im_document                 TYPE ekko-ebeln
-                                  RETURNING VALUE(re_document_category) TYPE ty_enum_mm_document_category
-                                  RAISING   lcx_exceptions,
+      determine_document_category RAISING   lcx_exceptions,
 
-      get_mm_document_flow,
+      get_mm_document_flow RAISING   lcx_exceptions,
 
-      get_flow_from_pr,
+      get_flow_from_pr RAISING   lcx_exceptions,
 
-      get_flow_from_po,
+      get_flow_from_po RAISING   lcx_exceptions,
 
-      get_flow_from_md,
+      get_flow_from_md RAISING   lcx_exceptions,
 
-      get_flow_from_inv,
+      get_flow_from_inv RAISING   lcx_exceptions,
 
-      build_node_table.
+      build_node_table RAISING   lcx_exceptions.
 
     "PRIVATE EVENT METHODS
     METHODS:
@@ -183,7 +188,10 @@ INITIALIZATION.
 START-OF-SELECTION.
 
   TRY.
-      DATA(lo_mm_document_flow) = NEW lcl_mm_doc_flow( im_document = p_doc ).
+      DATA(lo_mm_document_flow) = NEW lcl_mm_doc_flow( im_document = p_doc
+                                                       im_tree_container = gc_tree_container
+                                                       im_screen_status = gc_screen_status
+                                                       im_screen_title = gc_screen_title ).
       CALL SCREEN gc_screen_number.
     CATCH lcx_exceptions.
   ENDTRY.
@@ -209,36 +217,21 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 
 *&---------------------------------------------------------------------*
-*& Class lcx_Exceptions
-*&---------------------------------------------------------------------*
-CLASS lcx_exceptions IMPLEMENTATION.
-
-  METHOD constructor.
-
-    super->constructor( textid = CONV #( text ) ).
-    local_text = text.
-
-  ENDMETHOD.
-
-  METHOD get_text.
-
-    result = me->local_text.
-
-  ENDMETHOD.
-
-ENDCLASS.
-
-*&---------------------------------------------------------------------*
 *& Class LCL_MM_DOC_FLOW
 *&---------------------------------------------------------------------*
 CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD constructor.
 
-    CLEAR:lv_document_category,lv_document.
+    CLEAR:me->lv_document_category,me->lv_document.
 
-    lv_document = im_document.
-    lv_document_category = me->determine_document_category( EXPORTING im_document = lv_document ).
+    me->lv_document = im_document.
+    me->lv_tree_container = im_tree_container.
+    me->lv_screen_status = im_screen_status.
+    me->lv_screen_title = im_screen_title.
+
+
+    me->determine_document_category( ).
     me->get_mm_document_flow( ).
     me->build_node_table( ).
 
@@ -246,7 +239,10 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD process_before_output.
 
-    me->create_tree( im_container_name = gc_tree_container ).
+    SET PF-STATUS me->lv_screen_status.
+    SET TITLEBAR  me->lv_screen_title.
+
+    me->create_tree( im_container_name = me->lv_tree_container ).
 
   ENDMETHOD.
 
@@ -258,49 +254,76 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         LEAVE TO SCREEN 0.
     ENDCASE.
 
-
   ENDMETHOD.
 
   METHOD determine_document_category.
 
+    CLEAR:me->lv_document_category.
+
     "PURCHASE REQUISITION
-    SELECT SINGLE @abap_true FROM eban WHERE banfn EQ @im_document AND bstyp EQ 'B' INTO @DATA(lv_exists).
+    SELECT SINGLE @abap_true FROM eban WHERE banfn EQ @me->lv_document AND bstyp EQ 'B' INTO @DATA(lv_exists).
 
     IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
-      re_document_category = me->mm_document_category-pr.
+      me->lv_document_category = me->mm_document_category-pr.
+      RETURN.
+    ENDIF.
+
+    "REQUEST FOR QUOTATION
+    CLEAR:lv_exists.
+    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'R' INTO @lv_exists.
+    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+      me->lv_document_category = me->mm_document_category-rfq.
+      RETURN.
+    ENDIF.
+
+    "QUOTATION
+    CLEAR:lv_exists.
+    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'O' INTO @lv_exists.
+    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+      me->lv_document_category = me->mm_document_category-qu.
       RETURN.
     ENDIF.
 
     "CONTRACT
-
-    "RFQ
+    CLEAR:lv_exists.
+    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'K' INTO @lv_exists.
+    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+      me->lv_document_category = me->mm_document_category-cn.
+      RETURN.
+    ENDIF.
 
     "SCHEDULING AGREEMENT
+    CLEAR:lv_exists.
+    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'L' INTO @lv_exists.
+    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+      me->lv_document_category = me->mm_document_category-sa.
+      RETURN.
+    ENDIF.
 
     "PURCHASE ORDER
     CLEAR:lv_exists.
-    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @im_document AND bstyp EQ 'F' INTO @lv_exists.
+    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'F' INTO @lv_exists.
 
     IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
-      re_document_category = me->mm_document_category-po.
+      me->lv_document_category = me->mm_document_category-po.
       RETURN.
     ENDIF.
 
     "MATERIAL DOCUMENT
     CLEAR:lv_exists.
-    SELECT SINGLE @abap_true FROM mkpf WHERE mblnr EQ @im_document INTO @lv_exists.
+    SELECT SINGLE @abap_true FROM mkpf WHERE mblnr EQ @me->lv_document INTO @lv_exists.
 
     IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
-      re_document_category = me->mm_document_category-md.
+      me->lv_document_category = me->mm_document_category-md.
       RETURN.
     ENDIF.
 
     "INVOICE
     CLEAR:lv_exists.
-    SELECT SINGLE @abap_true FROM rbkp WHERE belnr EQ @im_document INTO @lv_exists.
+    SELECT SINGLE @abap_true FROM rbkp WHERE belnr EQ @me->lv_document INTO @lv_exists.
 
     IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
-      re_document_category = me->mm_document_category-inv.
+      me->lv_document_category = me->mm_document_category-inv.
       RETURN.
     ENDIF.
 
@@ -330,7 +353,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         me->get_flow_from_inv( ).
 
     ENDCASE.
-
 
   ENDMETHOD.
 
@@ -381,6 +403,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                       document_creation_date = <fs_oa>-document_creation_date
                       document_creation_time = <fs_oa>-document_creation_time ) TO lt_mm_document_flow.
 
+        CLEAR:lv_document_category.
       ENDLOOP.
 
     ENDIF.
@@ -652,7 +675,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       APPEND VALUE #( hidden    = space
                       disabled  = space
                       isfolder  = abap_true
-                      relatkey  = lt_tree_nodes[ 1 ]-node_key
+                      relatkey  = VALUE #( lt_tree_nodes[ 1 ]-node_key OPTIONAL )
                       relatship = cl_gui_simple_tree=>relat_last_child
                       node_key  = <fs_mm_document_flow>-document_category
                       text      = COND #( WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-qu  THEN 'Quotation'
@@ -767,7 +790,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       style             = cl_gui_simple_tree=>style_emphasized_positive ).
 
     "CALL ALV HEADER-ITEM FOR PURCHASING DOCUMENT
-
 
 
 
@@ -943,15 +965,33 @@ CLASS lcl_utilities IMPLEMENTATION.
 
 
 ENDCLASS.
+
+*&---------------------------------------------------------------------*
+*& Class lcx_Exceptions
+*&---------------------------------------------------------------------*
+CLASS lcx_exceptions IMPLEMENTATION.
+
+  METHOD constructor.
+
+    super->constructor( textid = CONV #( text ) ).
+    local_text = text.
+
+  ENDMETHOD.
+
+  METHOD get_text.
+
+    result = me->local_text.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
 *&---------------------------------------------------------------------*
 *& Module PROCESS_BEFORE_OUTPUT OUTPUT
 *&---------------------------------------------------------------------*
 *&
 *&---------------------------------------------------------------------*
-MODULE pbo_0100 OUTPUT.
-
-  SET PF-STATUS gc_screen_status.
-  SET TITLEBAR  gc_screen_title.
+MODULE status_0100 OUTPUT.
 
   lo_mm_document_flow->process_before_output( ).
 
@@ -961,10 +1001,12 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 *       text
 *----------------------------------------------------------------------*
-MODULE pai_0100 INPUT.
+MODULE user_command_0100 INPUT.
 
-  DATA:ok_code TYPE sy-ucomm.
+  DATA:ok_code_0100 TYPE sy-ucomm.
 
-  lo_mm_document_flow->process_after_input( EXPORTING screen_okcode = ok_code ).
+  lo_mm_document_flow->process_after_input( EXPORTING screen_okcode = ok_code_0100 ).
+
+  CLEAR:ok_code_0100.
 
 ENDMODULE.
