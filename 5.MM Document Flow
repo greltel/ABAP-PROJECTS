@@ -59,7 +59,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
                            im_screen_number  TYPE syst-dynnr
                  RAISING   lcx_exceptions,
 
-      process_before_output RAISING   lcx_exceptions,
+      process_before_output RAISING lcx_exceptions,
 
       process_after_input IMPORTING screen_okcode TYPE syst-ucomm
                           RAISING   lcx_exceptions.
@@ -118,8 +118,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
 
       create_containers RAISING lcx_exceptions,
 
-      create_tree IMPORTING im_container_name TYPE char30
-                  RAISING   lcx_exceptions,
+      create_tree RAISING   lcx_exceptions,
 
       determine_document_category RAISING   lcx_exceptions,
 
@@ -171,7 +170,8 @@ START-OF-SELECTION.
                                                  im_screen_status = gc_screen_status
                                                  im_screen_title = gc_screen_title
                                                  im_screen_number = gc_screen_number ).
-    CATCH lcx_exceptions.
+    CATCH lcx_exceptions INTO DATA(lo_exception).
+      MESSAGE lo_exception->get_text( ) TYPE 'I' DISPLAY LIKE 'E'.
   ENDTRY.
 
 END-OF-SELECTION.
@@ -235,7 +235,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     SET TITLEBAR  me->lv_screen_title.
 
     me->create_containers( ).
-    me->create_tree( im_container_name = me->lv_screen_container ).
+    me->create_tree( ).
 
   ENDMETHOD.
 
@@ -716,7 +716,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       "CREATE TREE OBJECTS
       CREATE OBJECT lo_tree
         EXPORTING
-          parent              = NEW cl_gui_custom_container( container_name = im_container_name )
+          parent              = NEW cl_gui_custom_container( container_name = me->lv_screen_container )
           node_selection_mode = cl_gui_simple_tree=>node_sel_mode_single.
 
       "EVENT HANGLING
