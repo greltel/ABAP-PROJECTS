@@ -10,17 +10,16 @@ REPORT mm_document_flow NO STANDARD PAGE HEADING LINE-SIZE 255.
 *&---------------------------------------------------------------------*
 *& CONSTANTS
 *&---------------------------------------------------------------------*
-CONSTANTS: gc_tree_container TYPE char30     VALUE 'CC_0100_TREE',
-           gc_screen_number  TYPE syst-dynnr VALUE '0100',
-           gc_screen_status  TYPE gui_status VALUE 'Z_SCREEN_STATUS_0100',
-           gc_screen_title   TYPE gui_title  VALUE 'Z_SCREEN_TITLE_0100'.
+CONSTANTS: gc_screen_container TYPE char30     VALUE 'CC_0100',
+           gc_screen_number    TYPE syst-dynnr VALUE '0100',
+           gc_screen_status    TYPE gui_status VALUE 'Z_SCREEN_STATUS_0100',
+           gc_screen_title     TYPE gui_title  VALUE 'Z_SCREEN_TITLE_0100'.
 
 *&---------------------------------------------------------------------*
 *& CLASS DEFINITIONS
 *&---------------------------------------------------------------------*
 CLASS: lcl_mm_doc_flow DEFINITION DEFERRED,
-       lcx_exceptions  DEFINITION DEFERRED,
-       lcl_utilities   DEFINITION DEFERRED.
+       lcx_exceptions  DEFINITION DEFERRED.
 
 *&---------------------------------------------------------------------*
 *& Class LCX_TEXTS
@@ -40,21 +39,25 @@ CLASS lcx_exceptions DEFINITION INHERITING FROM cx_static_check.
 
 ENDCLASS.
 
-
 *&---------------------------------------------------------------------*
 *& Class LCL_MM_DOC_FLOW
 *&---------------------------------------------------------------------*
-CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
+CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
 
   PUBLIC SECTION.
 
+    "Signleton implementation to avoid global data
+    CLASS-METHODS:
+      get_instance RETURNING VALUE(ro_instance) TYPE REF TO lcl_mm_doc_flow.
+
     "PUBLIC METHODS
     METHODS:
-      constructor IMPORTING im_document       TYPE ekko-ebeln
-                            im_tree_container TYPE char30
-                            im_screen_status  TYPE gui_status
-                            im_screen_title   TYPE gui_title
-                  RAISING   lcx_exceptions,
+      execute    IMPORTING im_document       TYPE ekko-ebeln
+                           im_tree_container TYPE char30
+                           im_screen_status  TYPE gui_status
+                           im_screen_title   TYPE gui_title
+                           im_screen_number  TYPE syst-dynnr
+                 RAISING   lcx_exceptions,
 
       process_before_output RAISING   lcx_exceptions,
 
@@ -94,19 +97,27 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
       tt_mm_document_flow TYPE TABLE OF ty_mm_document_flow WITH DEFAULT KEY INITIAL SIZE 0,
       tt_trees_node       TYPE TABLE OF mtreesnode WITH DEFAULT KEY INITIAL SIZE 0.
 
+    " Singleton implementation to avoid global data
+    CLASS-DATA:
+      mo_instance TYPE REF TO lcl_mm_doc_flow.
+
     "PRIVATE DATA
     DATA:
       lv_document          TYPE ekko-ebeln,
       lv_document_category TYPE ty_enum_mm_document_category,
-      lv_tree_container    TYPE char30,
+      lv_screen_container  TYPE char30,
       lv_screen_status     TYPE gui_status,
       lv_screen_title      TYPE gui_title,
+      lv_screen_number     TYPE syst-dynnr,
       lt_mm_document_flow  TYPE tt_mm_document_flow,
       lt_tree_nodes        TYPE tt_trees_node,
       lo_tree              TYPE REF TO cl_gui_simple_tree.
 
     "PRIVATE METHODS
     METHODS:
+
+      create_containers RAISING lcx_exceptions,
+
       create_tree IMPORTING im_container_name TYPE char30
                   RAISING   lcx_exceptions,
 
@@ -130,39 +141,6 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PUBLIC.
 
 ENDCLASS.
 
-*&---------------------------------------------------------------------*
-*& Class lcl_utilities
-*&---------------------------------------------------------------------*
-CLASS lcl_utilities DEFINITION CREATE PUBLIC FINAL.
-
-  PUBLIC SECTION.
-
-    CLASS-METHODS:
-
-      dynamic_where_clause IMPORTING im_field                TYPE char5
-                                     im_comp                 TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal
-                                     im_val                  TYPE string
-                                     im_table_name           TYPE tabname
-                           RETURNING VALUE(re_select_clause) TYPE hrtb_cond,
-
-      date_external_to_internal IMPORTING im_date                 TYPE string
-                                RETURNING VALUE(re_date_internal) TYPE tumls_date,
-
-
-      convert_to_internal_alpha IMPORTING im_external        TYPE any
-                                RETURNING VALUE(re_internal) TYPE string.
-
-  PRIVATE SECTION.
-
-    CLASS-METHODS:
-
-      check_field_exists_in_table IMPORTING im_field         TYPE char5
-                                            im_table         TYPE tabname30
-                                  RETURNING VALUE(re_exists) TYPE abap_bool.
-
-
-
-ENDCLASS.
 *&---------------------------------------------------------------------*
 *& SELECTION SCREEN DESIGN
 *&---------------------------------------------------------------------*
@@ -188,11 +166,11 @@ INITIALIZATION.
 START-OF-SELECTION.
 
   TRY.
-      DATA(lo_mm_document_flow) = NEW lcl_mm_doc_flow( im_document = p_doc
-                                                       im_tree_container = gc_tree_container
-                                                       im_screen_status = gc_screen_status
-                                                       im_screen_title = gc_screen_title ).
-      CALL SCREEN gc_screen_number.
+      lcl_mm_doc_flow=>get_instance( )->execute( im_document = p_doc
+                                                 im_tree_container = gc_screen_container
+                                                 im_screen_status = gc_screen_status
+                                                 im_screen_title = gc_screen_title
+                                                 im_screen_number = gc_screen_number ).
     CATCH lcx_exceptions.
   ENDTRY.
 
@@ -221,19 +199,33 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
-  METHOD constructor.
+  METHOD get_instance.
+
+    IF mo_instance IS INITIAL.
+      CREATE OBJECT mo_instance.
+    ENDIF.
+
+    ro_instance = mo_instance.
+
+  ENDMETHOD.
+
+  METHOD execute.
 
     CLEAR:me->lv_document_category,me->lv_document.
 
+    "ATTRIBUTES
     me->lv_document = im_document.
-    me->lv_tree_container = im_tree_container.
+    me->lv_screen_container = im_tree_container.
     me->lv_screen_status = im_screen_status.
     me->lv_screen_title = im_screen_title.
+    me->lv_screen_number = im_screen_number.
 
-
+    "METHODS
     me->determine_document_category( ).
     me->get_mm_document_flow( ).
     me->build_node_table( ).
+
+    CALL SCREEN me->lv_screen_number.
 
   ENDMETHOD.
 
@@ -242,7 +234,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     SET PF-STATUS me->lv_screen_status.
     SET TITLEBAR  me->lv_screen_title.
 
-    me->create_tree( im_container_name = me->lv_tree_container ).
+    me->create_containers( ).
+    me->create_tree( im_container_name = me->lv_screen_container ).
 
   ENDMETHOD.
 
@@ -711,11 +704,14 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD create_containers.
+
+
+  ENDMETHOD.
+
   METHOD create_tree.
 
     IF lo_tree IS NOT BOUND.
-
-      DATA: lt_event_tab TYPE cntl_simple_events.
 
       "CREATE TREE OBJECTS
       CREATE OBJECT lo_tree
@@ -724,6 +720,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
           node_selection_mode = cl_gui_simple_tree=>node_sel_mode_single.
 
       "EVENT HANGLING
+      DATA: lt_event_tab TYPE cntl_simple_events.
+
       APPEND VALUE #( eventid = cl_gui_simple_tree=>eventid_node_double_click appl_event = space ) TO lt_event_tab.
       lo_tree->set_registered_events( EXPORTING events = lt_event_tab ).
 
@@ -802,171 +800,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 ENDCLASS.
 
 *&---------------------------------------------------------------------*
-*& Class lcl_utilities
-*&---------------------------------------------------------------------*
-CLASS lcl_utilities IMPLEMENTATION.
-
-  METHOD dynamic_where_clause.
-
-    IF im_field IS NOT INITIAL AND im_comp IS NOT INITIAL AND im_val IS NOT INITIAL.
-
-      "CHECK FIELD EXISTS IN CURRENT TABLE
-      DATA(lv_field_exists) = lcl_utilities=>check_field_exists_in_table( EXPORTING im_field = im_field im_table = im_table_name ).
-      CHECK lv_field_exists EQ abap_true.
-
-      "Create Variable based on field Type
-      DATA:dref TYPE REF TO data.
-
-      DATA(type) = im_table_name && '-' && im_field.
-      DATA(lv_data_type) =  cl_abap_typedescr=>describe_by_name( type )->type_kind.
-
-      IF lv_data_type EQ 'D'."DATE
-        DATA(lv_internal) = lcl_utilities=>date_external_to_internal( EXPORTING im_date = im_val ).
-      ELSE."OTHER DATA TYPE
-
-        CREATE DATA dref TYPE (type).
-        ASSIGN dref->* TO FIELD-SYMBOL(<fs_val>).
-
-        IF <fs_val> IS ASSIGNED.
-          <fs_val> = im_val.
-          lv_internal = lcl_utilities=>convert_to_internal_alpha( EXPORTING im_external = <fs_val> ).
-        ELSE.
-          lv_internal = im_val.
-        ENDIF.
-
-      ENDIF.
-
-      DATA(lt_condtab) = VALUE hrtb_cond( ( field = im_field opera = im_comp low = lv_internal ) ).
-
-      CALL FUNCTION 'RH_DYNAMIC_WHERE_BUILD'
-        EXPORTING
-          dbtable         = im_table_name
-        TABLES
-          condtab         = lt_condtab
-          where_clause    = re_select_clause
-        EXCEPTIONS
-          empty_condtab   = 1
-          no_db_field     = 2
-          unknown_db      = 3
-          wrong_condition = 4
-          OTHERS          = 5.
-
-    ENDIF.
-
-  ENDMETHOD.
-
-  METHOD check_field_exists_in_table.
-
-    SELECT SINGLE @abap_true
-      FROM dd03l
-      INTO @re_exists
-      WHERE tabname EQ   @im_table AND
-            fieldname EQ @im_field.
-
-  ENDMETHOD.
-
-  METHOD convert_to_internal_alpha.
-
-    DATA:wf_data      TYPE REF TO data.
-
-*   Determine the mask(Conversion Exit) and Output Length of the Field
-    DATA(lv_edit_mask) = CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_data( im_external ) )->edit_mask.
-    DATA(lv_output_length) = CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_data( im_external ) )->output_length.
-
-    IF lv_edit_mask IS INITIAL."ALPHA ROUTINE DOES NO EXISTS
-      re_internal = |{ im_external ALPHA = IN }|.
-      RETURN.
-    ENDIF.
-
-    REPLACE '==' IN lv_edit_mask WITH space.
-    CONDENSE lv_edit_mask NO-GAPS.
-
-    CREATE DATA wf_data TYPE c LENGTH lv_output_length.
-    IF wf_data IS BOUND.
-      ASSIGN wf_data->* TO FIELD-SYMBOL(<fs_t>).
-      IF <fs_t> IS NOT ASSIGNED.
-        IF re_internal IS INITIAL.
-          re_internal = im_external.
-        ENDIF.
-        EXIT.
-      ENDIF.
-    ELSE.
-      IF re_internal IS INITIAL.
-        re_internal = im_external.
-      ENDIF.
-      EXIT.
-    ENDIF.
-
-    CONCATENATE 'CONVERSION_EXIT_' lv_edit_mask '_INPUT' INTO DATA(lv_convexit).
-
-    CALL FUNCTION lv_convexit
-      EXPORTING
-        input  = im_external
-      IMPORTING
-        output = <fs_t>.
-
-    IF sy-subrc NE 0.
-      re_internal = im_external.
-    ELSE.
-      re_internal = <fs_t>.
-    ENDIF.
-
-  ENDMETHOD.
-
-  METHOD date_external_to_internal.
-
-    DATA: lv_convert_date TYPE c LENGTH 10.
-
-    CLEAR:lv_convert_date.
-    lv_convert_date = im_date.
-
-    "date format YYYY/MM/DD
-    FIND REGEX '^\d{4}[/|-|.|-]\d{1,2}[/|-|.|-]\d{1,2}$' IN lv_convert_date.
-    IF sy-subrc = 0.
-      CALL FUNCTION '/SAPDMC/LSM_DATE_CONVERT'
-        EXPORTING
-          date_in             = lv_convert_date
-          date_format_in      = 'DYMD'
-          to_output_format    = ' '
-          to_internal_format  = 'X'
-        IMPORTING
-          date_out            = re_date_internal
-        EXCEPTIONS
-          illegal_date        = 1
-          illegal_date_format = 2
-          no_user_date_format = 3
-          OTHERS              = 4.
-
-    ELSE.
-
-      " date format DD/MM/YYYY
-      FIND REGEX '^\d{1,2}[/|-|.|-]\d{1,2}[/|-|.|-]\d{4}$' IN lv_convert_date.
-      IF sy-subrc = 0.
-        CALL FUNCTION '/SAPDMC/LSM_DATE_CONVERT'
-          EXPORTING
-            date_in             = lv_convert_date
-            date_format_in      = 'DDMY'
-            to_output_format    = ' '
-            to_internal_format  = 'X'
-          IMPORTING
-            date_out            = re_date_internal
-          EXCEPTIONS
-            illegal_date        = 1
-            illegal_date_format = 2
-            no_user_date_format = 3
-            OTHERS              = 4.
-      ELSE.
-        re_date_internal = lv_convert_date.
-      ENDIF.
-
-    ENDIF.
-
-  ENDMETHOD.
-
-
-ENDCLASS.
-
-*&---------------------------------------------------------------------*
 *& Class lcx_Exceptions
 *&---------------------------------------------------------------------*
 CLASS lcx_exceptions IMPLEMENTATION.
@@ -993,7 +826,7 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 MODULE status_0100 OUTPUT.
 
-  lo_mm_document_flow->process_before_output( ).
+  lcl_mm_doc_flow=>get_instance( )->process_before_output( ).
 
 ENDMODULE.
 *&---------------------------------------------------------------------*
@@ -1005,7 +838,7 @@ MODULE user_command_0100 INPUT.
 
   DATA:ok_code_0100 TYPE sy-ucomm.
 
-  lo_mm_document_flow->process_after_input( EXPORTING screen_okcode = ok_code_0100 ).
+  lcl_mm_doc_flow=>get_instance( )->process_after_input( EXPORTING screen_okcode = ok_code_0100 ).
 
   CLEAR:ok_code_0100.
 
