@@ -140,7 +140,9 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
 
       get_flow_from_inv RAISING   lcx_exceptions,
 
-      build_node_table RAISING   lcx_exceptions.
+      build_node_table RAISING   lcx_exceptions,
+
+      reset_tree_selection RAISING lcx_exceptions.
 
     "PRIVATE EVENT METHODS
     METHODS:
@@ -730,36 +732,71 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     ENDIF.
 
     "Outline agreement( Contract and Scheduling Agreement )
-    SELECT
-      DISTINCT ( ekpo~konnr )  AS document_number,
-      cdhdr~udate AS document_creation_date,
-      cdhdr~utime AS document_creation_time
-    FROM ekpo
-    INNER JOIN ekko ON ekko~ebeln EQ ekpo~ebeln
-    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ 'I'
-    WHERE ekpo~ebeln EQ @ls_po-document_number AND
-          ekpo~konnr IS NOT INITIAL
-    INTO TABLE @DATA(lt_oa).
+    IF ls_po IS NOT INITIAL.
 
-    IF sy-subrc EQ 0 AND lt_oa IS NOT INITIAL.
+      SELECT
+        DISTINCT ( ekpo~konnr )  AS document_number,
+        cdhdr~udate AS document_creation_date,
+        cdhdr~utime AS document_creation_time
+      FROM ekpo
+      INNER JOIN ekko ON ekko~ebeln EQ ekpo~ebeln
+      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ 'I'
+      WHERE ekpo~ebeln EQ @ls_po-document_number AND
+            ekpo~konnr IS NOT INITIAL
+      INTO TABLE @DATA(lt_oa).
 
-      LOOP AT lt_oa ASSIGNING FIELD-SYMBOL(<ls_oa>).
+      IF sy-subrc EQ 0 AND lt_oa IS NOT INITIAL.
 
-        SELECT SINGLE bstyp FROM ekko WHERE ebeln EQ @<ls_oa>-document_number INTO @DATA(lv_document_category).
+        LOOP AT lt_oa ASSIGNING FIELD-SYMBOL(<ls_oa>).
 
-        APPEND VALUE #( document_number      = <ls_oa>-document_number
-                      document_category      = COND #( WHEN lv_document_category EQ 'K' THEN mm_document_category-cn
-                                                       WHEN lv_document_category EQ 'L' THEN mm_document_category-sa
-                                                       ELSE mm_document_category-cn )
-                      document_creation_date = <ls_oa>-document_creation_date
-                      document_creation_time = <ls_oa>-document_creation_time ) TO lt_mm_document_flow.
+          SELECT SINGLE bstyp FROM ekko WHERE ebeln EQ @<ls_oa>-document_number INTO @DATA(lv_document_category).
 
-      ENDLOOP.
+          APPEND VALUE #( document_number      = <ls_oa>-document_number
+                        document_category      = COND #( WHEN lv_document_category EQ 'K' THEN mm_document_category-cn
+                                                         WHEN lv_document_category EQ 'L' THEN mm_document_category-sa
+                                                         ELSE mm_document_category-cn )
+                        document_creation_date = <ls_oa>-document_creation_date
+                        document_creation_time = <ls_oa>-document_creation_time ) TO lt_mm_document_flow.
+
+        ENDLOOP.
+
+      ENDIF.
 
     ENDIF.
 
     "Material Document
+    SELECT
+    DISTINCT ( ekbe~belnr ) AS document_number,
+    ekbe~bwart AS movement_type,
+    t156ht~btext AS movement_type_description,
+    ekbe~vgabe AS transaction_type,
+    a~ddtext AS transaction_type_description,
+    ekbe~cpudt AS document_creation_date,
+    ekbe~cputm AS document_creation_time
 
+     FROM ekbe
+     LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+     LEFT OUTER JOIN @lt_vgabe_domain_values AS a ON a~low EQ ekbe~vgabe ##ITAB_KEY_IN_SELECT
+     WHERE belnr EQ @lv_document AND
+           ekbe~bwart IS NOT INITIAL
+     INTO TABLE @DATA(lt_md).
+
+    IF sy-subrc EQ 0 AND lt_md IS NOT INITIAL.
+
+      LOOP AT lt_md ASSIGNING FIELD-SYMBOL(<fs_md>).
+
+        APPEND VALUE #( document_number              = <fs_md>-document_number
+                        document_category            = mm_document_category-md
+                        movement_type                = <fs_md>-movement_type
+                        movement_type_description    = <fs_md>-movement_type_description
+                        transaction_type             = <fs_md>-transaction_type
+                        transaction_type_description = <fs_md>-transaction_type_description
+                        document_creation_date       = <fs_md>-document_creation_date
+                        document_creation_time       = <fs_md>-document_creation_time ) TO lt_mm_document_flow.
+
+      ENDLOOP.
+
+    ENDIF.
 
     "Invoice
     IF ls_po IS NOT INITIAL.
@@ -802,10 +839,34 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   ENDMETHOD.
 
-
   METHOD get_flow_from_inv.
 
+    DATA(lt_vgabe_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'VGABE' ) )->get_ddic_fixed_values( sy-langu ).
+    DATA(lt_bsart_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'BSART' ) )->get_ddic_fixed_values( sy-langu ).
 
+    "Purchase Order
+    SELECT
+    ekko~ebeln  AS document_number,
+    cdhdr~udate AS document_creation_date,
+    cdhdr~utime AS document_creation_time
+
+    FROM ekko
+    INNER JOIN ekpo ON ekko~ebeln EQ ekpo~ebeln
+    INNER JOIN ekbe ON ekbe~ebeln EQ ekko~ebeln
+    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ 'I'
+    WHERE ekbe~belnr EQ @lv_document
+    INTO TABLE @DATA(lt_po).
+
+    IF sy-subrc EQ 0 AND lt_po IS NOT INITIAL.
+
+      LOOP AT lt_po ASSIGNING FIELD-SYMBOL(<fs>).
+        APPEND VALUE #( document_number        = <fs>-document_number
+                        document_category      = mm_document_category-po
+                        document_creation_date = <fs>-document_creation_date
+                        document_creation_time = <fs>-document_creation_time ) TO lt_mm_document_flow.
+      ENDLOOP.
+
+    ENDIF.
 
   ENDMETHOD.
 
@@ -906,8 +967,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       "EXPAND NODES
       lo_tree->expand_root_nodes(
         EXPORTING
-          level_count         = 3  " Number of Levels to be Expanded
-          expand_subtree      = abap_true ": Expand all Subsequent Nodes
+          level_count         = 3
+          expand_subtree      = abap_true
       EXCEPTIONS
         failed              = 1
         illegal_level_count = 2
@@ -922,7 +983,26 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD  handle_node_double_click.
+  METHOD handle_node_double_click.
+
+    me->reset_tree_selection( ).
+
+    "MARK LINE SELECTED
+    lo_tree->node_set_style(
+    EXPORTING
+      node_key          = VALUE #( lt_tree_nodes[ node_key = node_key ]-node_key OPTIONAL )
+      style             = cl_gui_simple_tree=>style_emphasized_positive ).
+
+    "CALL ALV HEADER-ITEM FOR PURCHASING DOCUMENT
+    DATA(ls_selection_data) = VALUE #( lt_tree_nodes[ node_key = node_key ] OPTIONAL ).
+
+
+    "REFRESH DATA
+    cl_gui_cfw=>set_new_ok_code( EXPORTING new_code = 'FOO' ).
+
+  ENDMETHOD.
+
+  METHOD reset_tree_selection.
 
     "RESET SELECTION STYLE
     LOOP AT lt_tree_nodes ASSIGNING FIELD-SYMBOL(<fs_node>).
@@ -933,26 +1013,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
           style             = cl_gui_simple_tree=>style_default ).
 
     ENDLOOP.
-
-    "RETRIEVE DATA FROM LINE SELECTED
-    TRY.
-        DATA(ls_selection) = lt_tree_nodes[ node_key = node_key ] .
-      CATCH cx_sy_itab_line_not_found.
-        RETURN.
-    ENDTRY.
-
-    "MARK LINE SELECTED
-    lo_tree->node_set_style(
-    EXPORTING
-      node_key          = ls_selection-node_key
-      style             = cl_gui_simple_tree=>style_emphasized_positive ).
-
-    "CALL ALV HEADER-ITEM FOR PURCHASING DOCUMENT
-
-
-
-    "REFRESH DATA
-    cl_gui_cfw=>set_new_ok_code( EXPORTING new_code = 'FOO' ).
 
   ENDMETHOD.
 
