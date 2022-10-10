@@ -1,6 +1,13 @@
-REPORT count_single_multiple_values.
+*&---------------------------------------------------------------------*
+*& Report ZCOUNT_SINGLE_MULTIPLE_VALUES
+*&---------------------------------------------------------------------*
+*& Developed By: George Drakos-Dimitris Valouxis
+*&---------------------------------------------------------------------*
+REPORT zcount_single_multiple_values.
 
-
+*&----------------------------------------------------------------------*
+*&CLASS LCL_COUNT DEFINITION
+*&----------------------------------------------------------------------*
 CLASS lcl_count DEFINITION CREATE PUBLIC FINAL.
 
   PUBLIC SECTION.
@@ -13,7 +20,9 @@ CLASS lcl_count DEFINITION CREATE PUBLIC FINAL.
 
 ENDCLASS.
 
-
+*&---------------------------------------------------------------------*
+*& EXECUTABLE CODE
+*&---------------------------------------------------------------------*
 START-OF-SELECTION.
 
   SELECT FROM vbak FIELDS vbak~* INTO TABLE @DATA(itab) UP TO 2000 ROWS.
@@ -32,7 +41,9 @@ START-OF-SELECTION.
 
 END-OF-SELECTION.
 
-
+*&----------------------------------------------------------------------*
+*&CLASS LCL_COUNT IMPLEMENTATION
+*&----------------------------------------------------------------------*
 CLASS lcl_count IMPLEMENTATION.
 
   METHOD count_single_multiple_values.
