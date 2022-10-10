@@ -49,4 +49,8 @@ Download any Texts of SAP System into Excel File directly.
 
 Under Development....
 
+## Project 6: Count Unique-Multiple Values of Internal Table Dynamically
+
+Use the Static Class Method to Retrieve Unique and Multiple values of Any Table.
+
 
