@@ -309,18 +309,17 @@ CLASS lcl_xml IMPLEMENTATION.
     "First get the Components of Internal Table
     LOOP AT lv_xml_table ASSIGNING FIELD-SYMBOL(<fs_xml_line>).
 
-      DATA(lv_tabix) = sy-tabix.
+      DATA(lv_tabix) = syst-tabix.
 
-      IF im_attribute_node IS NOT INITIAL AND im_attribute_node EQ <fs_xml_line>-cname .
+      IF im_attribute_node IS NOT INITIAL AND im_attribute_node EQ <fs_xml_line>-cname.
 
         CLEAR:lv_line_counter.
         DO.
-          lv_line_counter = lv_line_counter + 1.
-          READ TABLE lv_xml_table INDEX lv_tabix + lv_line_counter INTO DATA(ls_xml_table).
-          IF sy-subrc EQ 0 AND
-             ls_xml_table-cname NE im_attribute_node AND
-             ls_xml_table-type  EQ 'V' .
+          lv_line_counter += 1.
+          DATA(ls_xml_table) = VALUE #( lv_xml_table[ ( lv_tabix + lv_line_counter ) ] OPTIONAL ).
+          IF sy-subrc IS INITIAL AND ls_xml_table IS NOT INITIAL AND ls_xml_table-cname NE im_attribute_node AND ls_xml_table-type EQ 'V' .
             APPEND VALUE #( name = ls_xml_table-cname type = cl_abap_elemdescr=>get_c( 80 )  ) TO lt_components.
+            CLEAR:ls_xml_table.
           ELSE.
             EXIT.
           ENDIF.
@@ -331,10 +330,11 @@ CLASS lcl_xml IMPLEMENTATION.
 
         CLEAR:lv_line_counter.
         DO.
-          lv_line_counter = lv_line_counter + 1.
-          READ TABLE lv_xml_table INDEX lv_tabix + lv_line_counter INTO ls_xml_table.
-          IF sy-subrc EQ 0 AND ls_xml_table-type EQ 'V'.
+          lv_line_counter += 1.
+          ls_xml_table = VALUE #( lv_xml_table[ lv_tabix + lv_line_counter ] OPTIONAL ).
+          IF sy-subrc IS INITIAL AND ls_xml_table IS NOT INITIAL AND ls_xml_table-type EQ 'V'.
             APPEND VALUE #( name = ls_xml_table-cname type = cl_abap_elemdescr=>get_c( 80 )  ) TO lt_components.
+            CLEAR:ls_xml_table.
           ELSE.
             EXIT.
           ENDIF.
@@ -353,11 +353,17 @@ CLASS lcl_xml IMPLEMENTATION.
     ELSE.
 
       "Create Dynamic Internal Table and Structure
-      DATA(table_type) = cl_abap_tabledescr=>create( p_line_type  = cl_abap_structdescr=>create( lt_components )
-                                                     p_table_kind = cl_abap_tabledescr=>tablekind_std
-                                                     p_unique     = abap_false ).
+      TRY.
 
-      CREATE DATA ex_table TYPE HANDLE table_type.
+          DATA(table_type) = cl_abap_tabledescr=>create( p_line_type  = cl_abap_structdescr=>create( lt_components )
+                                                         p_table_kind = cl_abap_tabledescr=>tablekind_std
+                                                         p_unique     = abap_false ).
+
+          CREATE DATA ex_table TYPE HANDLE table_type.
+
+        CATCH cx_sy_table_creation INTO DATA(lo_exception).
+          RAISE EXCEPTION TYPE lcx_xml EXPORTING text = lo_exception->get_text( ).
+      ENDTRY.
 
     ENDIF.
 
