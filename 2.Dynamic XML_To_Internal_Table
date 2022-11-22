@@ -1,6 +1,6 @@
 ************************************************************************
-*   Program name:                                                      *
-*   Description :                                                      *
+*   Program name: Dynamic XML to Table Convertion                      *
+*   Description : Render any XML File to Table                         *
 *                                                                      *
 *   Created   by: GDRAKOS DVALOUXIS                                    *
 *                                                                      *
@@ -10,11 +10,15 @@ REPORT xml_to_internal_table.
 CLASS: lcx_xml DEFINITION DEFERRED,
        lcl_xml DEFINITION DEFERRED.
 
+*&----------------------------------------------------------------------*
+*&CLASS LCX_XML DEFINITION
+*&----------------------------------------------------------------------*
 CLASS lcx_xml DEFINITION INHERITING FROM cx_static_check.
 
   PUBLIC SECTION.
 
-    METHODS: constructor IMPORTING text TYPE string,
+    METHODS:
+      constructor IMPORTING text TYPE string,
       get_text REDEFINITION.
 
   PRIVATE SECTION.
@@ -23,6 +27,9 @@ CLASS lcx_xml DEFINITION INHERITING FROM cx_static_check.
 
 ENDCLASS.
 
+*&----------------------------------------------------------------------*
+*&CLASS LCL_XML DEFINITION
+*&----------------------------------------------------------------------*
 CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
   PUBLIC SECTION.
@@ -33,24 +40,25 @@ CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
     METHODS:
 
-      constructor IMPORTING im_filepath TYPE file_table-filename RAISING   lcx_xml,
+      constructor IMPORTING im_filepath TYPE file_table-filename RAISING lcx_xml,
 
       get_structured_table_from_xml IMPORTING im_attribute_node TYPE cname OPTIONAL
                                     EXPORTING ex_table          TYPE REF TO data
                                     RAISING   lcx_xml,
 
-      display_table IMPORTING im_table TYPE ANY TABLE
+      display_table IMPORTING im_table TYPE REF TO data
                     RAISING   lcx_xml.
 
   PRIVATE SECTION.
 
-    DATA: lv_filepath   TYPE file_table-filename,
-          lv_xml_string TYPE string,
-          lv_xml_table  TYPE hrpayfr_t_smum_xmltb.
+    DATA: lv_filepath    TYPE file_table-filename,
+          lv_xml_string  TYPE string,
+          lv_xml_xstring TYPE xstring,
+          lv_xml_table   TYPE hrpayfr_t_smum_xmltb.
 
     METHODS:
 
-      read_xml_to_string RAISING   lcx_xml,
+      read_xml_to_string_xstring RAISING   lcx_xml,
 
       read_xml_to_table  RAISING   lcx_xml,
 
@@ -96,6 +104,12 @@ INITIALIZATION.
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
   p_file =  lcl_xml=>open_dialog_xml( ).
 *&---------------------------------------------------------------------*
+*& AT SELECTION SCREEN Actions(PAI)
+*&---------------------------------------------------------------------*
+AT SELECTION-SCREEN.
+  PERFORM screen_pai.
+
+*&---------------------------------------------------------------------*
 *& EXECUTABLE CODE
 *&---------------------------------------------------------------------*
 START-OF-SELECTION.
@@ -108,11 +122,9 @@ START-OF-SELECTION.
         EXPORTING
           im_attribute_node = p_attr
         IMPORTING
-          ex_table = DATA(gt_data_ref) ).
+          ex_table = DATA(lr_table) ).
 
-      ASSIGN gt_data_ref->* TO FIELD-SYMBOL(<fs_table>).
-
-      lo_xml->display_table( EXPORTING im_table = <fs_table> ).
+      lo_xml->display_table( im_table = lr_table ).
 
     CATCH lcx_xml INTO DATA(lo_exception).
       MESSAGE lo_exception->get_text( ) TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
@@ -131,8 +143,22 @@ FORM screen_initialization.
 
   title1  = 'XML Selection Criteria'.
 
-  t_file  = icon_xml_doc &&  'XML Filepath'.
+  t_file  = icon_xml_doc && 'XML Filepath'.
   t_attr  = icon_io_attribute && 'Attribute Node'.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form SCREEN PROCESS AFTER INPUT
+*&---------------------------------------------------------------------*
+FORM screen_pai.
+
+  CASE syst-ucomm.
+    WHEN 'ONLI'.
+      IF p_file IS INITIAL.
+        MESSAGE 'Filepath is Mandatory Field' TYPE 'E'.
+      ENDIF.
+  ENDCASE.
 
 ENDFORM.
 
@@ -172,7 +198,6 @@ CLASS lcl_xml IMPLEMENTATION.
     DATA: lt_file_table TYPE filetable,
           lv_return     TYPE i.
 
-    CLEAR:lt_file_table.
     CALL METHOD cl_gui_frontend_services=>file_open_dialog
       EXPORTING
         window_title            = 'File System of Presentation Server'
@@ -188,12 +213,7 @@ CLASS lcl_xml IMPLEMENTATION.
         OTHERS                  = 4.
 
     CHECK sy-subrc IS INITIAL.
-
-    TRY.
-        re_filepath =  lt_file_table[ 1 ]-filename.
-      CATCH cx_sy_itab_line_not_found.
-        CLEAR:re_filepath.
-    ENDTRY.
+    re_filepath =  VALUE #( lt_file_table[ 1 ]-filename OPTIONAL ).
 
   ENDMETHOD.
 
@@ -201,12 +221,12 @@ CLASS lcl_xml IMPLEMENTATION.
 
     lv_filepath = im_filepath.
 
-    me->read_xml_to_string( ).
+    me->read_xml_to_string_xstring( ).
     me->read_xml_to_table( ).
 
   ENDMETHOD.
 
-  METHOD read_xml_to_string.
+  METHOD read_xml_to_string_xstring.
 
     IF lv_xml_string IS INITIAL.
 
@@ -221,6 +241,13 @@ CLASS lcl_xml IMPLEMENTATION.
                                      size    = DATA(lv_size) ##NEEDED
                                      stream  = lv_xml_string ).
 
+            lo_xml->render_2_xstring( EXPORTING
+                                      pretty_print = abap_true
+                                     IMPORTING
+                                      retcode = lv_rc ##NEEDED
+                                      size    = lv_size ##NEEDED
+                                      stream  = lv_xml_xstring ).
+
           ENDIF.
         CATCH cx_root INTO DATA(lo_exception).
           RAISE EXCEPTION TYPE lcx_xml EXPORTING text = lo_exception->get_text( ).
@@ -228,46 +255,22 @@ CLASS lcl_xml IMPLEMENTATION.
 
     ENDIF.
 
-
   ENDMETHOD.
 
   METHOD read_xml_to_table.
 
-    DATA: lt_return      TYPE TABLE OF bapiret2.
+    DATA: lt_return TYPE TABLE OF bapiret2.
 
-    DATA(lo_xml) = NEW cl_xml_document( ).
-
-    CALL METHOD lo_xml->import_from_file
+    CALL FUNCTION 'SMUM_XML_PARSE'
       EXPORTING
-        filename = CONV #( lv_filepath )
-      RECEIVING
-        retcode  = DATA(lv_subrc).
+        xml_input = me->lv_xml_xstring
+      TABLES
+        xml_table = lv_xml_table
+        return    = lt_return
+      EXCEPTIONS
+        OTHERS    = 1.
 
-    IF lv_subrc EQ 0.
-
-      CALL METHOD lo_xml->render_2_xstring
-        IMPORTING
-          retcode = lv_subrc
-          stream  = DATA(lv_xml_xstring) ##NEEDED
-          size    = DATA(lv_size) ##NEEDED.
-
-      IF lv_subrc EQ 0.
-
-        CLEAR:lt_return.
-        CALL FUNCTION 'SMUM_XML_PARSE'
-          EXPORTING
-            xml_input = lv_xml_xstring
-          TABLES
-            xml_table = lv_xml_table
-            return    = lt_return
-          EXCEPTIONS
-            OTHERS    = 1.
-
-      ENDIF.
-
-    ENDIF.
-
-    IF sy-subrc NE 0 OR lv_subrc NE 0 OR
+    IF sy-subrc IS NOT INITIAL OR
        line_exists( lt_return[ type = cl_cms_common=>con_msg_typ_e ] ) OR
        line_exists( lt_return[ type = cl_cms_common=>con_msg_typ_a ] ) OR
        line_exists( lt_return[ type = cl_cms_common=>con_msg_typ_x ] ).
@@ -280,15 +283,13 @@ CLASS lcl_xml IMPLEMENTATION.
 
   METHOD get_structured_table_from_xml.
 
-    FIELD-SYMBOLS: <fs_itab>  TYPE ANY TABLE.
-
     me->get_dynamic_table_from_xml(
       EXPORTING
         im_attribute_node = im_attribute_node
       IMPORTING
         ex_table  = DATA(lr_table) ).
 
-    ASSIGN lr_table->* TO <fs_itab>.
+    ASSIGN lr_table->* TO FIELD-SYMBOL(<fs_itab>).
 
     me->populate_table_from_xml(
       EXPORTING
@@ -296,7 +297,7 @@ CLASS lcl_xml IMPLEMENTATION.
       CHANGING
         ex_table = <fs_itab> ).
 
-    GET REFERENCE OF <fs_itab> INTO ex_table.
+    ex_table = REF #( <fs_itab> ).
 
   ENDMETHOD.
 
@@ -352,10 +353,9 @@ CLASS lcl_xml IMPLEMENTATION.
     ELSE.
 
       "Create Dynamic Internal Table and Structure
-      DATA(table_type) = cl_abap_tabledescr=>create(
-                              p_line_type  = cl_abap_structdescr=>create( lt_components )
-                              p_table_kind = cl_abap_tabledescr=>tablekind_std
-                              p_unique     = abap_false ).
+      DATA(table_type) = cl_abap_tabledescr=>create( p_line_type  = cl_abap_structdescr=>create( lt_components )
+                                                     p_table_kind = cl_abap_tabledescr=>tablekind_std
+                                                     p_unique     = abap_false ).
 
       CREATE DATA ex_table TYPE HANDLE table_type.
 
@@ -470,12 +470,9 @@ CLASS lcl_xml IMPLEMENTATION.
 
   METHOD display_table.
 
-    DATA:ref_wa TYPE REF TO data.
+    ASSIGN im_table->* TO FIELD-SYMBOL(<fs_itab>).
 
-    CREATE DATA ref_wa LIKE im_table.
-
-    ASSIGN ref_wa->* TO  FIELD-SYMBOL(<fs_itab>).
-    <fs_itab> = im_table.
+    CHECK <fs_itab> IS ASSIGNED.
 
     TRY.
         cl_salv_table=>factory( EXPORTING  r_container = cl_gui_container=>default_screen  list_display   = if_salv_c_bool_sap=>false
@@ -488,7 +485,7 @@ CLASS lcl_xml IMPLEMENTATION.
     "Columns Optimize
     alv->get_columns( )->set_optimize( if_salv_c_bool_sap=>true ).
 
-    "Build Field Catalog Dynamically in Case of Empty
+    "Build Field Catalog Dynamically in Case of Empty Label
     LOOP AT alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<fs_cols>).
 
       IF <fs_cols>-r_column->get_medium_text( ) IS INITIAL.
