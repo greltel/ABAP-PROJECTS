@@ -36,10 +36,9 @@ you can use it as a utility to display any table of the system plus display your
 
 Upload XML file and map it directly to Internal Table.
 
-## Project 3: Transport Request Utility
+## Project 3: Count Unique-Multiple Values of Internal Table Dynamically
 
-Heads up functional consultants. This one is built in order to assist you in your daily request transports.
-It is under construction so stay tuned...
+Use the Static Class Method to Retrieve Unique and Multiple values of Any Table.
 
 ## Project 4: Dynamic Texts Export
 
@@ -48,9 +47,3 @@ Download any Texts of SAP System into Excel File directly.
 ## Project 5: MM Document Flow
 
 Under Development....
-
-## Project 6: Count Unique-Multiple Values of Internal Table Dynamically
-
-Use the Static Class Method to Retrieve Unique and Multiple values of Any Table.
-
-
