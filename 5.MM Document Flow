@@ -979,7 +979,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
           table_structure_name_not_found = 4
           OTHERS                         = 5 ).
 
-      IF sy-subrc NE 0.
+      IF sy-subrc IS NOT INITIAL.
         RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error Creating Tree'.
       ENDIF.
 
@@ -994,7 +994,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         cntl_system_error   = 3
         OTHERS              = 4 ).
 
-      IF sy-subrc NE 0.
+      IF sy-subrc IS NOT INITIAL.
         RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error Creating Tree'.
       ENDIF.
 
@@ -1014,7 +1014,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "CALL ALV HEADER-ITEM FOR PURCHASING DOCUMENT
     DATA(ls_selection_data) = VALUE #( lt_tree_nodes[ node_key = node_key ] OPTIONAL ).
-
 
     "REFRESH DATA
     cl_gui_cfw=>set_new_ok_code( EXPORTING new_code = 'FOO' ).
