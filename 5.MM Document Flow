@@ -143,6 +143,9 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
       get_flow_from_po            RAISING lcx_exception,
       get_flow_from_md            RAISING lcx_exception,
       get_flow_from_inv           RAISING lcx_exception,
+      display_document_details    IMPORTING im_document     TYPE ebeln
+                                            im_document_cat TYPE ty_enum_mm_document_category
+                                  RAISING   lcx_exception,
       build_node_table            RAISING lcx_exception,
       reset_tree_selection        RAISING lcx_exception.
 
@@ -933,7 +936,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       ENDLOOP.
 
-
     ENDLOOP.
 
   ENDMETHOD.
@@ -950,7 +952,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                                                       columns = 2 ).
 
       me->lr_splitter_container->set_column_width( id = 1 width = 15 ).
-      me->lr_left_container = me->lr_splitter_container->get_container(  row = 1 column = 1 ).
+      me->lr_left_container  = me->lr_splitter_container->get_container(  row = 1 column = 1 ).
       me->lr_right_container = me->lr_splitter_container->get_container( row = 1 column = 2 ).
 
     ENDIF.
@@ -1009,16 +1011,27 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     me->reset_tree_selection( ).
 
     "MARK LINE SELECTED
-    lo_tree->node_set_style(
-    EXPORTING
-      node_key          = VALUE #( lt_tree_nodes[ node_key = node_key ]-node_key OPTIONAL )
-      style             = cl_gui_simple_tree=>style_emphasized_positive ).
+    lo_tree->node_set_style( EXPORTING node_key = VALUE #( lt_tree_nodes[ node_key = node_key ]-node_key OPTIONAL )
+                                       style    = cl_gui_simple_tree=>style_emphasized_positive ).
 
     "CALL ALV HEADER-ITEM FOR PURCHASING DOCUMENT
     DATA(ls_selection_data) = VALUE #( lt_tree_nodes[ node_key = node_key ] OPTIONAL ).
+    IF ls_selection_data-isfolder IS INITIAL AND ls_selection_data-node_key IS NOT INITIAL.
+      me->display_document_details( im_document     = CONV #( ls_selection_data-node_key )
+                                    im_document_cat = CONV #( ls_selection_data-relatkey ) ).
+    ENDIF.
 
     "REFRESH DATA
     cl_gui_cfw=>set_new_ok_code( EXPORTING new_code = 'FOO' ).
+
+  ENDMETHOD.
+
+  METHOD display_document_details.
+
+
+
+
+
 
   ENDMETHOD.
 
