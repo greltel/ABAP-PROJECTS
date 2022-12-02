@@ -131,37 +131,24 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
     "PRIVATE METHODS
     METHODS:
 
-      create_containers RAISING lcx_exception,
-
-      create_tree RAISING   lcx_exception,
-
-      determine_document_category RAISING   lcx_exception,
-
-      get_mm_document_flow RAISING   lcx_exception,
-
-      get_flow_from_pr RAISING   lcx_exception,
-
-      get_flow_from_qu  RAISING lcx_exception,
-
-      get_flow_from_rfq RAISING lcx_exception,
-
-      get_flow_from_cn  RAISING lcx_exception,
-
-      get_flow_from_sa  RAISING lcx_exception,
-
-      get_flow_from_po RAISING   lcx_exception,
-
-      get_flow_from_md RAISING   lcx_exception,
-
-      get_flow_from_inv RAISING   lcx_exception,
-
-      build_node_table RAISING   lcx_exception,
-
-      reset_tree_selection RAISING lcx_exception.
+      create_containers           RAISING lcx_exception,
+      create_tree                 RAISING lcx_exception,
+      determine_document_category RAISING lcx_exception,
+      get_mm_document_flow        RAISING lcx_exception,
+      get_flow_from_pr            RAISING lcx_exception,
+      get_flow_from_qu            RAISING lcx_exception,
+      get_flow_from_rfq           RAISING lcx_exception,
+      get_flow_from_cn            RAISING lcx_exception,
+      get_flow_from_sa            RAISING lcx_exception,
+      get_flow_from_po            RAISING lcx_exception,
+      get_flow_from_md            RAISING lcx_exception,
+      get_flow_from_inv           RAISING lcx_exception,
+      build_node_table            RAISING lcx_exception,
+      reset_tree_selection        RAISING lcx_exception.
 
     "PRIVATE EVENT METHODS
     METHODS:
-      handle_node_double_click  FOR EVENT node_double_click  OF cl_gui_simple_tree IMPORTING node_key.
+      handle_node_double_click FOR EVENT node_double_click OF cl_gui_simple_tree IMPORTING node_key.
 
 ENDCLASS.
 
@@ -291,7 +278,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "PURCHASE REQUISITION
     SELECT SINGLE @abap_true FROM eban WHERE banfn EQ @me->lv_document AND bstyp EQ 'B' INTO @DATA(lv_exists).
 
-    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+    IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-pr.
       RETURN.
     ENDIF.
@@ -299,7 +286,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "REQUEST FOR QUOTATION
     CLEAR:lv_exists.
     SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'R' INTO @lv_exists.
-    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+    IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-rfq.
       RETURN.
     ENDIF.
@@ -307,7 +294,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "QUOTATION
     CLEAR:lv_exists.
     SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'O' INTO @lv_exists.
-    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+    IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-qu.
       RETURN.
     ENDIF.
@@ -315,7 +302,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "CONTRACT
     CLEAR:lv_exists.
     SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'K' INTO @lv_exists.
-    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+    IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-cn.
       RETURN.
     ENDIF.
@@ -323,7 +310,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "SCHEDULING AGREEMENT
     CLEAR:lv_exists.
     SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'L' INTO @lv_exists.
-    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+    IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-sa.
       RETURN.
     ENDIF.
@@ -332,7 +319,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     CLEAR:lv_exists.
     SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'F' INTO @lv_exists.
 
-    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+    IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-po.
       RETURN.
     ENDIF.
@@ -341,7 +328,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     CLEAR:lv_exists.
     SELECT SINGLE @abap_true FROM mkpf WHERE mblnr EQ @me->lv_document INTO @lv_exists.
 
-    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+    IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-md.
       RETURN.
     ENDIF.
@@ -350,7 +337,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     CLEAR:lv_exists.
     SELECT SINGLE @abap_true FROM rbkp WHERE belnr EQ @me->lv_document INTO @lv_exists.
 
-    IF sy-subrc EQ 0 AND lv_exists EQ abap_true.
+    IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-inv.
       RETURN.
     ENDIF.
@@ -414,7 +401,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
             eban~bstyp EQ 'B'
       INTO @DATA(ls_pr).
 
-    IF sy-subrc EQ 0 AND ls_pr IS NOT INITIAL.
+    IF sy-subrc IS INITIAL AND ls_pr IS NOT INITIAL.
       APPEND VALUE #( document_number        = ls_pr-document_number
                       document_category      = mm_document_category-pr
                       document_creation_date = ls_pr-document_creation_date
@@ -434,7 +421,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
           ekpo~konnr IS NOT INITIAL
     INTO TABLE @DATA(lt_oa).
 
-    IF sy-subrc EQ 0 AND lt_oa IS NOT INITIAL.
+    IF sy-subrc IS INITIAL AND lt_oa IS NOT INITIAL.
 
       LOOP AT lt_oa ASSIGNING FIELD-SYMBOL(<fs_oa>).
 
@@ -465,7 +452,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     WHERE ekpo~banfn EQ @lv_document
     INTO TABLE @DATA(lt_po).
 
-    IF sy-subrc EQ 0 AND lt_po IS NOT INITIAL.
+    IF sy-subrc IS INITIAL AND lt_po IS NOT INITIAL.
       LOOP AT lt_po ASSIGNING FIELD-SYMBOL(<fs_po>).
 
         APPEND VALUE #( document_number        = <fs_po>-document_number
@@ -491,7 +478,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       WHERE  ekbe~bwart IS NOT INITIAL
       INTO TABLE @DATA(lt_md).
 
-    IF sy-subrc EQ 0 AND lt_md IS NOT INITIAL.
+    IF sy-subrc IS INITIAL AND lt_md IS NOT INITIAL.
 
       LOOP AT lt_md ASSIGNING FIELD-SYMBOL(<fs_md>).
 
@@ -522,7 +509,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
    WHERE ekbe~bwart IS INITIAL
    INTO TABLE @DATA(lt_inv).
 
-    IF sy-subrc EQ 0 AND lt_inv IS NOT INITIAL.
+    IF sy-subrc IS INITIAL AND lt_inv IS NOT INITIAL.
 
       LOOP AT lt_inv ASSIGNING FIELD-SYMBOL(<fs_inv>).
 
@@ -573,7 +560,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
             eban~bstyp EQ 'B'
       INTO TABLE @DATA(lt_pr).
 
-    IF sy-subrc EQ 0 AND lt_pr IS NOT INITIAL.
+    IF sy-subrc IS INITIAL AND lt_pr IS NOT INITIAL.
 
       LOOP AT lt_pr ASSIGNING FIELD-SYMBOL(<fs_pr>).
         APPEND VALUE #( document_number        = <fs_pr>-document_number
@@ -596,7 +583,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
           ekpo~konnr IS NOT INITIAL
     INTO TABLE @DATA(lt_oa).
 
-    IF sy-subrc EQ 0 AND lt_oa IS NOT INITIAL.
+    IF sy-subrc IS INITIAL AND lt_oa IS NOT INITIAL.
 
       LOOP AT lt_oa ASSIGNING FIELD-SYMBOL(<ls_oa>).
 
@@ -627,7 +614,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     WHERE ekpo~ebeln EQ @lv_document
     INTO @DATA(ls_po).
 
-    IF sy-subrc EQ 0 AND ls_po IS NOT INITIAL.
+    IF sy-subrc IS INITIAL AND ls_po IS NOT INITIAL.
       APPEND VALUE #( document_number        = ls_po-document_number
                       document_category      = mm_document_category-po
                       document_creation_date = ls_po-document_creation_date
@@ -651,7 +638,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
             ekbe~bwart IS NOT INITIAL
       INTO TABLE @DATA(lt_md).
 
-    IF sy-subrc EQ 0 AND lt_md IS NOT INITIAL.
+    IF sy-subrc IS INITIAL AND lt_md IS NOT INITIAL.
 
       LOOP AT lt_md ASSIGNING FIELD-SYMBOL(<fs_md>).
 
@@ -685,7 +672,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
          ekbe~bwart IS INITIAL
    INTO TABLE @DATA(lt_inv).
 
-    IF sy-subrc EQ 0 AND lt_inv IS NOT INITIAL.
+    IF sy-subrc IS INITIAL AND lt_inv IS NOT INITIAL.
 
       LOOP AT lt_inv ASSIGNING FIELD-SYMBOL(<fs_inv>).
 
@@ -722,7 +709,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     WHERE mseg~mblnr EQ @lv_document
     INTO @DATA(ls_po).
 
-    IF sy-subrc EQ 0 AND ls_po IS NOT INITIAL.
+    IF sy-subrc IS INITIAL AND ls_po IS NOT INITIAL.
       APPEND VALUE #( document_number        = ls_po-document_number
                       document_category      = mm_document_category-po
                       document_creation_date = ls_po-document_creation_date
@@ -744,7 +731,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
               eban~bstyp EQ 'B'
         INTO TABLE @DATA(lt_pr).
 
-      IF sy-subrc EQ 0 AND lt_pr IS NOT INITIAL.
+      IF sy-subrc IS INITIAL AND lt_pr IS NOT INITIAL.
 
         LOOP AT lt_pr ASSIGNING FIELD-SYMBOL(<fs_pr>).
           APPEND VALUE #( document_number        = <fs_pr>-document_number
@@ -771,7 +758,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
             ekpo~konnr IS NOT INITIAL
       INTO TABLE @DATA(lt_oa).
 
-      IF sy-subrc EQ 0 AND lt_oa IS NOT INITIAL.
+      IF sy-subrc IS INITIAL AND lt_oa IS NOT INITIAL.
 
         LOOP AT lt_oa ASSIGNING FIELD-SYMBOL(<ls_oa>).
 
@@ -807,7 +794,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
            ekbe~bwart IS NOT INITIAL
      INTO TABLE @DATA(lt_md).
 
-    IF sy-subrc EQ 0 AND lt_md IS NOT INITIAL.
+    IF sy-subrc IS INITIAL AND lt_md IS NOT INITIAL.
 
       LOOP AT lt_md ASSIGNING FIELD-SYMBOL(<fs_md>).
 
@@ -843,7 +830,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
            ekbe~bwart IS INITIAL
      INTO TABLE @DATA(lt_inv).
 
-      IF sy-subrc EQ 0 AND lt_inv IS NOT INITIAL.
+      IF sy-subrc IS INITIAL AND lt_inv IS NOT INITIAL.
 
         LOOP AT lt_inv ASSIGNING FIELD-SYMBOL(<fs_inv>).
 
@@ -883,7 +870,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     WHERE ekbe~belnr EQ @lv_document
     INTO TABLE @DATA(lt_po).
 
-    IF sy-subrc EQ 0 AND lt_po IS NOT INITIAL.
+    IF sy-subrc IS INITIAL AND lt_po IS NOT INITIAL.
 
       LOOP AT lt_po ASSIGNING FIELD-SYMBOL(<fs>).
         APPEND VALUE #( document_number        = <fs>-document_number
@@ -974,11 +961,11 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     IF lo_tree IS NOT BOUND.
 
-      "CREATE TREE OBJECTS
+      "CREATE TREE OBJECT
       lo_tree = NEW #( parent              = me->lr_left_container
                        node_selection_mode = cl_gui_simple_tree=>node_sel_mode_single ).
 
-      "EVENTS REGISTER
+      "REGISTER EVENTS
       lo_tree->set_registered_events( EXPORTING events = VALUE #( ( eventid = cl_gui_simple_tree=>eventid_node_double_click appl_event = space ) ) ).
       SET HANDLER me->handle_node_double_click FOR lo_tree.
 
@@ -1001,8 +988,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       "EXPAND NODES
       lo_tree->expand_root_nodes(
         EXPORTING
-          level_count         = 3
-          expand_subtree      = abap_true
+          level_count       = 3
+          expand_subtree    = abap_true
       EXCEPTIONS
         failed              = 1
         illegal_level_count = 2
@@ -1048,7 +1035,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     ENDLOOP.
 
   ENDMETHOD.
-
 
 ENDCLASS.
 
