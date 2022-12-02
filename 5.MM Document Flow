@@ -5,7 +5,7 @@
 *& Created   By: GDRAKOS
 *& Created   On:
 *&---------------------------------------------------------------------*
-REPORT mm_document_flow NO STANDARD PAGE HEADING LINE-SIZE 255.
+REPORT z_mm_document_flow NO STANDARD PAGE HEADING LINE-SIZE 255.
 *&--------------------------------------------------------------------&*
 *&              M O D I F I C A T I O N    L O G                      &*
 *&--------------------------------------------------------------------&*
@@ -126,7 +126,9 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
       "CONTAINERS
       lr_splitter_container TYPE REF TO cl_gui_splitter_container,
       lr_left_container     TYPE REF TO cl_gui_container,
-      lr_right_container    TYPE REF TO cl_gui_container.
+      lr_right_container    TYPE REF TO cl_gui_container,
+      "ALV
+      lo_alv_details        TYPE REF TO  cl_gui_alv_grid.
 
     "PRIVATE METHODS
     METHODS:
@@ -146,12 +148,21 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
       display_document_details    IMPORTING im_document     TYPE ebeln
                                             im_document_cat TYPE ty_enum_mm_document_category
                                   RAISING   lcx_exception,
+      get_details_table           IMPORTING im_document     TYPE ebeln
+                                            im_document_cat TYPE ty_enum_mm_document_category
+                                  RAISING   lcx_exception,
       build_node_table            RAISING lcx_exception,
       reset_tree_selection        RAISING lcx_exception.
 
-    "PRIVATE EVENT METHODS
+    "TREE EVENT METHODS
     METHODS:
       handle_node_double_click FOR EVENT node_double_click OF cl_gui_simple_tree IMPORTING node_key.
+
+    "ALV EVENT METHODS
+    METHODS:
+      handle_hotspot_click FOR EVENT hotspot_click OF cl_gui_alv_grid IMPORTING e_row_id e_column_id es_row_no,
+      toolbar              FOR EVENT toolbar       OF  cl_gui_alv_grid IMPORTING e_object,
+      user_command         FOR EVENT user_command  OF cl_gui_alv_grid IMPORTING e_ucomm.
 
 ENDCLASS.
 
@@ -967,8 +978,19 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       lo_tree = NEW #( parent              = me->lr_left_container
                        node_selection_mode = cl_gui_simple_tree=>node_sel_mode_single ).
 
+      IF lo_tree IS NOT BOUND.
+        RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error Creating Tree'.
+      ENDIF.
+
       "REGISTER EVENTS
-      lo_tree->set_registered_events( EXPORTING events = VALUE #( ( eventid = cl_gui_simple_tree=>eventid_node_double_click appl_event = space ) ) ).
+      lo_tree->set_registered_events( EXPORTING events = VALUE #( ( eventid = cl_gui_simple_tree=>eventid_node_double_click appl_event = space ) )
+                                      EXCEPTIONS cntl_error                = 1
+                                                 cntl_system_error         = 2
+                                                 illegal_event_combination = 3 ).
+      IF sy-subrc IS NOT INITIAL.
+        RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error Creating Tree'.
+      ENDIF.
+
       SET HANDLER me->handle_node_double_click FOR lo_tree.
 
       "ADD NODES TO TREE
@@ -1012,7 +1034,10 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "MARK LINE SELECTED
     lo_tree->node_set_style( EXPORTING node_key = VALUE #( lt_tree_nodes[ node_key = node_key ]-node_key OPTIONAL )
-                                       style    = cl_gui_simple_tree=>style_emphasized_positive ).
+                                       style    = cl_gui_simple_tree=>style_emphasized_positive
+                             EXCEPTIONS failed            = 1
+                                        node_not_found    = 2
+                                        cntl_system_error = 3 ).
 
     "CALL ALV HEADER-ITEM FOR PURCHASING DOCUMENT
     DATA(ls_selection_data) = VALUE #( lt_tree_nodes[ node_key = node_key ] OPTIONAL ).
@@ -1028,10 +1053,114 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD display_document_details.
 
+    me->get_details_table( im_document     = CONV #( im_document  ) ##OPERATOR[EBELN]
+                           im_document_cat = CONV #( im_document_cat  ) ) ##OPERATOR[TY_ENUM_MM_DOCUMENT_CATEGORY].
+
+    "ALV Object Instantiation
+    lo_alv_details = NEW #( i_parent  = me->lr_right_container ).
+
+    "AUTOMATIC CREATION OF FIELD CATALOG BASED ON INTERNAL TABLE
+    TRY.
+        cl_salv_table=>factory( IMPORTING r_salv_table   = DATA(salv_table) CHANGING t_table = lt_tree_nodes ).
+        DATA(lt_fieldcat) = cl_salv_controller_metadata=>get_lvc_fieldcatalog( r_columns = salv_table->get_columns( ) r_aggregations = salv_table->get_aggregations( ) ).
+      CATCH cx_salv_msg.
+        RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error Loading the Field Catalog'.
+    ENDTRY.
+
+    "Field Catalog Modifications
+    LOOP AT lt_fieldcat ASSIGNING FIELD-SYMBOL(<fs_fieldcat>).
+
+      <fs_fieldcat>-just = 'C'.
+
+      CASE <fs_fieldcat>-fieldname.
+        WHEN 'MANDT'.
+          <fs_fieldcat>-no_out = abap_true.
+        WHEN OTHERS.
+          <fs_fieldcat>-reptext = <fs_fieldcat>-scrtext_s = <fs_fieldcat>-scrtext_m = <fs_fieldcat>-scrtext_l = 'Header Text'.
+          <fs_fieldcat>-icon = abap_true.
+      ENDCASE.
+
+    ENDLOOP.
+
+    "Sort
+    DATA(lt_sort) = VALUE lvc_t_sort( ( fieldname = 'LINE_COLOR' up = abap_true ) ).
+
+    "Event Handling
+    SET HANDLER: me->handle_hotspot_click FOR lo_alv_details,
+                 me->toolbar              FOR lo_alv_details,
+                 me->user_command         FOR lo_alv_details.
+
+    "Register the event to trigger DATA_CHANGED event when modify or press enter.
+    CALL METHOD: lo_alv_details->register_edit_event EXPORTING i_event_id = cl_gui_alv_grid=>mc_evt_enter,
+                 lo_alv_details->register_edit_event EXPORTING i_event_id = cl_gui_alv_grid=>mc_evt_modified.
+
+    lo_alv_details->set_table_for_first_display(
+      EXPORTING
+        i_save                        = cl_dba_core_constants=>co_save_layout_by_user
+        is_variant                    = VALUE disvariant( report = sy-repid username = sy-uname  )
+        is_layout                     = VALUE lvc_s_layo( zebra = abap_true cwidth_opt = abap_true grid_title = syst-title )
+        it_toolbar_excluding          = VALUE ui_functions( ( cl_gui_alv_grid=>mc_fc_loc_insert_row )
+                                                            ( cl_gui_alv_grid=>mc_fc_print )
+                                                            ( cl_gui_alv_grid=>mc_fc_loc_copy_row )
+                                                            ( cl_gui_alv_grid=>mc_fc_loc_append_row )
+                                                            ( cl_gui_alv_grid=>mc_fc_info )
+                                                            ( cl_gui_alv_grid=>mc_fc_loc_undo )
+                                                            ( cl_gui_alv_grid=>mc_fc_loc_delete_row )
+                                                            ( cl_gui_alv_grid=>mc_fc_help )
+                                                            ( cl_gui_alv_grid=>mc_fc_loc_copy )
+                                                            ( cl_gui_alv_grid=>mc_fc_loc_cut )
+                                                            ( cl_gui_alv_grid=>mc_fc_loc_paste_new_row )
+                                                            ( cl_gui_alv_grid=>mc_fc_loc_paste ) )
+      CHANGING
+        it_outtab                     = lt_tree_nodes
+*        it_sort                       = lt_sort
+        it_fieldcatalog               = lt_fieldcat
+      EXCEPTIONS
+        invalid_parameter_combination = 1
+        program_error                 = 2
+        too_many_lines                = 3
+        OTHERS                        = 4 ).
+
+    IF sy-subrc IS NOT INITIAL.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error Loading the ALV'.
+    ENDIF.
+
+    "Set Ready for input for Style.
+    lo_alv_details->set_ready_for_input( i_ready_for_input = 1 ).
+
+  ENDMETHOD.
+
+  METHOD get_details_table.
 
 
+  ENDMETHOD.
 
+  METHOD toolbar.
 
+    "APPEND VALUE #( function = 'ZFC1' text  = 'Process Selected Lines' icon = icon_operation ) TO e_object->mt_toolbar.
+
+  ENDMETHOD.
+
+  METHOD user_command.
+
+    TRY.
+        CASE e_ucomm.
+
+          WHEN OTHERS.
+
+        ENDCASE.
+      CATCH lcx_exception.
+    ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD handle_hotspot_click.
+
+    CASE e_column_id.
+
+      WHEN OTHERS.
+
+    ENDCASE.
 
   ENDMETHOD.
 
@@ -1043,7 +1172,11 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       lo_tree->node_set_style(
         EXPORTING
           node_key          = <fs_node>-node_key
-          style             = cl_gui_simple_tree=>style_default ).
+          style             = cl_gui_simple_tree=>style_default
+        EXCEPTIONS
+           failed            = 1
+           node_not_found    = 2
+           cntl_system_error = 3 ).
 
     ENDLOOP.
 
