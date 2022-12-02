@@ -5,7 +5,7 @@
 *& Created   By: GDRAKOS
 *& Created   On:
 *&---------------------------------------------------------------------*
-
+REPORT mm_document_flow NO STANDARD PAGE HEADING LINE-SIZE 255.
 *&--------------------------------------------------------------------&*
 *&              M O D I F I C A T I O N    L O G                      &*
 *&--------------------------------------------------------------------&*
@@ -15,10 +15,8 @@
 *& Change Request :                                                    *
 *&--------------------------------------------------------------------&*
 
-REPORT mm_document_flow NO STANDARD PAGE HEADING LINE-SIZE 255.
-
 *&---------------------------------------------------------------------*
-*& CONSTANTS
+*& GLOBAL CONSTANTS
 *&---------------------------------------------------------------------*
 CONSTANTS: gc_screen_container TYPE char30     VALUE 'CC_0100',
            gc_screen_number    TYPE syst-dynnr VALUE '0100',
@@ -29,7 +27,7 @@ CONSTANTS: gc_screen_container TYPE char30     VALUE 'CC_0100',
 *& CLASS DEFINITIONS
 *&---------------------------------------------------------------------*
 CLASS: lcl_mm_doc_flow DEFINITION DEFERRED,
-       lcx_exception  DEFINITION DEFERRED.
+       lcx_exception   DEFINITION DEFERRED.
 
 *&----------------------------------------------------------------------*
 *&CLASS LCX_EXCEPTION DEFINITION
@@ -116,15 +114,19 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
 
     "PRIVATE DATA
     DATA:
-      lv_document          TYPE ekko-ebeln,
-      lv_document_category TYPE ty_enum_mm_document_category,
-      lv_screen_container  TYPE char30,
-      lv_screen_status     TYPE gui_status,
-      lv_screen_title      TYPE gui_title,
-      lv_screen_number     TYPE syst-dynnr,
-      lt_mm_document_flow  TYPE tt_mm_document_flow,
-      lt_tree_nodes        TYPE tt_trees_node,
-      lo_tree              TYPE REF TO cl_gui_simple_tree.
+      lv_document           TYPE ekko-ebeln,
+      lv_document_category  TYPE ty_enum_mm_document_category,
+      lv_screen_container   TYPE char30,
+      lv_screen_status      TYPE gui_status,
+      lv_screen_title       TYPE gui_title,
+      lv_screen_number      TYPE syst-dynnr,
+      lt_mm_document_flow   TYPE tt_mm_document_flow,
+      lt_tree_nodes         TYPE tt_trees_node,
+      lo_tree               TYPE REF TO cl_gui_simple_tree,
+      "CONTAINERS
+      lr_splitter_container TYPE REF TO cl_gui_splitter_container,
+      lr_left_container     TYPE REF TO cl_gui_container,
+      lr_right_container    TYPE REF TO cl_gui_container.
 
     "PRIVATE METHODS
     METHODS:
@@ -255,6 +257,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD process_before_output.
 
+
     IF me->lv_screen_status IS NOT INITIAL.
       SET PF-STATUS me->lv_screen_status.
     ELSE.
@@ -270,9 +273,13 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD process_after_input.
 
+    CALL METHOD cl_gui_cfw=>dispatch.
+
     CASE screen_okcode.
       WHEN 'BACK' OR 'EXIT' OR 'CANCEL'.
         LEAVE TO SCREEN 0.
+      WHEN OTHERS.
+
     ENDCASE.
 
   ENDMETHOD.
@@ -895,7 +902,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     APPEND VALUE #( hidden    = space
                     disabled  = space
                     isfolder  = abap_true
-                    node_key  = syst-repid
+                    node_key  = |Root Node|
                     text      = |Document Flow { VALUE #( lt_mm_document_flow[ document_number = lv_document ]-document_category OPTIONAL ) } { lv_document ALPHA = OUT }|
                     n_image   = icon_system_favorites
                     exp_image = icon_system_favorites ) TO lt_tree_nodes.
@@ -931,8 +938,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                         isfolder  = space
                         relatkey  = <fs_group_line>-document_category
                         relatship = cl_gui_simple_tree=>relat_last_child
-                        node_key  = | { <fs_group_line>-document_number ALPHA = OUT } | && <fs_group_line>-document_category
-                        text      = CONV #( | { <fs_group_line>-document_number ALPHA = OUT } | )
+                        node_key  = |{ <fs_group_line>-document_number ALPHA = OUT } | "&& <fs_group_line>-document_category
+                        text      = CONV #( |{ <fs_group_line>-document_number ALPHA = OUT } | )
                         expander  = space
                         n_image   = icon_patient_smartcard
                         exp_image = icon_patient_smartcard ) TO lt_tree_nodes.
@@ -946,6 +953,20 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD create_containers.
 
+    IF me->lr_splitter_container IS NOT BOUND.
+
+      CLEAR:me->lr_splitter_container,me->lr_left_container,me->lr_right_container.
+
+      me->lr_splitter_container = NEW #( parent = NEW cl_gui_custom_container( container_name = me->lv_screen_container )
+                                                      no_autodef_progid_dynnr = abap_true
+                                                      rows    = 1
+                                                      columns = 2 ).
+
+      me->lr_splitter_container->set_column_width( id = 1 width = 15 ).
+      me->lr_left_container = me->lr_splitter_container->get_container(  row = 1 column = 1 ).
+      me->lr_right_container = me->lr_splitter_container->get_container( row = 1 column = 2 ).
+
+    ENDIF.
 
   ENDMETHOD.
 
@@ -954,17 +975,11 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     IF lo_tree IS NOT BOUND.
 
       "CREATE TREE OBJECTS
-      CREATE OBJECT lo_tree
-        EXPORTING
-          parent              = NEW cl_gui_custom_container( container_name = me->lv_screen_container )
-          node_selection_mode = cl_gui_simple_tree=>node_sel_mode_single.
+      lo_tree = NEW #( parent              = me->lr_left_container
+                       node_selection_mode = cl_gui_simple_tree=>node_sel_mode_single ).
 
-      "EVENT HANGLING
-      DATA: lt_event_tab TYPE cntl_simple_events.
-
-      APPEND VALUE #( eventid = cl_gui_simple_tree=>eventid_node_double_click appl_event = space ) TO lt_event_tab.
-      lo_tree->set_registered_events( EXPORTING events = lt_event_tab ).
-
+      "EVENTS REGISTER
+      lo_tree->set_registered_events( EXPORTING events = VALUE #( ( eventid = cl_gui_simple_tree=>eventid_node_double_click appl_event = space ) ) ).
       SET HANDLER me->handle_node_double_click FOR lo_tree.
 
       "ADD NODES TO TREE
