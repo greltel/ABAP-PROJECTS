@@ -970,7 +970,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                                                       columns = 2 ).
 
       me->lr_splitter_container->set_column_width( id = 1 width = 15 ).
-      me->lr_left_container  = me->lr_splitter_container->get_container(  row = 1 column = 1 ).
+      me->lr_left_container  = me->lr_splitter_container->get_container( row = 1 column = 1 ).
       me->lr_right_container = me->lr_splitter_container->get_container( row = 1 column = 2 ).
 
     ENDIF.
@@ -1126,13 +1126,13 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                                                                                 WHEN me->mm_document_category-inv THEN |Invoice { im_document } Item    Details |
                                                                                 ) )
         it_toolbar_excluding          = VALUE ui_functions( ( cl_gui_alv_grid=>mc_fc_loc_insert_row )
-                                                            ( cl_gui_alv_grid=>mc_fc_print )
+*                                                            ( cl_gui_alv_grid=>mc_fc_print )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_copy_row )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_append_row )
-                                                            ( cl_gui_alv_grid=>mc_fc_info )
+*                                                            ( cl_gui_alv_grid=>mc_fc_info )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_undo )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_delete_row )
-                                                            ( cl_gui_alv_grid=>mc_fc_help )
+*                                                            ( cl_gui_alv_grid=>mc_fc_help )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_copy )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_cut )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_paste_new_row )
