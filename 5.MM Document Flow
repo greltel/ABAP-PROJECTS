@@ -57,7 +57,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
 
   PUBLIC SECTION.
 
-    "Singleton implementation to avoid global data
+    "SINGLETON DESIGN PATTERN
     CLASS-METHODS:
       get_instance RETURNING VALUE(ro_instance) TYPE REF TO lcl_mm_doc_flow.
 
@@ -105,10 +105,10 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
         document_creation_time       TYPE tims,
       END OF ty_mm_document_flow,
 
-      tt_mm_document_flow TYPE TABLE OF ty_mm_document_flow WITH DEFAULT KEY INITIAL SIZE 0,
-      tt_trees_node       TYPE TABLE OF mtreesnode WITH DEFAULT KEY INITIAL SIZE 0.
+      tt_mm_document_flow TYPE TABLE OF ty_mm_document_flow WITH EMPTY KEY INITIAL SIZE 0,
+      tt_trees_node       TYPE TABLE OF mtreesnode          WITH EMPTY KEY INITIAL SIZE 0.
 
-    " Singleton implementation to avoid global data
+    " SINGLETO DESIGN PATTERN
     CLASS-DATA:
       mo_instance TYPE REF TO lcl_mm_doc_flow.
 
@@ -145,11 +145,14 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
       get_flow_from_po            RAISING lcx_exception,
       get_flow_from_md            RAISING lcx_exception,
       get_flow_from_inv           RAISING lcx_exception,
-      display_document_details    IMPORTING im_document     TYPE ebeln
-                                            im_document_cat TYPE ty_enum_mm_document_category
+      display_document_details    IMPORTING im_document      TYPE ebeln
+                                            im_document_cat  TYPE ty_enum_mm_document_category
+                                            im_document_year TYPE gjahr
                                   RAISING   lcx_exception,
-      get_details_table           IMPORTING im_document     TYPE ebeln
-                                            im_document_cat TYPE ty_enum_mm_document_category
+      get_details_table           IMPORTING im_document      TYPE ebeln
+                                            im_document_cat  TYPE ty_enum_mm_document_category
+                                            im_document_year TYPE gjahr
+                                  RETURNING VALUE(re_table)  TYPE REF TO data
                                   RAISING   lcx_exception,
       build_node_table            RAISING lcx_exception,
       reset_tree_selection        RAISING lcx_exception.
@@ -396,6 +399,10 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       WHEN me->mm_document_category-inv.
 
         me->get_flow_from_inv( ).
+
+      WHEN OTHERS.
+
+        RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Document Flow not Retrieved'.
 
     ENDCASE.
 
@@ -1042,8 +1049,9 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "CALL ALV HEADER-ITEM FOR PURCHASING DOCUMENT
     DATA(ls_selection_data) = VALUE #( lt_tree_nodes[ node_key = node_key ] OPTIONAL ).
     IF ls_selection_data-isfolder IS INITIAL AND ls_selection_data-node_key IS NOT INITIAL.
-      me->display_document_details( im_document     = CONV #( ls_selection_data-node_key )
-                                    im_document_cat = CONV #( ls_selection_data-relatkey ) ).
+      me->display_document_details( im_document      = CONV #( |{ ls_selection_data-node_key ALPHA = IN }|  )
+                                    im_document_cat  = CONV #( ls_selection_data-relatkey )
+                                    im_document_year = CONV #( VALUE #( me->lt_mm_document_flow[ document_number = ls_selection_data-node_key ]-document_creation_date+0(4) OPTIONAL ) ) ).
     ENDIF.
 
     "REFRESH DATA
@@ -1053,15 +1061,25 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD display_document_details.
 
-    me->get_details_table( im_document     = CONV #( im_document  ) ##OPERATOR[EBELN]
-                           im_document_cat = CONV #( im_document_cat  ) ) ##OPERATOR[TY_ENUM_MM_DOCUMENT_CATEGORY].
+    DATA(lr_table) = me->get_details_table( EXPORTING im_document      = CONV #( |{ im_document ALPHA = IN }| ) ##OPERATOR[EBELN]
+                                                      im_document_cat  = CONV #( im_document_cat )
+                                                      im_document_year = COND #( WHEN im_document_year IS NOT INITIAL THEN im_document_year ) ) ##OPERATOR[TY_ENUM_MM_DOCUMENT_CATEGORY] .
+
+    ASSIGN lr_table->* TO FIELD-SYMBOL(<fs_table>).
+
+    CHECK <fs_table> IS ASSIGNED.
+
+    IF lo_alv_details IS BOUND.
+      me->lo_alv_details->free( ).
+      CLEAR:me->lo_alv_details.
+    ENDIF.
 
     "ALV Object Instantiation
-    lo_alv_details = NEW #( i_parent  = me->lr_right_container ).
+    me->lo_alv_details = NEW #( i_parent = me->lr_right_container ).
 
     "AUTOMATIC CREATION OF FIELD CATALOG BASED ON INTERNAL TABLE
     TRY.
-        cl_salv_table=>factory( IMPORTING r_salv_table   = DATA(salv_table) CHANGING t_table = lt_tree_nodes ).
+        cl_salv_table=>factory( IMPORTING r_salv_table = DATA(salv_table) CHANGING t_table = <fs_table> ).
         DATA(lt_fieldcat) = cl_salv_controller_metadata=>get_lvc_fieldcatalog( r_columns = salv_table->get_columns( ) r_aggregations = salv_table->get_aggregations( ) ).
       CATCH cx_salv_msg.
         RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error Loading the Field Catalog'.
@@ -1076,8 +1094,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         WHEN 'MANDT'.
           <fs_fieldcat>-no_out = abap_true.
         WHEN OTHERS.
-          <fs_fieldcat>-reptext = <fs_fieldcat>-scrtext_s = <fs_fieldcat>-scrtext_m = <fs_fieldcat>-scrtext_l = 'Header Text'.
-          <fs_fieldcat>-icon = abap_true.
+
       ENDCASE.
 
     ENDLOOP.
@@ -1098,7 +1115,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       EXPORTING
         i_save                        = cl_dba_core_constants=>co_save_layout_by_user
         is_variant                    = VALUE disvariant( report = sy-repid username = sy-uname  )
-        is_layout                     = VALUE lvc_s_layo( zebra = abap_true cwidth_opt = abap_true grid_title = syst-title )
+        is_layout                     = VALUE lvc_s_layo( zebra = abap_true cwidth_opt = abap_true grid_title = to_upper( |{ im_document_cat } { im_document } | )  )
         it_toolbar_excluding          = VALUE ui_functions( ( cl_gui_alv_grid=>mc_fc_loc_insert_row )
                                                             ( cl_gui_alv_grid=>mc_fc_print )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_copy_row )
@@ -1112,7 +1129,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                                                             ( cl_gui_alv_grid=>mc_fc_loc_paste_new_row )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_paste ) )
       CHANGING
-        it_outtab                     = lt_tree_nodes
+        it_outtab                     = <fs_table>
 *        it_sort                       = lt_sort
         it_fieldcatalog               = lt_fieldcat
       EXCEPTIONS
@@ -1128,10 +1145,89 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Set Ready for input for Style.
     lo_alv_details->set_ready_for_input( i_ready_for_input = 1 ).
 
+*    lo_alv_details->refresh_table_display( is_stable = VALUE lvc_s_stbl( row = abap_true col = abap_true ) ).
+
   ENDMETHOD.
 
   METHOD get_details_table.
 
+    CASE im_document_cat.
+
+      WHEN me->mm_document_category-pr.
+
+        SELECT FROM eban
+          FIELDS eban~*
+          WHERE eban~banfn EQ @im_document
+          ORDER BY bnfpo ASCENDING
+          INTO TABLE @DATA(t_table_pr).
+
+        "Copy Table to heap memory
+        DATA(lo_tabledesc) = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( p_data = t_table_pr ) ).
+
+        "Create table in heap memory and set return reference
+        CREATE DATA re_table TYPE HANDLE lo_tabledesc.
+
+        FIELD-SYMBOLS <lt_pr> LIKE t_table_pr.
+        ASSIGN re_table->* TO <lt_pr>.
+        APPEND LINES OF t_table_pr TO <lt_pr>.
+
+      WHEN me->mm_document_category-po OR me->mm_document_category-qu OR me->mm_document_category-rfq OR me->mm_document_category-sa OR  me->mm_document_category-cn .
+
+        SELECT FROM ekpo
+          FIELDS ekpo~*
+          WHERE ekpo~ebeln EQ @im_document
+          ORDER BY ebelp ASCENDING
+          INTO TABLE @DATA(t_table_po).
+
+        "Copy Table to heap memory
+        lo_tabledesc = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( p_data = t_table_po ) ).
+
+        "Create table in heap memory and set return reference
+        CREATE DATA re_table TYPE HANDLE lo_tabledesc.
+
+        FIELD-SYMBOLS <lt_po> LIKE t_table_po.
+        ASSIGN re_table->* TO <lt_po>.
+        APPEND LINES OF t_table_po TO <lt_po>.
+
+      WHEN me->mm_document_category-md.
+
+        SELECT FROM mseg
+          FIELDS mseg~*
+          WHERE mseg~mblnr EQ @im_document AND
+                mseg~mjahr EQ @im_document_year
+          ORDER BY zeile ASCENDING
+          INTO TABLE @DATA(t_table_md).
+
+        "Copy Table to heap memory
+        lo_tabledesc = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( p_data = t_table_md ) ).
+
+        "Create table in heap memory and set return reference
+        CREATE DATA re_table TYPE HANDLE lo_tabledesc.
+
+        FIELD-SYMBOLS <lt_md> LIKE t_table_md.
+        ASSIGN re_table->* TO <lt_md>.
+        APPEND LINES OF t_table_md TO <lt_md>.
+
+      WHEN me->mm_document_category-inv.
+
+        SELECT FROM rseg
+            FIELDS rseg~*
+            WHERE rseg~belnr EQ @im_document AND
+                  rseg~gjahr EQ @im_document_year
+            ORDER BY buzei ASCENDING
+            INTO TABLE @DATA(t_table_inv).
+
+        "Copy Table to heap memory
+        lo_tabledesc = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( p_data = t_table_inv ) ).
+
+        "Create table in heap memory and set return reference
+        CREATE DATA re_table TYPE HANDLE lo_tabledesc.
+
+        FIELD-SYMBOLS <lt_inv> LIKE t_table_inv.
+        ASSIGN re_table->* TO <lt_inv>.
+        APPEND LINES OF t_table_inv TO <lt_inv>.
+
+    ENDCASE.
 
   ENDMETHOD.
 
