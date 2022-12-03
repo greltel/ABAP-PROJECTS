@@ -1247,14 +1247,11 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD user_command.
 
-    TRY.
-        CASE e_ucomm.
+    CASE e_ucomm.
 
-          WHEN OTHERS.
+      WHEN OTHERS.
 
-        ENDCASE.
-      CATCH lcx_exception.
-    ENDTRY.
+    ENDCASE.
 
   ENDMETHOD.
 
