@@ -1099,23 +1099,32 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     ENDLOOP.
 
-    "Sort
-    DATA(lt_sort) = VALUE lvc_t_sort( ( fieldname = 'LINE_COLOR' up = abap_true ) ).
-
     "Event Handling
     SET HANDLER: me->handle_hotspot_click FOR lo_alv_details,
                  me->toolbar              FOR lo_alv_details,
                  me->user_command         FOR lo_alv_details.
 
     "Register the event to trigger DATA_CHANGED event when modify or press enter.
-    CALL METHOD: lo_alv_details->register_edit_event EXPORTING i_event_id = cl_gui_alv_grid=>mc_evt_enter,
-                 lo_alv_details->register_edit_event EXPORTING i_event_id = cl_gui_alv_grid=>mc_evt_modified.
+    lo_alv_details->register_edit_event( i_event_id = cl_gui_alv_grid=>mc_evt_enter ).
+    lo_alv_details->register_edit_event( i_event_id = cl_gui_alv_grid=>mc_evt_modified ).
 
     lo_alv_details->set_table_for_first_display(
       EXPORTING
         i_save                        = cl_dba_core_constants=>co_save_layout_by_user
-        is_variant                    = VALUE disvariant( report = sy-repid username = sy-uname  )
-        is_layout                     = VALUE lvc_s_layo( zebra = abap_true cwidth_opt = abap_true grid_title = to_upper( |{ im_document_cat } { im_document } | )  )
+        is_variant                    = VALUE disvariant( report = sy-repid
+                                                          username = sy-uname  )
+        is_layout                     = VALUE lvc_s_layo( zebra = abap_true
+                                                          cwidth_opt = abap_true
+                                                          grid_title = SWITCH #( im_document_cat
+                                                                                WHEN me->mm_document_category-pr  THEN |Purchase Requisition { im_document } Item Details |
+                                                                                WHEN me->mm_document_category-po  THEN |Purchase Order { im_document } Item Details |
+                                                                                WHEN me->mm_document_category-cn  THEN |Contract { im_document } Item Details |
+                                                                                WHEN me->mm_document_category-md  THEN |Material Document { im_document } Item Details |
+                                                                                WHEN me->mm_document_category-qu  THEN |Quotation { im_document } Item Details |
+                                                                                WHEN me->mm_document_category-rfq THEN |Request for Quotation { im_document } Item Details |
+                                                                                WHEN me->mm_document_category-sa  THEN |Scheduling Agreement { im_document } Item Details |
+                                                                                WHEN me->mm_document_category-inv THEN |Invoice { im_document } Item    Details |
+                                                                                ) )
         it_toolbar_excluding          = VALUE ui_functions( ( cl_gui_alv_grid=>mc_fc_loc_insert_row )
                                                             ( cl_gui_alv_grid=>mc_fc_print )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_copy_row )
@@ -1130,7 +1139,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                                                             ( cl_gui_alv_grid=>mc_fc_loc_paste ) )
       CHANGING
         it_outtab                     = <fs_table>
-*        it_sort                       = lt_sort
         it_fieldcatalog               = lt_fieldcat
       EXCEPTIONS
         invalid_parameter_combination = 1
