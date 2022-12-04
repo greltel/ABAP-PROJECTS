@@ -112,20 +112,26 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
     CONSTANTS:
 
       BEGIN OF purchasing_document_category,
-        info_record               VALUE 'I',
-        service_entry_sheet       VALUE 'Q',
-        simpl_service_entry_sheet VALUE 'S',
-        source_list               VALUE 'W',
-        pr                        VALUE 'B',
-        rfq                       VALUE 'A',
-        rfq_2                     VALUE 'R',
-        qu                        VALUE 'O',
-        cn                        VALUE 'K',
-        sa                        VALUE 'L',
-        po                        VALUE 'F',
-        cen_cn                    VALUE 'C',
-        cen_po                    VALUE 'P',
-      END OF purchasing_document_category.
+        info_record                VALUE 'I',
+        service_entry_sheet        VALUE 'Q',
+        simple_service_entry_sheet VALUE 'S',
+        source_list                VALUE 'W',
+        pr                         VALUE 'B',
+        rfq                        VALUE 'A',
+        rfq_2                      VALUE 'R',
+        qu                         VALUE 'O',
+        cn                         VALUE 'K',
+        sa                         VALUE 'L',
+        po                         VALUE 'F',
+        cen_cn                     VALUE 'C',
+        cen_po                     VALUE 'P',
+      END OF purchasing_document_category,
+
+      BEGIN OF type_of_document_change,
+        change VALUE 'U',
+        insert VALUE 'I',
+        delete VALUE 'D',
+      END OF type_of_document_change.
 
     "SINGLETON DESIGN PATTERN
     CLASS-DATA:
@@ -151,7 +157,6 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
 
     "PRIVATE METHODS
     METHODS:
-
       create_containers           RAISING lcx_exception,
       create_tree                 RAISING lcx_exception,
       determine_document_category RAISING lcx_exception,
@@ -167,11 +172,11 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
       get_flow_from_ac            RAISING lcx_exception,
       display_document_details    IMPORTING im_document      TYPE ebeln
                                             im_document_cat  TYPE ty_enum_mm_document_category
-                                            im_document_year TYPE gjahr
+                                            im_document_year TYPE gjahr OPTIONAL
                                   RAISING   lcx_exception,
       get_details_table           IMPORTING im_document      TYPE ebeln
                                             im_document_cat  TYPE ty_enum_mm_document_category
-                                            im_document_year TYPE gjahr
+                                            im_document_year TYPE gjahr OPTIONAL
                                   RETURNING VALUE(re_table)  TYPE REF TO data
                                   RAISING   lcx_exception,
       build_node_table            RAISING lcx_exception,
@@ -183,9 +188,9 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
 
     "ALV EVENT METHODS
     METHODS:
-      handle_hotspot_click FOR EVENT hotspot_click OF cl_gui_alv_grid IMPORTING e_row_id e_column_id es_row_no,
-      toolbar              FOR EVENT toolbar       OF  cl_gui_alv_grid IMPORTING e_object,
-      user_command         FOR EVENT user_command  OF cl_gui_alv_grid IMPORTING e_ucomm.
+      handle_hotspot_click FOR EVENT hotspot_click OF cl_gui_alv_grid  IMPORTING e_row_id e_column_id es_row_no,
+      toolbar              FOR EVENT toolbar       OF cl_gui_alv_grid  IMPORTING e_object,
+      user_command         FOR EVENT user_command  OF cl_gui_alv_grid  IMPORTING e_ucomm.
 
 ENDCLASS.
 
@@ -193,7 +198,7 @@ ENDCLASS.
 *& SELECTION SCREEN DESIGN
 *&---------------------------------------------------------------------*
 
-SELECTION-SCREEN: BEGIN OF BLOCK b00 WITH FRAME TITLE title1.
+SELECTION-SCREEN: BEGIN OF BLOCK b00 WITH FRAME TITLE title0.
 
 SELECTION-SCREEN BEGIN OF LINE.
 SELECTION-SCREEN COMMENT 1(26) t_doc FOR FIELD p_doc.
@@ -235,8 +240,8 @@ END-OF-SELECTION.
 *&---------------------------------------------------------------------*
 FORM screen_initialization.
 
-  title1  = 'Purchasing Document Selection'.
-  t_doc   = 'MM Document'.
+  title0  = 'Purchasing Document Selection'.
+  t_doc   = 'Purchasing Document'.
 
 ENDFORM.
 
@@ -252,7 +257,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
   METHOD get_instance.
 
     IF mo_instance IS INITIAL.
-      CREATE OBJECT mo_instance.
+      mo_instance = NEW #( ).
     ENDIF.
 
     ro_instance = mo_instance.
@@ -281,13 +286,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD process_before_output.
 
-
-    IF me->lv_screen_status IS NOT INITIAL.
-      SET PF-STATUS me->lv_screen_status.
-    ELSE.
-      SET PF-STATUS 'STANDARD' OF PROGRAM 'SAPMV65A'.
-    ENDIF.
-
+    SET PF-STATUS me->lv_screen_status.
     SET TITLEBAR  me->lv_screen_title.
 
     me->create_containers( ).
@@ -435,7 +434,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       WHEN OTHERS.
 
-        RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Document Flow not Retrieved'.
+        RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Document Flow Not Retrieved'.
 
     ENDCASE.
 
@@ -1094,7 +1093,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     ENDIF.
 
     "REFRESH DATA
-    cl_gui_cfw=>set_new_ok_code( EXPORTING new_code = 'FOO' ).
+    cl_gui_cfw=>set_new_ok_code( new_code = 'FOO' ).
 
   ENDMETHOD.
 
