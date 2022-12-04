@@ -109,9 +109,27 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
       tt_mm_document_flow TYPE TABLE OF ty_mm_document_flow WITH EMPTY KEY INITIAL SIZE 0,
       tt_trees_node       TYPE TABLE OF mtreesnode          WITH EMPTY KEY INITIAL SIZE 0.
 
-    " SINGLETO DESIGN PATTERN
+    CONSTANTS:
+
+      BEGIN OF purchasing_document_category,
+        info_record               VALUE 'I',
+        service_entry_sheet       VALUE 'Q',
+        simpl_service_entry_sheet VALUE 'S',
+        source_list               VALUE 'W',
+        pr                        VALUE 'B',
+        rfq                       VALUE 'A',
+        rfq_2                     VALUE 'R',
+        qu                        VALUE 'O',
+        cn                        VALUE 'K',
+        sa                        VALUE 'L',
+        po                        VALUE 'F',
+        cen_cn                    VALUE 'C',
+        cen_po                    VALUE 'P',
+      END OF purchasing_document_category.
+
+    "SINGLETON DESIGN PATTERN
     CLASS-DATA:
-      mo_instance TYPE REF TO lcl_mm_doc_flow.
+    mo_instance TYPE REF TO lcl_mm_doc_flow.
 
     "PRIVATE DATA
     DATA:
@@ -146,6 +164,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
       get_flow_from_po            RAISING lcx_exception,
       get_flow_from_md            RAISING lcx_exception,
       get_flow_from_inv           RAISING lcx_exception,
+      get_flow_from_ac            RAISING lcx_exception,
       display_document_details    IMPORTING im_document      TYPE ebeln
                                             im_document_cat  TYPE ty_enum_mm_document_category
                                             im_document_year TYPE gjahr
@@ -360,6 +379,15 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    "ACCOUNTING DOCUMENT
+    CLEAR:lv_exists.
+    SELECT SINGLE @abap_true FROM bkpf WHERE belnr EQ @me->lv_document INTO @lv_exists.
+
+    IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
+      me->lv_document_category = me->mm_document_category-ac.
+      RETURN.
+    ENDIF.
+
     "NOT FOUND
     RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Document Not Found'.
 
@@ -400,6 +428,10 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       WHEN me->mm_document_category-inv.
 
         me->get_flow_from_inv( ).
+
+      WHEN me->mm_document_category-ac.
+
+        me->get_flow_from_ac( ).
 
       WHEN OTHERS.
 
@@ -902,6 +934,12 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       ENDLOOP.
 
     ENDIF.
+
+  ENDMETHOD.
+
+  METHOD get_flow_from_ac.
+
+
 
   ENDMETHOD.
 
