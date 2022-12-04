@@ -91,6 +91,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
         po        VALUE 'PO',
         md        VALUE 'MD',
         inv       VALUE 'INV',
+        ac        VALUE 'AC',
         undefined VALUE IS INITIAL,
       END OF ENUM ty_enum_mm_document_category STRUCTURE mm_document_category,
 
@@ -1116,14 +1117,14 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         is_layout                     = VALUE lvc_s_layo( zebra = abap_true
                                                           cwidth_opt = abap_true
                                                           grid_title = SWITCH #( im_document_cat
-                                                                                WHEN me->mm_document_category-pr  THEN |Purchase Requisition { im_document } Item Details |
-                                                                                WHEN me->mm_document_category-po  THEN |Purchase Order { im_document } Item Details |
-                                                                                WHEN me->mm_document_category-cn  THEN |Contract { im_document } Item Details |
-                                                                                WHEN me->mm_document_category-md  THEN |Material Document { im_document } Item Details |
-                                                                                WHEN me->mm_document_category-qu  THEN |Quotation { im_document } Item Details |
-                                                                                WHEN me->mm_document_category-rfq THEN |Request for Quotation { im_document } Item Details |
-                                                                                WHEN me->mm_document_category-sa  THEN |Scheduling Agreement { im_document } Item Details |
-                                                                                WHEN me->mm_document_category-inv THEN |Invoice { im_document } Item    Details |
+                                                                                WHEN me->mm_document_category-pr  THEN condense( |Purchase Requisition { im_document ALPHA = OUT } Item Details | )
+                                                                                WHEN me->mm_document_category-po  THEN condense( |Purchase Order { im_document ALPHA = OUT } Item Details | )
+                                                                                WHEN me->mm_document_category-cn  THEN condense( |Contract { im_document ALPHA = OUT } Item Details | )
+                                                                                WHEN me->mm_document_category-md  THEN condense( |Material Document { im_document ALPHA = OUT } Item Details | )
+                                                                                WHEN me->mm_document_category-qu  THEN condense( |Quotation { im_document ALPHA = OUT } Item Details | )
+                                                                                WHEN me->mm_document_category-rfq THEN condense( |Request for Quotation { im_document ALPHA = OUT } Item Details | )
+                                                                                WHEN me->mm_document_category-sa  THEN condense( |Scheduling Agreement { im_document ALPHA = OUT } Item Details | )
+                                                                                WHEN me->mm_document_category-inv THEN condense( |Invoice { im_document ALPHA = OUT } Item    Details | )
                                                                                 ) )
         it_toolbar_excluding          = VALUE ui_functions( ( cl_gui_alv_grid=>mc_fc_loc_insert_row )
 *                                                            ( cl_gui_alv_grid=>mc_fc_print )
