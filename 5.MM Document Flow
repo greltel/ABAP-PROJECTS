@@ -64,6 +64,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
     "PUBLIC METHODS
     METHODS:
       execute    IMPORTING im_document       TYPE ekko-ebeln
+                           im_document_year  TYPE rbkp-gjahr OPTIONAL
                            im_tree_container TYPE char30
                            im_screen_status  TYPE gui_status
                            im_screen_title   TYPE gui_title
@@ -140,6 +141,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
     "PRIVATE DATA
     DATA:
       lv_document           TYPE ekko-ebeln,
+      lv_document_year      TYPE rbkp-gjahr,
       lv_document_category  TYPE ty_enum_mm_document_category,
       lv_screen_container   TYPE char30,
       lv_screen_status      TYPE gui_status,
@@ -153,7 +155,8 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
       lr_left_container     TYPE REF TO cl_gui_container,
       lr_right_container    TYPE REF TO cl_gui_container,
       "ALV
-      lo_alv_details        TYPE REF TO  cl_gui_alv_grid.
+      lo_alv_details        TYPE REF TO  cl_gui_alv_grid,
+      lr_details_table      TYPE REF TO data.
 
     "PRIVATE METHODS
     METHODS:
@@ -205,6 +208,11 @@ SELECTION-SCREEN COMMENT 1(26) t_doc FOR FIELD p_doc.
 PARAMETERS : p_doc TYPE ekpo-ebeln OBLIGATORY.
 SELECTION-SCREEN END OF LINE.
 
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(26) t_gjahr FOR FIELD p_gjahr.
+PARAMETERS : p_gjahr TYPE rbkp-gjahr.
+SELECTION-SCREEN END OF LINE.
+
 SELECTION-SCREEN: END OF BLOCK b00.
 
 *&---------------------------------------------------------------------*
@@ -220,6 +228,7 @@ START-OF-SELECTION.
 
   TRY.
       lcl_mm_doc_flow=>get_instance( )->execute( im_document       = CONV #( p_doc )               ##OPERATOR[EBELN]
+                                                 im_document_year  = CONV #( p_gjahr )             ##OPERATOR[GJAHR]
                                                  im_tree_container = CONV #( gc_screen_container ) ##OPERATOR[CHAR30]
                                                  im_screen_status  = CONV #( gc_screen_status )    ##OPERATOR[GUI_STATUS]
                                                  im_screen_title   = CONV #( gc_screen_title )     ##OPERATOR[GUI_TITLE]
@@ -242,6 +251,7 @@ FORM screen_initialization.
 
   title0  = 'Purchasing Document Selection'.
   t_doc   = 'Purchasing Document'.
+  t_gjahr = 'Purchasing Document Year'.
 
 ENDFORM.
 
@@ -266,10 +276,11 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD execute.
 
-    CLEAR:me->lv_document_category,me->lv_document.
+    CLEAR:me->lv_document_category,me->lv_document_year,me->lv_document.
 
     "ATTRIBUTES
     me->lv_document         = im_document.
+    me->lv_document_year    = im_document_year.
     me->lv_screen_container = im_tree_container.
     me->lv_screen_status    = im_screen_status.
     me->lv_screen_title     = im_screen_title.
@@ -938,6 +949,11 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD get_flow_from_ac.
 
+    "INVOICE
+
+
+    "MATERIAL DOCUMENT
+
 
 
   ENDMETHOD.
@@ -953,7 +969,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                     n_image   = icon_system_favorites
                     exp_image = icon_system_favorites ) TO lt_tree_nodes.
 
-    SORT lt_mm_document_flow STABLE BY transaction_type document_category ASCENDING .
+    SORT lt_mm_document_flow STABLE BY transaction_type ASCENDING.
 
     "Construct Nodes Table with Scenario Nodes
     LOOP AT lt_mm_document_flow ASSIGNING FIELD-SYMBOL(<fs_mm_document_flow>) GROUP BY <fs_mm_document_flow>-document_category.
@@ -985,8 +1001,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                         isfolder  = space
                         relatkey  = <fs_group_line>-document_category
                         relatship = cl_gui_simple_tree=>relat_last_child
-                        node_key  = |{ <fs_group_line>-document_number ALPHA = OUT } | "&& <fs_group_line>-document_category
-                        text      = CONV #( |{ <fs_group_line>-document_number ALPHA = OUT } | )
+                        node_key  = |{ <fs_group_line>-document_number ALPHA = OUT } |
+                        text      = CONV #( |{ <fs_group_line>-document_number ALPHA = OUT }| )
                         expander  = space
                         n_image   = icon_patient_smartcard
                         exp_image = icon_patient_smartcard ) TO lt_tree_nodes.
@@ -1088,7 +1104,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "CALL ALV HEADER-ITEM FOR PURCHASING DOCUMENT
     DATA(ls_selection_data) = VALUE #( lt_tree_nodes[ node_key = node_key ] OPTIONAL ).
     IF ls_selection_data-isfolder IS INITIAL AND ls_selection_data-node_key IS NOT INITIAL.
-      me->display_document_details( im_document      = CONV #( |{ ls_selection_data-node_key ALPHA = IN }|  )
+      me->display_document_details( im_document      = CONV #( |{ ls_selection_data-node_key ALPHA = IN }| )
                                     im_document_cat  = CONV #( ls_selection_data-relatkey )
                                     im_document_year = CONV #( VALUE #( me->lt_mm_document_flow[ document_number = ls_selection_data-node_key ]-document_creation_date+0(4) OPTIONAL ) ) ).
     ENDIF.
@@ -1100,11 +1116,12 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD display_document_details.
 
-    DATA(lr_table) = me->get_details_table( EXPORTING im_document      = CONV #( |{ im_document ALPHA = IN }| ) ##OPERATOR[EBELN]
-                                                      im_document_cat  = CONV #( im_document_cat )
-                                                      im_document_year = COND #( WHEN im_document_year IS NOT INITIAL THEN im_document_year ) ) ##OPERATOR[TY_ENUM_MM_DOCUMENT_CATEGORY] .
+    CLEAR:lr_details_table.
+    lr_details_table = me->get_details_table( EXPORTING im_document      = CONV #( |{ im_document ALPHA = IN }| ) ##OPERATOR[EBELN]
+                                                        im_document_cat  = CONV #( im_document_cat )
+                                                        im_document_year = COND #( WHEN im_document_year IS NOT INITIAL THEN im_document_year ) ) ##OPERATOR[TY_ENUM_MM_DOCUMENT_CATEGORY] .
 
-    ASSIGN lr_table->* TO FIELD-SYMBOL(<fs_table>).
+    ASSIGN lr_details_table->* TO FIELD-SYMBOL(<fs_table>).
 
     CHECK <fs_table> IS ASSIGNED.
 
@@ -1132,6 +1149,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       CASE <fs_fieldcat>-fieldname.
         WHEN 'MANDT'.
           <fs_fieldcat>-no_out = abap_true.
+        WHEN 'MATNR' OR 'EBELN' OR 'BANFN' OR 'MBLNR' OR 'BELNR'.
+          <fs_fieldcat>-hotspot = abap_true.
         WHEN OTHERS.
 
       ENDCASE.
@@ -1293,7 +1312,39 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD handle_hotspot_click.
 
+    FIELD-SYMBOLS: <fs_table> TYPE STANDARD TABLE.
+
+    ASSIGN lr_details_table->* TO <fs_table>.
+    ASSIGN COMPONENT e_column_id OF STRUCTURE <fs_table>[ es_row_no-row_id ] TO FIELD-SYMBOL(<fs_value>).
+
+    CHECK <fs_value> IS ASSIGNED AND <fs_value> IS NOT INITIAL.
+
     CASE e_column_id.
+
+      WHEN 'BANFN'.
+
+        SET PARAMETER ID 'BAN' FIELD <fs_value>.
+        CALL TRANSACTION 'ME53N' WITH AUTHORITY-CHECK.
+
+      WHEN 'MATNR'.
+
+        SET PARAMETER ID 'MAT' FIELD <fs_value>.
+        CALL TRANSACTION 'MM03' WITH AUTHORITY-CHECK AND SKIP FIRST SCREEN.
+
+      WHEN 'EBELN'.
+
+        SET PARAMETER ID 'BES' FIELD <fs_value>.
+        CALL TRANSACTION 'ME23N' WITH AUTHORITY-CHECK AND SKIP FIRST SCREEN.
+
+      WHEN 'MBLNR'.
+
+        SET PARAMETER ID 'MBN' FIELD <fs_value>.
+        CALL TRANSACTION 'MIGO' WITH AUTHORITY-CHECK AND SKIP FIRST SCREEN.
+
+      WHEN 'BELNR'.
+
+*        SET PARAMETER ID 'BLN' FIELD <fs_value>.
+*        CALL TRANSACTION 'FB03' WITH AUTHORITY-CHECK AND SKIP FIRST SCREEN.
 
       WHEN OTHERS.
 
