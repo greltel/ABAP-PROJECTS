@@ -117,8 +117,8 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
         simple_service_entry_sheet VALUE 'S',
         source_list                VALUE 'W',
         pr                         VALUE 'B',
-        rfq                        VALUE 'A',
-        rfq_2                      VALUE 'R',
+        rfq                        VALUE 'R',
+        rfq_2                      VALUE 'A',
         qu                         VALUE 'O',
         cn                         VALUE 'K',
         sa                         VALUE 'L',
@@ -312,7 +312,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     CLEAR:me->lv_document_category.
 
     "PURCHASE REQUISITION
-    SELECT SINGLE @abap_true FROM eban WHERE banfn EQ @me->lv_document AND bstyp EQ 'B' INTO @DATA(lv_exists).
+    SELECT SINGLE @abap_true FROM eban WHERE banfn EQ @me->lv_document AND bstyp EQ @me->purchasing_document_category-pr INTO @DATA(lv_exists).
 
     IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-pr.
@@ -321,7 +321,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "REQUEST FOR QUOTATION
     CLEAR:lv_exists.
-    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'R' INTO @lv_exists.
+    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ @me->purchasing_document_category-rfq INTO @lv_exists.
     IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-rfq.
       RETURN.
@@ -329,7 +329,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "QUOTATION
     CLEAR:lv_exists.
-    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'O' INTO @lv_exists.
+    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ @me->purchasing_document_category-qu INTO @lv_exists.
     IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-qu.
       RETURN.
@@ -337,7 +337,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "CONTRACT
     CLEAR:lv_exists.
-    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'K' INTO @lv_exists.
+    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ @me->purchasing_document_category-cn INTO @lv_exists.
     IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-cn.
       RETURN.
@@ -345,7 +345,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "SCHEDULING AGREEMENT
     CLEAR:lv_exists.
-    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'L' INTO @lv_exists.
+    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ @me->purchasing_document_category-sa INTO @lv_exists.
     IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-sa.
       RETURN.
@@ -353,7 +353,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "PURCHASE ORDER
     CLEAR:lv_exists.
-    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ 'F' INTO @lv_exists.
+    SELECT SINGLE @abap_true FROM ekko WHERE ebeln EQ @me->lv_document AND bstyp EQ @me->purchasing_document_category-po INTO @lv_exists.
 
     IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-po.
@@ -449,9 +449,9 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       cdhdr~utime AS document_creation_time
 
       FROM eban
-      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ eban~banfn AND cdhdr~change_ind EQ 'I'
+      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ eban~banfn AND cdhdr~change_ind EQ @me->type_of_document_change-insert
       WHERE eban~banfn EQ @lv_document AND
-            eban~bstyp EQ 'B'
+            eban~bstyp EQ @me->purchasing_document_category-pr
       INTO @DATA(ls_pr).
 
     IF sy-subrc IS INITIAL AND ls_pr IS NOT INITIAL.
@@ -469,7 +469,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     FROM ekpo
     INNER JOIN ekko ON ekko~ebeln EQ ekpo~ebeln
     INNER JOIN eban ON ekpo~banfn EQ eban~banfn
-    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ 'I'
+    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
     WHERE ekpo~banfn EQ @lv_document AND
           ekpo~konnr IS NOT INITIAL
     INTO TABLE @DATA(lt_oa).
@@ -481,8 +481,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         SELECT SINGLE bstyp FROM ekpo WHERE konnr EQ @<fs_oa>-document_number AND banfn EQ @lv_document INTO @DATA(lv_document_category).
 
         APPEND VALUE #( document_number      = <fs_oa>-document_number
-                      document_category      = COND #( WHEN lv_document_category EQ 'K' THEN mm_document_category-cn
-                                                       WHEN lv_document_category EQ 'L' THEN mm_document_category-sa
+                      document_category      = COND #( WHEN lv_document_category EQ me->purchasing_document_category-cn THEN mm_document_category-cn
+                                                       WHEN lv_document_category EQ me->purchasing_document_category-sa THEN mm_document_category-sa
                                                        ELSE mm_document_category-cn )
                       document_creation_date = <fs_oa>-document_creation_date
                       document_creation_time = <fs_oa>-document_creation_time ) TO lt_mm_document_flow.
@@ -501,7 +501,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     FROM ekko
     INNER JOIN ekpo ON ekko~ebeln EQ ekpo~ebeln
     INNER JOIN eban ON ekpo~banfn EQ eban~banfn
-    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ 'I'
+    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
     WHERE ekpo~banfn EQ @lv_document
     INTO TABLE @DATA(lt_po).
 
@@ -608,9 +608,9 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       FROM ekpo
       INNER JOIN eban ON eban~banfn EQ ekpo~banfn
-      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ eban~banfn AND cdhdr~change_ind EQ 'I'
+      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ eban~banfn AND cdhdr~change_ind EQ @me->type_of_document_change-insert
       WHERE ekpo~ebeln EQ @lv_document AND
-            eban~bstyp EQ 'B'
+            eban~bstyp EQ @me->purchasing_document_category-pr
       INTO TABLE @DATA(lt_pr).
 
     IF sy-subrc IS INITIAL AND lt_pr IS NOT INITIAL.
@@ -631,7 +631,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       cdhdr~utime AS document_creation_time
     FROM ekpo
     INNER JOIN ekko ON ekko~ebeln EQ ekpo~ebeln
-    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ 'I'
+    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
     WHERE ekpo~ebeln EQ @lv_document AND
           ekpo~konnr IS NOT INITIAL
     INTO TABLE @DATA(lt_oa).
@@ -643,8 +643,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         SELECT SINGLE bstyp FROM ekko WHERE ebeln EQ @<ls_oa>-document_number INTO @DATA(lv_document_category).
 
         APPEND VALUE #( document_number      = <ls_oa>-document_number
-                      document_category      = COND #( WHEN lv_document_category EQ 'K' THEN mm_document_category-cn
-                                                       WHEN lv_document_category EQ 'L' THEN mm_document_category-sa
+                      document_category      = COND #( WHEN lv_document_category EQ me->purchasing_document_category-cn THEN mm_document_category-cn
+                                                       WHEN lv_document_category EQ me->purchasing_document_category-sa THEN mm_document_category-sa
                                                        ELSE mm_document_category-cn )
                       document_creation_date = <ls_oa>-document_creation_date
                       document_creation_time = <ls_oa>-document_creation_time ) TO lt_mm_document_flow.
@@ -663,7 +663,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     FROM ekko
     INNER JOIN ekpo ON ekko~ebeln EQ ekpo~ebeln
-    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ 'I'
+    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
     WHERE ekpo~ebeln EQ @lv_document
     INTO @DATA(ls_po).
 
@@ -758,7 +758,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     FROM ekko
     INNER JOIN ekpo ON ekko~ebeln EQ ekpo~ebeln
     INNER JOIN mseg ON mseg~ebeln EQ ekko~ebeln
-    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ 'I'
+    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
     WHERE mseg~mblnr EQ @lv_document
     INTO @DATA(ls_po).
 
@@ -779,9 +779,9 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
         FROM ekpo
         INNER JOIN eban ON eban~banfn EQ ekpo~banfn
-        LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ eban~banfn AND cdhdr~change_ind EQ 'I'
+        LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ eban~banfn AND cdhdr~change_ind EQ @me->type_of_document_change-insert
         WHERE ekpo~ebeln EQ @ls_po-document_number AND
-              eban~bstyp EQ 'B'
+              eban~bstyp EQ @me->purchasing_document_category-pr
         INTO TABLE @DATA(lt_pr).
 
       IF sy-subrc IS INITIAL AND lt_pr IS NOT INITIAL.
@@ -806,7 +806,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         cdhdr~utime AS document_creation_time
       FROM ekpo
       INNER JOIN ekko ON ekko~ebeln EQ ekpo~ebeln
-      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ 'I'
+      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
       WHERE ekpo~ebeln EQ @ls_po-document_number AND
             ekpo~konnr IS NOT INITIAL
       INTO TABLE @DATA(lt_oa).
@@ -818,8 +818,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
           SELECT SINGLE bstyp FROM ekko WHERE ebeln EQ @<ls_oa>-document_number INTO @DATA(lv_document_category).
 
           APPEND VALUE #( document_number      = <ls_oa>-document_number
-                        document_category      = COND #( WHEN lv_document_category EQ 'K' THEN mm_document_category-cn
-                                                         WHEN lv_document_category EQ 'L' THEN mm_document_category-sa
+                        document_category      = COND #( WHEN lv_document_category EQ me->purchasing_document_category-cn THEN mm_document_category-cn
+                                                         WHEN lv_document_category EQ me->purchasing_document_category-sa THEN mm_document_category-sa
                                                          ELSE mm_document_category-cn )
                         document_creation_date = <ls_oa>-document_creation_date
                         document_creation_time = <ls_oa>-document_creation_time ) TO lt_mm_document_flow.
@@ -919,7 +919,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     FROM ekko
     INNER JOIN ekpo ON ekko~ebeln EQ ekpo~ebeln
     INNER JOIN ekbe ON ekbe~ebeln EQ ekko~ebeln
-    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ 'I'
+    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
     WHERE ekbe~belnr EQ @lv_document
     INTO TABLE @DATA(lt_po).
 
@@ -972,6 +972,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                                           WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-pr  THEN 'Purchase Requisition'
                                           WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-md  THEN 'Material Document'
                                           WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-inv THEN 'Invoice'
+                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-ac  THEN 'Accounting'
                                           ELSE <fs_mm_document_flow>-document_category )
                       expander  = abap_true
                       n_image   = icon_biw_formula
@@ -1164,13 +1165,10 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                                                                                 WHEN me->mm_document_category-inv THEN condense( |Invoice { im_document ALPHA = OUT } Item    Details | )
                                                                                 ) )
         it_toolbar_excluding          = VALUE ui_functions( ( cl_gui_alv_grid=>mc_fc_loc_insert_row )
-*                                                            ( cl_gui_alv_grid=>mc_fc_print )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_copy_row )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_append_row )
-*                                                            ( cl_gui_alv_grid=>mc_fc_info )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_undo )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_delete_row )
-*                                                            ( cl_gui_alv_grid=>mc_fc_help )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_copy )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_cut )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_paste_new_row )
