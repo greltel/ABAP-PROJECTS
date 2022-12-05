@@ -11,7 +11,7 @@ REPORT z_mm_document_flow NO STANDARD PAGE HEADING LINE-SIZE 255.
 *&              M O D I F I C A T I O N    L O G                      &*
 *&--------------------------------------------------------------------&*
 *& Description    :                                                    *
-*& Author         :                                                    *
+*& Author         : GDRAKOS                                            *
 *& Date           :                                                    *
 *& Change Request :                                                    *
 *&--------------------------------------------------------------------&*
@@ -333,18 +333,18 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
   METHOD populate_category_descr.
 
 
-    lt_document_category_descr = VALUE #( ( document_bstyp = 'B' document_category = mm_document_category-pr  document_category_descr = 'Purchase Requisition' )
-                                          ( document_bstyp = 'R' document_category = mm_document_category-rfq document_category_descr = 'Request for Quotation' )
-                                          ( document_bstyp = 'A' document_category = mm_document_category-rfq document_category_descr = 'Request for Quotation' )
-                                          ( document_bstyp = 'O' document_category = mm_document_category-qu  document_category_descr = 'Quotation' )
-                                          ( document_bstyp = 'K' document_category = mm_document_category-cn  document_category_descr = 'Contract' )
-                                          ( document_bstyp = 'C' document_category = mm_document_category-cn  document_category_descr = 'Central Contract' )
-                                          ( document_bstyp = 'L' document_category = mm_document_category-sa  document_category_descr = 'Scheduling Agreement' )
-                                          ( document_bstyp = 'F' document_category = mm_document_category-po  document_category_descr = 'Purchase Order' )
-                                          ( document_bstyp = 'P' document_category = mm_document_category-po  document_category_descr = 'Central Purchase Order' )
-                                          ( document_bstyp = ''  document_category = mm_document_category-md  document_category_descr = 'Material Document' )
-                                          ( document_bstyp = ''  document_category = mm_document_category-inv document_category_descr = 'Invoice' )
-                                          ( document_bstyp = ''  document_category = mm_document_category-ac  document_category_descr = 'Accounting Document' ) ).
+    lt_document_category_descr = VALUE #( ( document_bstyp = purchasing_document_category-pr     document_category = mm_document_category-pr  document_category_descr = 'Purchase Requisition' )
+                                          ( document_bstyp = purchasing_document_category-rfq    document_category = mm_document_category-rfq document_category_descr = 'Request for Quotation' )
+                                          ( document_bstyp = purchasing_document_category-rfq_2  document_category = mm_document_category-rfq document_category_descr = 'Request for Quotation' )
+                                          ( document_bstyp = purchasing_document_category-qu     document_category = mm_document_category-qu  document_category_descr = 'Quotation' )
+                                          ( document_bstyp = purchasing_document_category-cn     document_category = mm_document_category-cn  document_category_descr = 'Contract' )
+                                          ( document_bstyp = purchasing_document_category-cen_cn document_category = mm_document_category-cn  document_category_descr = 'Central Contract' )
+                                          ( document_bstyp = purchasing_document_category-sa     document_category = mm_document_category-sa  document_category_descr = 'Scheduling Agreement' )
+                                          ( document_bstyp = purchasing_document_category-po     document_category = mm_document_category-po  document_category_descr = 'Purchase Order' )
+                                          ( document_bstyp = purchasing_document_category-cen_po document_category = mm_document_category-po  document_category_descr = 'Central Purchase Order' )
+                                          ( document_bstyp = ''                                  document_category = mm_document_category-md  document_category_descr = 'Material Document' )
+                                          ( document_bstyp = ''                                  document_category = mm_document_category-inv document_category_descr = 'Invoice' )
+                                          ( document_bstyp = ''                                  document_category = mm_document_category-ac  document_category_descr = 'Accounting Document' ) ).
 
 
   ENDMETHOD.
@@ -1328,40 +1328,40 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     FIELD-SYMBOLS: <fs_table> TYPE STANDARD TABLE.
 
     ASSIGN lr_details_table->* TO <fs_table>.
-    ASSIGN COMPONENT e_column_id OF STRUCTURE <fs_table>[ es_row_no-row_id ] TO FIELD-SYMBOL(<fs_value>).
+    CHECK <fs_table> IS ASSIGNED.
 
+    ASSIGN COMPONENT e_column_id OF STRUCTURE <fs_table>[ es_row_no-row_id ] TO FIELD-SYMBOL(<fs_value>).
     CHECK <fs_value> IS ASSIGNED AND <fs_value> IS NOT INITIAL.
 
-    CASE e_column_id.
+    DATA(lv_document_category) = VALUE #( lt_mm_document_flow[ document_number = <fs_value> ]-document_category OPTIONAL ).
 
-      WHEN 'BANFN'.
 
-        SET PARAMETER ID 'BAN' FIELD <fs_value>.
-        CALL TRANSACTION 'ME53N' WITH AUTHORITY-CHECK.
+    DATA(lv_parameter_id) = SWITCH #( e_column_id
+                                      WHEN 'BANFN' THEN 'BAN'
+                                      WHEN 'MATNR' THEN 'MAT'
+                                      WHEN 'EBELN' THEN COND #( WHEN lv_document_category EQ mm_document_category-po  THEN 'BES'
+                                                                WHEN lv_document_category EQ mm_document_category-cn  THEN 'CTR'
+                                                                WHEN lv_document_category EQ mm_document_category-rfq THEN 'CTR'  )
+                                      WHEN 'MBLNR' THEN 'MBN'
+                                      WHEN 'BELNR' THEN 'BLN' ).
 
-      WHEN 'MATNR'.
+    DATA(lv_transaction_code) = SWITCH #( e_column_id
+                                      WHEN 'BANFN' THEN 'ME53N'
+                                      WHEN 'MATNR' THEN 'MM03'
+                                      WHEN 'EBELN' THEN COND #( WHEN lv_document_category EQ mm_document_category-po  THEN 'ME23N'
+                                                                WHEN lv_document_category EQ mm_document_category-cn  THEN 'ME33K'
+                                                                WHEN lv_document_category EQ mm_document_category-rfq THEN 'ME43')
+                                      WHEN 'MBLNR' THEN 'MIGO'
+                                      WHEN 'BELNR' THEN 'FB03' ).
 
-        SET PARAMETER ID 'MAT' FIELD <fs_value>.
-        CALL TRANSACTION 'MM03' WITH AUTHORITY-CHECK AND SKIP FIRST SCREEN.
 
-      WHEN 'EBELN'.
+    IF lv_parameter_id IS NOT INITIAL AND lv_transaction_code IS NOT INITIAL.
 
-        SET PARAMETER ID 'BES' FIELD <fs_value>.
-        CALL TRANSACTION 'ME23N' WITH AUTHORITY-CHECK AND SKIP FIRST SCREEN.
+      SET PARAMETER ID lv_parameter_id     FIELD <fs_value>.
+      CALL TRANSACTION lv_transaction_code WITH AUTHORITY-CHECK AND SKIP FIRST SCREEN.
 
-      WHEN 'MBLNR'.
+    ENDIF.
 
-        SET PARAMETER ID 'MBN' FIELD <fs_value>.
-        CALL TRANSACTION 'MIGO' WITH AUTHORITY-CHECK AND SKIP FIRST SCREEN.
-
-      WHEN 'BELNR'.
-
-*        SET PARAMETER ID 'BLN' FIELD <fs_value>.
-*        CALL TRANSACTION 'FB03' WITH AUTHORITY-CHECK AND SKIP FIRST SCREEN.
-
-      WHEN OTHERS.
-
-    ENDCASE.
 
   ENDMETHOD.
 
