@@ -6,6 +6,7 @@
 *& Created   On:
 *&---------------------------------------------------------------------*
 REPORT z_mm_document_flow NO STANDARD PAGE HEADING LINE-SIZE 255.
+
 *&--------------------------------------------------------------------&*
 *&              M O D I F I C A T I O N    L O G                      &*
 *&--------------------------------------------------------------------&*
@@ -40,8 +41,8 @@ CLASS lcx_exception DEFINITION INHERITING FROM cx_static_check FINAL CREATE PUBL
       constructor IMPORTING im_text     TYPE bapiret2-message OPTIONAL
                             im_textid   TYPE texid OPTIONAL
                             im_previous TYPE REF TO  cx_root OPTIONAL,
-      get_text            REDEFINITION,
-      get_longtext        REDEFINITION.
+      get_text              REDEFINITION,
+      get_longtext          REDEFINITION.
 
   PRIVATE SECTION.
 
@@ -107,8 +108,16 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
         document_creation_time       TYPE tims,
       END OF ty_mm_document_flow,
 
-      tt_mm_document_flow TYPE TABLE OF ty_mm_document_flow WITH EMPTY KEY INITIAL SIZE 0,
-      tt_trees_node       TYPE TABLE OF mtreesnode          WITH EMPTY KEY INITIAL SIZE 0.
+      BEGIN OF ty_document_category_descr,
+        document_bstyp          TYPE bstyp,
+        document_category       TYPE ty_enum_mm_document_category,
+        document_category_descr TYPE string,
+
+      END OF ty_document_category_descr,
+
+      tt_document_category_descr TYPE TABLE OF ty_document_category_descr WITH KEY primary_key COMPONENTS document_bstyp document_category INITIAL SIZE 0,
+      tt_mm_document_flow        TYPE TABLE OF ty_mm_document_flow        WITH EMPTY KEY INITIAL SIZE 0,
+      tt_trees_node              TYPE TABLE OF mtreesnode                 WITH EMPTY KEY INITIAL SIZE 0.
 
     CONSTANTS:
 
@@ -140,28 +149,30 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
 
     "PRIVATE DATA
     DATA:
-      lv_document           TYPE ekko-ebeln,
-      lv_document_year      TYPE rbkp-gjahr,
-      lv_document_category  TYPE ty_enum_mm_document_category,
-      lv_screen_container   TYPE char30,
-      lv_screen_status      TYPE gui_status,
-      lv_screen_title       TYPE gui_title,
-      lv_screen_number      TYPE syst-dynnr,
-      lt_mm_document_flow   TYPE tt_mm_document_flow,
-      lt_tree_nodes         TYPE tt_trees_node,
-      lo_tree               TYPE REF TO cl_gui_simple_tree,
+      lv_document                TYPE ekko-ebeln,
+      lv_document_year           TYPE rbkp-gjahr,
+      lv_document_category       TYPE ty_enum_mm_document_category,
+      lv_screen_container        TYPE char30,
+      lv_screen_status           TYPE gui_status,
+      lv_screen_title            TYPE gui_title,
+      lv_screen_number           TYPE syst-dynnr,
+      lt_document_category_descr TYPE tt_document_category_descr,
+      lt_mm_document_flow        TYPE tt_mm_document_flow,
+      lt_tree_nodes              TYPE tt_trees_node,
+      lo_tree                    TYPE REF TO cl_gui_simple_tree,
       "CONTAINERS
-      lr_splitter_container TYPE REF TO cl_gui_splitter_container,
-      lr_left_container     TYPE REF TO cl_gui_container,
-      lr_right_container    TYPE REF TO cl_gui_container,
+      lr_splitter_container      TYPE REF TO cl_gui_splitter_container,
+      lr_left_container          TYPE REF TO cl_gui_container,
+      lr_right_container         TYPE REF TO cl_gui_container,
       "ALV
-      lo_alv_details        TYPE REF TO  cl_gui_alv_grid,
-      lr_details_table      TYPE REF TO data.
+      lo_alv_details             TYPE REF TO  cl_gui_alv_grid,
+      lr_details_table           TYPE REF TO data.
 
     "PRIVATE METHODS
     METHODS:
       create_containers           RAISING lcx_exception,
       create_tree                 RAISING lcx_exception,
+      populate_category_descr RAISING lcx_exception,
       determine_document_category RAISING lcx_exception,
       get_mm_document_flow        RAISING lcx_exception,
       get_flow_from_pr            RAISING lcx_exception,
@@ -287,6 +298,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     me->lv_screen_number    = im_screen_number.
 
     "METHODS
+    me->populate_category_descr( ).
     me->determine_document_category( ).
     me->get_mm_document_flow( ).
     me->build_node_table( ).
@@ -315,6 +327,25 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       WHEN OTHERS.
 
     ENDCASE.
+
+  ENDMETHOD.
+
+  METHOD populate_category_descr.
+
+
+    lt_document_category_descr = VALUE #( ( document_bstyp = 'B' document_category = mm_document_category-pr  document_category_descr = 'Purchase Requisition' )
+                                          ( document_bstyp = 'R' document_category = mm_document_category-rfq document_category_descr = 'Request for Quotation' )
+                                          ( document_bstyp = 'A' document_category = mm_document_category-rfq document_category_descr = 'Request for Quotation' )
+                                          ( document_bstyp = 'O' document_category = mm_document_category-qu  document_category_descr = 'Quotation' )
+                                          ( document_bstyp = 'K' document_category = mm_document_category-cn  document_category_descr = 'Contract' )
+                                          ( document_bstyp = 'C' document_category = mm_document_category-cn  document_category_descr = 'Central Contract' )
+                                          ( document_bstyp = 'L' document_category = mm_document_category-sa  document_category_descr = 'Scheduling Agreement' )
+                                          ( document_bstyp = 'F' document_category = mm_document_category-po  document_category_descr = 'Purchase Order' )
+                                          ( document_bstyp = 'P' document_category = mm_document_category-po  document_category_descr = 'Central Purchase Order' )
+                                          ( document_bstyp = ''  document_category = mm_document_category-md  document_category_descr = 'Material Document' )
+                                          ( document_bstyp = ''  document_category = mm_document_category-inv document_category_descr = 'Invoice' )
+                                          ( document_bstyp = ''  document_category = mm_document_category-ac  document_category_descr = 'Accounting Document' ) ).
+
 
   ENDMETHOD.
 
@@ -980,16 +1011,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                       relatkey  = VALUE #( lt_tree_nodes[ 1 ]-node_key OPTIONAL )
                       relatship = cl_gui_simple_tree=>relat_last_child
                       node_key  = <fs_mm_document_flow>-document_category
-                      text      = COND #( WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-qu  THEN 'Quotation'
-                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-rfq THEN 'Request for Quotation'
-                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-cn  THEN 'Contract'
-                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-sa  THEN 'Scheduling Agreement'
-                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-po  THEN 'Purchase Order'
-                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-pr  THEN 'Purchase Requisition'
-                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-md  THEN 'Material Document'
-                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-inv THEN 'Invoice'
-                                          WHEN <fs_mm_document_flow>-document_category EQ mm_document_category-ac  THEN 'Accounting'
-                                          ELSE <fs_mm_document_flow>-document_category )
+                      text      = VALUE #( lt_document_category_descr[ document_category = <fs_mm_document_flow>-document_category  ]-document_category_descr DEFAULT 'Undefined' )
                       expander  = abap_true
                       n_image   = icon_biw_formula
                       exp_image = icon_biw_formula ) TO lt_tree_nodes.
@@ -1170,19 +1192,10 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       EXPORTING
         i_save                        = cl_dba_core_constants=>co_save_layout_by_user
         is_variant                    = VALUE disvariant( report = sy-repid
-                                                          username = sy-uname  )
+                                                          username = sy-uname )
         is_layout                     = VALUE lvc_s_layo( zebra = abap_true
                                                           cwidth_opt = abap_true
-                                                          grid_title = SWITCH #( im_document_cat
-                                                                                WHEN me->mm_document_category-pr  THEN condense( |Purchase Requisition { im_document ALPHA = OUT } Item Details | )
-                                                                                WHEN me->mm_document_category-po  THEN condense( |Purchase Order { im_document ALPHA = OUT } Item Details | )
-                                                                                WHEN me->mm_document_category-cn  THEN condense( |Contract { im_document ALPHA = OUT } Item Details | )
-                                                                                WHEN me->mm_document_category-md  THEN condense( |Material Document { im_document ALPHA = OUT } Item Details | )
-                                                                                WHEN me->mm_document_category-qu  THEN condense( |Quotation { im_document ALPHA = OUT } Item Details | )
-                                                                                WHEN me->mm_document_category-rfq THEN condense( |Request for Quotation { im_document ALPHA = OUT } Item Details | )
-                                                                                WHEN me->mm_document_category-sa  THEN condense( |Scheduling Agreement { im_document ALPHA = OUT } Item Details | )
-                                                                                WHEN me->mm_document_category-inv THEN condense( |Invoice { im_document ALPHA = OUT } Item    Details | )
-                                                                                ) )
+                                                          grid_title = | { VALUE #( me->lt_document_category_descr[ document_category = im_document_cat ]-document_category_descr OPTIONAL ) } { im_document ALPHA = OUT } Item Details |  )
         it_toolbar_excluding          = VALUE ui_functions( ( cl_gui_alv_grid=>mc_fc_loc_insert_row )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_copy_row )
                                                             ( cl_gui_alv_grid=>mc_fc_loc_append_row )
