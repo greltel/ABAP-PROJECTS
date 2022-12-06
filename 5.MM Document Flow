@@ -178,8 +178,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
       get_flow_from_pr            RAISING lcx_exception,
       get_flow_from_qu            RAISING lcx_exception,
       get_flow_from_rfq           RAISING lcx_exception,
-      get_flow_from_cn            RAISING lcx_exception,
-      get_flow_from_sa            RAISING lcx_exception,
+      get_flow_from_outline_agr            RAISING lcx_exception,
       get_flow_from_po            RAISING lcx_exception,
       get_flow_from_md            RAISING lcx_exception,
       get_flow_from_inv           RAISING lcx_exception,
@@ -450,13 +449,9 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
         me->get_flow_from_qu( ).
 
-      WHEN me->mm_document_category-sa.
+      WHEN me->mm_document_category-sa OR me->mm_document_category-cn.
 
-        me->get_flow_from_sa( ).
-
-      WHEN me->mm_document_category-cn.
-
-        me->get_flow_from_cn( ).
+        me->get_flow_from_outline_agr( ).
 
       WHEN me->mm_document_category-po.
 
@@ -479,6 +474,10 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Document Flow Not Retrieved'.
 
     ENDCASE.
+
+    IF me->lt_mm_document_flow IS INITIAL.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Document Flow Not Retrieved'.
+    ENDIF.
 
   ENDMETHOD.
 
@@ -629,11 +628,78 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD get_flow_from_cn.
+  METHOD get_flow_from_outline_agr.
 
-  ENDMETHOD.
+    DATA(lt_vgabe_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'VGABE' ) )->get_ddic_fixed_values( sy-langu ).
+    DATA(lt_bsart_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'BSART' ) )->get_ddic_fixed_values( sy-langu ).
 
-  METHOD get_flow_from_sa.
+    "CONTRACT
+    SELECT SINGLE FROM ekko
+      FIELDS ekko~ebeln AS document_number,aedat AS document_creation_date
+      WHERE ebeln EQ @me->lv_document
+      INTO  @DATA(ls_cn).
+
+    IF syst-subrc IS INITIAL AND ls_cn IS NOT INITIAL.
+
+      APPEND VALUE #( document_number        = ls_cn-document_number
+                      document_category      = mm_document_category-cn
+                      document_creation_date = ls_cn-document_creation_date
+                      "document_creation_time = <fs_pr>-document_creation_time
+                ) TO lt_mm_document_flow.
+
+    ENDIF.
+
+    "PURCHASE ORDER
+    SELECT FROM ekko
+      FIELDS ekko~ebeln AS document_number,aedat AS document_creation_date
+      WHERE konnr EQ @me->lv_document
+      INTO TABLE @DATA(lt_po).
+
+    IF sy-subrc IS INITIAL AND lt_po IS NOT INITIAL.
+
+      LOOP AT lt_po ASSIGNING FIELD-SYMBOL(<fs_po>).
+
+        APPEND VALUE #( document_number        = <fs_po>-document_number
+                        document_category      = mm_document_category-po
+                        document_creation_date = <fs_po>-document_creation_date
+                        "document_creation_time = <fs_pr>-document_creation_time
+                        ) TO lt_mm_document_flow.
+
+      ENDLOOP.
+
+    ENDIF.
+
+    "PURCHASE REQUISITION
+    SELECT
+    DISTINCT
+    ( eban~banfn )  AS document_number,
+    cdhdr~udate AS document_creation_date,
+    cdhdr~utime AS document_creation_time
+    FROM ekpo
+    INNER JOIN eban ON eban~banfn EQ ekpo~banfn
+    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ eban~banfn AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+    WHERE eban~bstyp EQ @me->purchasing_document_category-pr AND
+          eban~konnr EQ @me->lv_document
+    INTO TABLE @DATA(lt_pr).
+
+    IF sy-subrc IS INITIAL AND lt_pr IS NOT INITIAL.
+
+      LOOP AT lt_pr ASSIGNING FIELD-SYMBOL(<fs_pr>).
+        APPEND VALUE #( document_number        = <fs_pr>-document_number
+                        document_category      = mm_document_category-pr
+                        document_creation_date = <fs_pr>-document_creation_date
+                        document_creation_time = <fs_pr>-document_creation_time ) TO lt_mm_document_flow.
+      ENDLOOP.
+
+    ENDIF.
+
+    "MATERIAL DOCUMENT
+
+    "INVOICE
+
+    "ACCOUNTING
+
+
 
   ENDMETHOD.
 
@@ -996,7 +1062,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                     disabled  = space
                     isfolder  = abap_true
                     node_key  = |Root Node|
-                    text      = |Document Flow { VALUE #( lt_mm_document_flow[ document_number = lv_document ]-document_category OPTIONAL ) } { lv_document ALPHA = OUT }|
+                    text      = |Document Flow { me->lv_document_category } { lv_document ALPHA = OUT }|
                     n_image   = icon_system_favorites
                     exp_image = icon_system_favorites ) TO lt_tree_nodes.
 
