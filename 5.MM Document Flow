@@ -565,12 +565,11 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
      ekbe~vgabe AS transaction_type,
      ekbe~cpudt AS document_creation_date,
      ekbe~cputm AS document_creation_time
-
-      FROM ekbe
-      INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
-      LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
-      WHERE  ekbe~bwart IS NOT INITIAL
-      INTO TABLE @DATA(lt_md).
+    FROM ekbe
+    INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
+    LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+    WHERE  ekbe~bwart IS NOT INITIAL
+    INTO TABLE @DATA(lt_md).
 
     IF sy-subrc IS INITIAL AND lt_md IS NOT INITIAL.
 
@@ -590,18 +589,17 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "INVOICE
     SELECT
-    DISTINCT ( ekbe~belnr ) AS document_number,
-    ekbe~bwart AS movement_type,
-    t156ht~btext AS movement_type_description,
-    ekbe~vgabe AS transaction_type,
-    ekbe~cpudt AS document_creation_date,
-    ekbe~cputm AS document_creation_time
-
-   FROM ekbe
-   INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
-   LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
-   WHERE ekbe~bwart IS INITIAL
-   INTO TABLE @DATA(lt_inv).
+      DISTINCT ( ekbe~belnr ) AS document_number,
+      ekbe~bwart AS movement_type,
+      t156ht~btext AS movement_type_description,
+      ekbe~vgabe AS transaction_type,
+      ekbe~cpudt AS document_creation_date,
+      ekbe~cputm AS document_creation_time
+     FROM ekbe
+     INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
+     LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+     WHERE ekbe~bwart IS INITIAL
+     INTO TABLE @DATA(lt_inv).
 
     IF sy-subrc IS INITIAL AND lt_inv IS NOT INITIAL.
 
@@ -635,8 +633,12 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "CONTRACT
     SELECT SINGLE FROM ekko
-      FIELDS ekko~ebeln AS document_number,aedat AS document_creation_date
-      WHERE ebeln EQ @me->lv_document
+      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+      FIELDS ekko~ebeln AS document_number,
+             cdhdr~udate AS document_creation_date,
+             cdhdr~utime AS document_creation_time
+      WHERE ebeln EQ @me->lv_document AND
+            bstyp IN (@me->purchasing_document_category-sa,@me->purchasing_document_category-cn)
       INTO  @DATA(ls_cn).
 
     IF syst-subrc IS INITIAL AND ls_cn IS NOT INITIAL.
@@ -644,15 +646,20 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       APPEND VALUE #( document_number        = ls_cn-document_number
                       document_category      = mm_document_category-cn
                       document_creation_date = ls_cn-document_creation_date
-                      "document_creation_time = <fs_pr>-document_creation_time
+                      document_creation_time = ls_cn-document_creation_time
                 ) TO lt_mm_document_flow.
 
     ENDIF.
 
     "PURCHASE ORDER
     SELECT FROM ekko
-      FIELDS ekko~ebeln AS document_number,aedat AS document_creation_date
-      WHERE konnr EQ @me->lv_document
+      INNER JOIN ekpo ON ekko~ebeln EQ ekpo~ebeln
+      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+      FIELDS
+      DISTINCT ( ekko~ebeln ) AS document_number,
+      cdhdr~udate AS document_creation_date,
+      cdhdr~utime AS document_creation_time
+      WHERE ekko~konnr EQ @me->lv_document
       INTO TABLE @DATA(lt_po).
 
     IF sy-subrc IS INITIAL AND lt_po IS NOT INITIAL.
@@ -662,7 +669,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         APPEND VALUE #( document_number        = <fs_po>-document_number
                         document_category      = mm_document_category-po
                         document_creation_date = <fs_po>-document_creation_date
-                        "document_creation_time = <fs_pr>-document_creation_time
+                        document_creation_time = <fs_po>-document_creation_time
                         ) TO lt_mm_document_flow.
 
       ENDLOOP.
@@ -671,8 +678,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "PURCHASE REQUISITION
     SELECT
-    DISTINCT
-    ( eban~banfn )  AS document_number,
+    DISTINCT ( eban~banfn )  AS document_number,
     cdhdr~udate AS document_creation_date,
     cdhdr~utime AS document_creation_time
     FROM ekpo
@@ -693,12 +699,69 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     ENDIF.
 
-    "MATERIAL DOCUMENT
+    "MATERIAL DOCUMENT COMING FROM PO OF CONTRACT
+    SELECT
+     DISTINCT ( ekbe~belnr ) AS document_number,
+     ekbe~bwart AS movement_type,
+     t156ht~btext AS movement_type_description,
+     ekbe~vgabe AS transaction_type,
+     ekbe~cpudt AS document_creation_date,
+     ekbe~cputm AS document_creation_time
+    FROM ekbe
+    INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
+    LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+    WHERE  ekbe~bwart IS NOT INITIAL
+    INTO TABLE @DATA(lt_md).
 
-    "INVOICE
+    IF sy-subrc IS INITIAL AND lt_md IS NOT INITIAL.
 
-    "ACCOUNTING
+      LOOP AT lt_md ASSIGNING FIELD-SYMBOL(<fs_md>).
 
+        APPEND VALUE #( document_number              = <fs_md>-document_number
+                        document_category            = mm_document_category-md
+                        movement_type                = <fs_md>-movement_type
+                        movement_type_description    = <fs_md>-movement_type_description
+                        transaction_type             = <fs_md>-transaction_type
+                        document_creation_date       = <fs_md>-document_creation_date
+                        document_creation_time       = <fs_md>-document_creation_time ) TO lt_mm_document_flow.
+
+      ENDLOOP.
+
+    ENDIF.
+
+    "INVOICE COMING FROM PO OF CONTRACT
+    SELECT
+    DISTINCT ( ekbe~belnr ) AS document_number,
+    ekbe~bwart AS movement_type,
+    t156ht~btext AS movement_type_description,
+    ekbe~vgabe AS transaction_type,
+    ekbe~cpudt AS document_creation_date,
+    ekbe~cputm AS document_creation_time
+
+   FROM ekbe
+   INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
+   LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+   WHERE ekbe~bwart IS INITIAL
+   INTO TABLE @DATA(lt_inv).
+
+    IF sy-subrc IS INITIAL AND lt_inv IS NOT INITIAL.
+
+      LOOP AT lt_inv ASSIGNING FIELD-SYMBOL(<fs_inv>).
+
+        APPEND VALUE #( document_number              = <fs_inv>-document_number
+                        document_category            = mm_document_category-inv
+                        movement_type                = <fs_inv>-movement_type
+                        movement_type_description    = <fs_inv>-movement_type_description
+                        transaction_type             = <fs_inv>-transaction_type
+                        document_creation_date       = <fs_inv>-document_creation_date
+                        document_creation_time       = <fs_inv>-document_creation_time ) TO lt_mm_document_flow.
+
+      ENDLOOP.
+
+    ENDIF.
+
+
+    "ACCOUNTING COMING FROM INVOICE
 
 
   ENDMETHOD.
@@ -1071,8 +1134,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Construct Nodes Table with Scenario Nodes
     LOOP AT lt_mm_document_flow ASSIGNING FIELD-SYMBOL(<fs_mm_document_flow>) GROUP BY <fs_mm_document_flow>-document_category.
 
-      APPEND VALUE #( hidden    = space
-                      disabled  = space
+      APPEND VALUE #( hidden    = abap_false
+                      disabled  = abap_false
                       isfolder  = abap_true
                       relatkey  = VALUE #( lt_tree_nodes[ 1 ]-node_key OPTIONAL )
                       relatship = cl_gui_simple_tree=>relat_last_child
@@ -1084,20 +1147,22 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       LOOP AT GROUP <fs_mm_document_flow> ASSIGNING FIELD-SYMBOL(<fs_group_line>).
 
-        APPEND VALUE #( hidden    = space
-                        disabled  = space
-                        isfolder  = space
+        APPEND VALUE #( hidden    = abap_false
+                        disabled  = abap_false
+                        isfolder  = abap_false
                         relatkey  = <fs_group_line>-document_category
                         relatship = cl_gui_simple_tree=>relat_last_child
                         node_key  = |{ <fs_group_line>-document_number ALPHA = OUT } |
                         text      = CONV #( |{ <fs_group_line>-document_number ALPHA = OUT }| )
-                        expander  = space
+                        expander  = abap_false
                         n_image   = icon_patient_smartcard
                         exp_image = icon_patient_smartcard ) TO lt_tree_nodes.
 
       ENDLOOP.
 
     ENDLOOP.
+
+    DELETE ADJACENT DUPLICATES FROM lt_tree_nodes COMPARING node_key.
 
   ENDMETHOD.
 
@@ -1161,14 +1226,14 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       "EXPAND NODES
       lo_tree->expand_root_nodes(
-        EXPORTING
-          level_count       = 3
-          expand_subtree    = abap_true
-      EXCEPTIONS
-        failed              = 1
-        illegal_level_count = 2
-        cntl_system_error   = 3
-        OTHERS              = 4 ).
+         EXPORTING
+           level_count       = 1
+           expand_subtree    = abap_true
+       EXCEPTIONS
+         failed              = 1
+         illegal_level_count = 2
+         cntl_system_error   = 3
+         OTHERS              = 4 ).
 
       IF sy-subrc IS NOT INITIAL.
         RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error Creating Tree'.
