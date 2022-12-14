@@ -580,45 +580,18 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM modify_screen.
 
-  LOOP AT SCREEN.
+  LOOP AT SCREEN INTO DATA(ls_screen).
 
-    IF screen-name EQ 'T_HITS' .
-      screen-display_3d = '1'.
-      screen-request = 1.
-      MODIFY SCREEN.
-    ENDIF.
+    ls_screen-request = COND #( WHEN ls_screen-name EQ 'T_HITS' THEN '1' ).
 
-    IF r1 EQ abap_true."GUI VERSION
+    ls_screen-display_3d = COND #( WHEN ls_screen-name EQ 'T_HITS' THEN '1' ).
 
-      IF screen-group1 EQ 'ID2'.
-        screen-active = 0.
-        MODIFY SCREEN.
-      ENDIF.
+    ls_screen-active = COND #( WHEN r1   EQ abap_true AND  ls_screen-group1 EQ 'ID2' THEN  /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                               WHEN r2   EQ abap_true AND  ls_screen-group1 EQ 'ID1' THEN  /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                               WHEN db   EQ abap_true AND  ls_screen-group1 EQ 'ID3' THEN  /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                               WHEN file EQ abap_true AND  ls_screen-group1 EQ 'ID4' THEN  /accgo/if_cck_dpqs_constants=>gc_screen_input_visible ).
 
-    ELSEIF r2 EQ abap_true."FIORI VERSION
-
-      IF screen-group1 EQ 'ID1'.
-        screen-active = 0.
-        MODIFY SCREEN.
-      ENDIF.
-
-    ENDIF.
-
-    IF db EQ abap_true."DATABASE TABLE
-
-      IF screen-group1 EQ 'ID3'.
-        screen-active = 0.
-        MODIFY SCREEN.
-      ENDIF.
-
-    ELSEIF file EQ abap_true."EXCEL
-
-      IF screen-group1 EQ 'ID4'.
-        screen-active = 0.
-        MODIFY SCREEN.
-      ENDIF.
-
-    ENDIF.
+    MODIFY SCREEN FROM ls_screen.
 
   ENDLOOP.
 
