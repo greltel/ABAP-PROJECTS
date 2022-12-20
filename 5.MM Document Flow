@@ -85,15 +85,16 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
     TYPES:
 
       BEGIN OF ENUM ty_enum_mm_document_category STRUCTURE mm_document_category BASE TYPE char03,
-        pr        VALUE 'PR',
-        rfq       VALUE 'RFQ',
-        qu        VALUE 'QU',
-        cn        VALUE 'CN',
-        sa        VALUE 'SA',
-        po        VALUE 'PO',
-        md        VALUE 'MD',
-        inv       VALUE 'INV',
-        ac        VALUE 'AC',
+        pr        VALUE 'PR', "Purchase Requisition
+        rfq       VALUE 'RFQ', "Request for Quotation
+        qu        VALUE 'QU', "Quotation
+        cn        VALUE 'CN', "Contract
+        sa        VALUE 'SA', "Scheduling Agreement
+        po        VALUE 'PO', "Purchase Order
+        md        VALUE 'MD', "Material Document
+        inv       VALUE 'INV', "Invoice
+        acm       VALUE 'ACM', "Accounting Document from Material Document
+        aci       VALUE 'ACI', "Accounting Document from Invoice
         undefined VALUE IS INITIAL,
       END OF ENUM ty_enum_mm_document_category STRUCTURE mm_document_category,
 
@@ -331,7 +332,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD populate_category_descr.
 
-
     lt_document_category_descr = VALUE #( ( document_bstyp = purchasing_document_category-pr     document_category = mm_document_category-pr  document_category_descr = 'Purchase Requisition' )
                                           ( document_bstyp = purchasing_document_category-rfq    document_category = mm_document_category-rfq document_category_descr = 'Request for Quotation' )
                                           ( document_bstyp = purchasing_document_category-rfq_2  document_category = mm_document_category-rfq document_category_descr = 'Request for Quotation' )
@@ -343,8 +343,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                                           ( document_bstyp = purchasing_document_category-cen_po document_category = mm_document_category-po  document_category_descr = 'Central Purchase Order' )
                                           ( document_bstyp = ''                                  document_category = mm_document_category-md  document_category_descr = 'Material Document' )
                                           ( document_bstyp = ''                                  document_category = mm_document_category-inv document_category_descr = 'Invoice' )
-                                          ( document_bstyp = ''                                  document_category = mm_document_category-ac  document_category_descr = 'Accounting Document' ) ).
-
+                                          ( document_bstyp = ''                                  document_category = mm_document_category-aci document_category_descr = 'Accounting Document from Invoice' )
+                                          ( document_bstyp = ''                                  document_category = mm_document_category-acm document_category_descr = 'Accounting Document from Material Document' ) ).
 
   ENDMETHOD.
 
@@ -419,12 +419,21 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    "ACCOUNTING DOCUMENT
+    "ACCOUNTING DOCUMENT FROM INVOICE
     CLEAR:lv_exists.
-    SELECT SINGLE @abap_true FROM bkpf WHERE belnr EQ @me->lv_document INTO @lv_exists.
+    SELECT SINGLE @abap_true FROM bkpf WHERE belnr EQ @me->lv_document AND awtyp EQ 'RMRP' INTO @lv_exists.
 
     IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
-      me->lv_document_category = me->mm_document_category-ac.
+      me->lv_document_category = me->mm_document_category-aci.
+      RETURN.
+    ENDIF.
+
+    "ACCOUNTING DOCUMENT FROM MATERIAL DOCUMENT
+    CLEAR:lv_exists.
+    SELECT SINGLE @abap_true FROM bkpf WHERE belnr EQ @me->lv_document AND awtyp EQ 'MKPF' INTO @lv_exists.
+
+    IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
+      me->lv_document_category = me->mm_document_category-acm.
       RETURN.
     ENDIF.
 
@@ -465,7 +474,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
         me->get_flow_from_inv( ).
 
-      WHEN me->mm_document_category-ac.
+      WHEN me->mm_document_category-aci OR me->mm_document_category-acm .
 
         me->get_flow_from_ac( ).
 
