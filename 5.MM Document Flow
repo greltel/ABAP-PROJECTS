@@ -100,6 +100,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
 
       BEGIN OF ty_mm_document_flow,
         document_number              TYPE ebeln,
+        fiscal_year                  TYPE gjahr,
         document_category            TYPE ty_enum_mm_document_category,
         movement_type                TYPE bwart,
         movement_type_description    TYPE btext,
@@ -142,7 +143,12 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
         change VALUE 'U',
         insert VALUE 'I',
         delete VALUE 'D',
-      END OF type_of_document_change.
+      END OF type_of_document_change,
+
+      BEGIN OF accounting_object_key,
+        material_document TYPE awkey VALUE 'MKPF',
+        invoice           TYPE awkey VALUE 'RMRP',
+      END OF accounting_object_key.
 
     "SINGLETON DESIGN PATTERN
     CLASS-DATA:
@@ -179,11 +185,12 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
       get_flow_from_pr            RAISING lcx_exception,
       get_flow_from_qu            RAISING lcx_exception,
       get_flow_from_rfq           RAISING lcx_exception,
-      get_flow_from_outline_agr            RAISING lcx_exception,
+      get_flow_from_outline_agr   RAISING lcx_exception,
       get_flow_from_po            RAISING lcx_exception,
       get_flow_from_md            RAISING lcx_exception,
       get_flow_from_inv           RAISING lcx_exception,
       get_flow_from_ac            RAISING lcx_exception,
+      get_accounting_documents    RAISING lcx_exception,
       display_document_details    IMPORTING im_document      TYPE ebeln
                                             im_document_cat  TYPE ty_enum_mm_document_category
                                             im_document_year TYPE gjahr OPTIONAL
@@ -421,7 +428,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "ACCOUNTING DOCUMENT FROM INVOICE
     CLEAR:lv_exists.
-    SELECT SINGLE @abap_true FROM bkpf WHERE belnr EQ @me->lv_document AND awtyp EQ 'RMRP' INTO @lv_exists.
+    SELECT SINGLE @abap_true FROM bkpf WHERE belnr EQ @me->lv_document AND awtyp EQ @me->accounting_object_key-invoice INTO @lv_exists.
 
     IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-aci.
@@ -430,7 +437,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "ACCOUNTING DOCUMENT FROM MATERIAL DOCUMENT
     CLEAR:lv_exists.
-    SELECT SINGLE @abap_true FROM bkpf WHERE belnr EQ @me->lv_document AND awtyp EQ 'MKPF' INTO @lv_exists.
+    SELECT SINGLE @abap_true FROM bkpf WHERE belnr EQ @me->lv_document AND awtyp EQ @me->accounting_object_key-material_document INTO @lv_exists.
 
     IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-acm.
@@ -639,56 +646,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     ENDIF.
 
-    "ACCOUNTING FROM MATERIAL DOCUMENT
-    IF lt_md IS NOT INITIAL.
-
-      SELECT
-        DISTINCT ( bkpf~belnr ) AS document_number
-        FROM bkpf
-        INNER JOIN @lt_md AS a ON a~document_number EQ bkpf~awkey
-        WHERE bkpf~awkey IS NOT INITIAL AND
-              bkpf~awtyp EQ 'MKPF'
-        INTO TABLE @DATA(lt_acc_md).
-
-      IF syst-subrc IS INITIAL AND lt_acc_md IS NOT INITIAL.
-
-        LOOP AT lt_acc_md ASSIGNING FIELD-SYMBOL(<fs_acc_md>).
-
-          APPEND VALUE #( document_number     = <fs_acc_md>-document_number
-                          document_category   = mm_document_category-acm
-                          ) TO lt_mm_document_flow.
-
-
-        ENDLOOP.
-
-      ENDIF.
-
-    ENDIF.
-
-    "ACCOUNTING FROM INVOICE
-    IF lt_inv IS NOT INITIAL.
-
-      SELECT
-        DISTINCT ( bkpf~belnr ) AS document_number
-        FROM bkpf
-        INNER JOIN @lt_inv AS a ON a~document_number EQ bkpf~awkey
-        WHERE bkpf~awkey IS NOT INITIAL AND
-              bkpf~awtyp EQ 'RMRP'
-        INTO TABLE @DATA(lt_acc_inv).
-
-      IF syst-subrc IS INITIAL AND lt_acc_inv IS NOT INITIAL.
-
-        LOOP AT lt_acc_inv ASSIGNING FIELD-SYMBOL(<fs_acc_inv>).
-
-          APPEND VALUE #( document_number     = <fs_acc_inv>-document_number
-                          document_category   = mm_document_category-aci
-                          ) TO lt_mm_document_flow.
-
-        ENDLOOP.
-
-      ENDIF.
-
-    ENDIF.
+    "ACCOUNTING DOCUMENTS
+    me->get_accounting_documents( ).
 
   ENDMETHOD.
 
@@ -987,61 +946,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     ENDIF.
 
-    "ACCOUNTING FROM MATERIAL DOCUMENT
-    LOOP AT lt_md ASSIGNING <fs_md>.
-
-      SELECT SINGLE
-        bkpf~belnr AS document_number,
-        bkpf~cputm AS document_creation_time,
-        bkpf~budat AS document_creation_date
-        FROM bkpf
-        WHERE bkpf~awkey IS NOT INITIAL AND
-              bkpf~awkey EQ @( |{ <fs_md>-document_number }{ <fs_md>-document_creation_date+0(4) }| ) AND
-              bkpf~awtyp EQ 'MKPF'
-        INTO @DATA(ls_acc_md).
-
-      IF syst-subrc IS INITIAL AND ls_acc_md IS NOT INITIAL.
-
-
-        APPEND VALUE #( document_number        = ls_acc_md-document_number
-                        document_category      = mm_document_category-acm
-                        document_creation_date = ls_acc_md-document_creation_date
-                        document_creation_time = ls_acc_md-document_creation_time
-                        ) TO lt_mm_document_flow.
-
-      ENDIF.
-
-      CLEAR:ls_acc_md.
-
-    ENDLOOP.
-
-    "ACCOUNTING FROM INVOICE
-    LOOP AT lt_inv ASSIGNING <fs_inv>.
-
-      SELECT SINGLE
-        bkpf~belnr AS document_number,
-        bkpf~cputm AS document_creation_time,
-        bkpf~budat AS document_creation_date
-        FROM bkpf
-        WHERE bkpf~awkey IS NOT INITIAL AND
-              bkpf~awkey EQ @( |{ <fs_inv>-document_number }{ <fs_inv>-document_creation_date+0(4) }| ) AND
-              bkpf~awtyp EQ 'RMRP'
-        INTO @DATA(ls_acc_inv).
-
-      IF syst-subrc IS INITIAL AND ls_acc_inv IS NOT INITIAL.
-
-
-        APPEND VALUE #( document_number        = ls_acc_inv-document_number
-                        document_category      = mm_document_category-aci
-                        document_creation_date = ls_acc_inv-document_creation_date
-                        document_creation_time = ls_acc_inv-document_creation_time
-                        ) TO lt_mm_document_flow.
-
-      ENDIF.
-
-      CLEAR:ls_acc_inv.
-
-    ENDLOOP.
+    "ACCOUNTING DOCUMENTS
+    me->get_accounting_documents( ).
 
   ENDMETHOD.
 
@@ -1245,6 +1151,64 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "MATERIAL DOCUMENT
 
 
+
+  ENDMETHOD.
+
+  METHOD get_accounting_documents.
+
+    "ACCOUNTING FROM MATERIAL DOCUMENT
+    LOOP AT lt_mm_document_flow ASSIGNING FIELD-SYMBOL(<fs_doc_flow>) WHERE document_category EQ mm_document_category-md.
+
+      SELECT SINGLE
+      bkpf~belnr AS document_number,
+      bkpf~cputm AS document_creation_time,
+      bkpf~budat AS document_creation_date
+      FROM bkpf
+      WHERE bkpf~awkey IS NOT INITIAL AND
+            bkpf~awkey EQ @( |{ <fs_doc_flow>-document_number }{ <fs_doc_flow>-document_creation_date+0(4) }| ) AND
+            bkpf~awtyp EQ @me->accounting_object_key-material_document
+      INTO @DATA(ls_acc_md).
+
+      IF syst-subrc IS INITIAL AND ls_acc_md IS NOT INITIAL.
+
+        APPEND VALUE #( document_number        = ls_acc_md-document_number
+                        document_category      = mm_document_category-acm
+                        document_creation_date = ls_acc_md-document_creation_date
+                        document_creation_time = ls_acc_md-document_creation_time
+                        ) TO lt_mm_document_flow.
+
+      ENDIF.
+
+      CLEAR:ls_acc_md.
+
+    ENDLOOP.
+
+    "ACCOUNTING FROM INVOICE
+    LOOP AT lt_mm_document_flow ASSIGNING <fs_doc_flow> WHERE document_category EQ mm_document_category-inv.
+
+      SELECT SINGLE
+        bkpf~belnr AS document_number,
+        bkpf~cputm AS document_creation_time,
+        bkpf~budat AS document_creation_date
+        FROM bkpf
+        WHERE bkpf~awkey IS NOT INITIAL AND
+              bkpf~awkey EQ @( |{ <fs_doc_flow>-document_number }{ <fs_doc_flow>-document_creation_date+0(4) }| ) AND
+              bkpf~awtyp EQ @me->accounting_object_key-invoice
+        INTO @DATA(ls_acc_inv).
+
+      IF syst-subrc IS INITIAL AND ls_acc_inv IS NOT INITIAL.
+
+        APPEND VALUE #( document_number        = ls_acc_inv-document_number
+                        document_category      = mm_document_category-aci
+                        document_creation_date = ls_acc_inv-document_creation_date
+                        document_creation_time = ls_acc_inv-document_creation_time
+                        ) TO lt_mm_document_flow.
+
+      ENDIF.
+
+      CLEAR:ls_acc_inv.
+
+    ENDLOOP.
 
   ENDMETHOD.
 
@@ -1563,6 +1527,24 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         FIELD-SYMBOLS <lt_inv> LIKE t_table_inv.
         ASSIGN re_table->* TO <lt_inv>.
         APPEND LINES OF t_table_inv TO <lt_inv>.
+
+      WHEN me->mm_document_category-aci OR me->mm_document_category-acm.
+
+        SELECT FROM bseg
+          FIELDS bseg~*
+          WHERE bseg~belnr EQ @im_document AND
+                bseg~gjahr EQ @im_document_year
+          INTO TABLE @DATA(t_table_acc).
+
+        "Copy Table to heap memory
+        lo_tabledesc = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( p_data = t_table_acc ) ).
+
+        "Create table in heap memory and set return reference
+        CREATE DATA re_table TYPE HANDLE lo_tabledesc.
+
+        FIELD-SYMBOLS <lt_acc> LIKE t_table_acc.
+        ASSIGN re_table->* TO <lt_acc>.
+        APPEND LINES OF t_table_acc TO <lt_acc>.
 
     ENDCASE.
 
