@@ -343,8 +343,8 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                                           ( document_bstyp = purchasing_document_category-cen_po document_category = mm_document_category-po  document_category_descr = 'Central Purchase Order' )
                                           ( document_bstyp = ''                                  document_category = mm_document_category-md  document_category_descr = 'Material Document' )
                                           ( document_bstyp = ''                                  document_category = mm_document_category-inv document_category_descr = 'Invoice' )
-                                          ( document_bstyp = ''                                  document_category = mm_document_category-aci document_category_descr = 'Accounting Document from Invoice' )
-                                          ( document_bstyp = ''                                  document_category = mm_document_category-acm document_category_descr = 'Accounting Document from Material Document' ) ).
+                                          ( document_bstyp = ''                                  document_category = mm_document_category-aci document_category_descr = 'Accounting from Invoice' )
+                                          ( document_bstyp = ''                                  document_category = mm_document_category-acm document_category_descr = 'Accounting from Material Doc.' ) ).
 
   ENDMETHOD.
 
@@ -505,10 +505,12 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       INTO @DATA(ls_pr).
 
     IF sy-subrc IS INITIAL AND ls_pr IS NOT INITIAL.
+
       APPEND VALUE #( document_number        = ls_pr-document_number
                       document_category      = mm_document_category-pr
                       document_creation_date = ls_pr-document_creation_date
                       document_creation_time = ls_pr-document_creation_time ) TO lt_mm_document_flow.
+
     ENDIF.
 
     "Outline agreement( Contract and Scheduling Agreement )
@@ -538,6 +540,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                       document_creation_time = <fs_oa>-document_creation_time ) TO lt_mm_document_flow.
 
         CLEAR:lv_document_category.
+
       ENDLOOP.
 
     ENDIF.
@@ -556,6 +559,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     INTO TABLE @DATA(lt_po).
 
     IF sy-subrc IS INITIAL AND lt_po IS NOT INITIAL.
+
       LOOP AT lt_po ASSIGNING FIELD-SYMBOL(<fs_po>).
 
         APPEND VALUE #( document_number        = <fs_po>-document_number
@@ -564,65 +568,126 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                         document_creation_time = <fs_po>-document_creation_time ) TO lt_mm_document_flow.
 
       ENDLOOP.
+
     ENDIF.
 
     "Material Document
-    SELECT
-     DISTINCT ( ekbe~belnr ) AS document_number,
-     ekbe~bwart AS movement_type,
-     t156ht~btext AS movement_type_description,
-     ekbe~vgabe AS transaction_type,
-     ekbe~cpudt AS document_creation_date,
-     ekbe~cputm AS document_creation_time
-    FROM ekbe
-    INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
-    LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
-    WHERE  ekbe~bwart IS NOT INITIAL
-    INTO TABLE @DATA(lt_md).
+    IF lt_po IS NOT INITIAL.
 
-    IF sy-subrc IS INITIAL AND lt_md IS NOT INITIAL.
+      SELECT
+       DISTINCT ( ekbe~belnr ) AS document_number,
+       ekbe~bwart AS movement_type,
+       t156ht~btext AS movement_type_description,
+       ekbe~vgabe AS transaction_type,
+       ekbe~cpudt AS document_creation_date,
+       ekbe~cputm AS document_creation_time
+      FROM ekbe
+      INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
+      LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+      WHERE  ekbe~bwart IS NOT INITIAL
+      INTO TABLE @DATA(lt_md).
 
-      LOOP AT lt_md ASSIGNING FIELD-SYMBOL(<fs_md>).
+      IF sy-subrc IS INITIAL AND lt_md IS NOT INITIAL.
 
-        APPEND VALUE #( document_number              = <fs_md>-document_number
-                        document_category            = mm_document_category-md
-                        movement_type                = <fs_md>-movement_type
-                        movement_type_description    = <fs_md>-movement_type_description
-                        transaction_type             = <fs_md>-transaction_type
-                        document_creation_date       = <fs_md>-document_creation_date
-                        document_creation_time       = <fs_md>-document_creation_time ) TO lt_mm_document_flow.
+        LOOP AT lt_md ASSIGNING FIELD-SYMBOL(<fs_md>).
 
-      ENDLOOP.
+          APPEND VALUE #( document_number              = <fs_md>-document_number
+                          document_category            = mm_document_category-md
+                          movement_type                = <fs_md>-movement_type
+                          movement_type_description    = <fs_md>-movement_type_description
+                          transaction_type             = <fs_md>-transaction_type
+                          document_creation_date       = <fs_md>-document_creation_date
+                          document_creation_time       = <fs_md>-document_creation_time ) TO lt_mm_document_flow.
+
+        ENDLOOP.
+
+      ENDIF.
 
     ENDIF.
 
     "INVOICE
-    SELECT
-      DISTINCT ( ekbe~belnr ) AS document_number,
-      ekbe~bwart AS movement_type,
-      t156ht~btext AS movement_type_description,
-      ekbe~vgabe AS transaction_type,
-      ekbe~cpudt AS document_creation_date,
-      ekbe~cputm AS document_creation_time
-     FROM ekbe
-     INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
-     LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
-     WHERE ekbe~bwart IS INITIAL
-     INTO TABLE @DATA(lt_inv).
+    IF lt_po IS NOT INITIAL.
 
-    IF sy-subrc IS INITIAL AND lt_inv IS NOT INITIAL.
+      SELECT
+        DISTINCT ( ekbe~belnr ) AS document_number,
+        ekbe~bwart AS movement_type,
+        t156ht~btext AS movement_type_description,
+        ekbe~vgabe AS transaction_type,
+        ekbe~cpudt AS document_creation_date,
+        ekbe~cputm AS document_creation_time
+       FROM ekbe
+       INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
+       LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+       WHERE ekbe~bwart IS INITIAL
+       INTO TABLE @DATA(lt_inv).
 
-      LOOP AT lt_inv ASSIGNING FIELD-SYMBOL(<fs_inv>).
+      IF sy-subrc IS INITIAL AND lt_inv IS NOT INITIAL.
 
-        APPEND VALUE #( document_number              = <fs_inv>-document_number
-                        document_category            = mm_document_category-inv
-                        movement_type                = <fs_inv>-movement_type
-                        movement_type_description    = <fs_inv>-movement_type_description
-                        transaction_type             = <fs_inv>-transaction_type
-                        document_creation_date       = <fs_inv>-document_creation_date
-                        document_creation_time       = <fs_inv>-document_creation_time ) TO lt_mm_document_flow.
+        LOOP AT lt_inv ASSIGNING FIELD-SYMBOL(<fs_inv>).
 
-      ENDLOOP.
+          APPEND VALUE #( document_number              = <fs_inv>-document_number
+                          document_category            = mm_document_category-inv
+                          movement_type                = <fs_inv>-movement_type
+                          movement_type_description    = <fs_inv>-movement_type_description
+                          transaction_type             = <fs_inv>-transaction_type
+                          document_creation_date       = <fs_inv>-document_creation_date
+                          document_creation_time       = <fs_inv>-document_creation_time ) TO lt_mm_document_flow.
+
+        ENDLOOP.
+
+      ENDIF.
+
+    ENDIF.
+
+    "ACCOUNTING FROM MATERIAL DOCUMENT
+    IF lt_md IS NOT INITIAL.
+
+      SELECT
+        DISTINCT ( bkpf~belnr ) AS document_number
+        FROM bkpf
+        INNER JOIN @lt_md AS a ON a~document_number EQ bkpf~awkey
+        WHERE bkpf~awkey IS NOT INITIAL AND
+              bkpf~awtyp EQ 'MKPF'
+        INTO TABLE @DATA(lt_acc_md).
+
+      IF syst-subrc IS INITIAL AND lt_acc_md IS NOT INITIAL.
+
+        LOOP AT lt_acc_md ASSIGNING FIELD-SYMBOL(<fs_acc_md>).
+
+          APPEND VALUE #( document_number     = <fs_acc_md>-document_number
+                          document_category   = mm_document_category-acm
+                          ) TO lt_mm_document_flow.
+
+
+        ENDLOOP.
+
+      ENDIF.
+
+    ENDIF.
+
+    "ACCOUNTING FROM INVOICE
+    IF lt_inv IS NOT INITIAL.
+
+      SELECT
+        DISTINCT ( bkpf~belnr ) AS document_number
+        FROM bkpf
+        INNER JOIN @lt_inv AS a ON a~document_number EQ bkpf~awkey
+        WHERE bkpf~awkey IS NOT INITIAL AND
+              bkpf~awtyp EQ 'RMRP'
+        INTO TABLE @DATA(lt_acc_inv).
+
+      IF syst-subrc IS INITIAL AND lt_acc_inv IS NOT INITIAL.
+
+        LOOP AT lt_acc_inv ASSIGNING FIELD-SYMBOL(<fs_acc_inv>).
+
+          APPEND VALUE #( document_number     = <fs_acc_inv>-document_number
+                          document_category   = mm_document_category-aci
+                          ) TO lt_mm_document_flow.
+
+        ENDLOOP.
+
+      ENDIF.
+
     ENDIF.
 
   ENDMETHOD.
@@ -770,7 +835,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     ENDIF.
 
 
-    "ACCOUNTING COMING FROM INVOICE
+    "ACCOUNTING FROM INVOICE
 
 
   ENDMETHOD.
@@ -921,6 +986,62 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       ENDLOOP.
 
     ENDIF.
+
+    "ACCOUNTING FROM MATERIAL DOCUMENT
+    LOOP AT lt_md ASSIGNING <fs_md>.
+
+      SELECT SINGLE
+        bkpf~belnr AS document_number,
+        bkpf~cputm AS document_creation_time,
+        bkpf~budat AS document_creation_date
+        FROM bkpf
+        WHERE bkpf~awkey IS NOT INITIAL AND
+              bkpf~awkey EQ @( |{ <fs_md>-document_number }{ <fs_md>-document_creation_date+0(4) }| ) AND
+              bkpf~awtyp EQ 'MKPF'
+        INTO @DATA(ls_acc_md).
+
+      IF syst-subrc IS INITIAL AND ls_acc_md IS NOT INITIAL.
+
+
+        APPEND VALUE #( document_number        = ls_acc_md-document_number
+                        document_category      = mm_document_category-acm
+                        document_creation_date = ls_acc_md-document_creation_date
+                        document_creation_time = ls_acc_md-document_creation_time
+                        ) TO lt_mm_document_flow.
+
+      ENDIF.
+
+      CLEAR:ls_acc_md.
+
+    ENDLOOP.
+
+    "ACCOUNTING FROM INVOICE
+    LOOP AT lt_inv ASSIGNING <fs_inv>.
+
+      SELECT SINGLE
+        bkpf~belnr AS document_number,
+        bkpf~cputm AS document_creation_time,
+        bkpf~budat AS document_creation_date
+        FROM bkpf
+        WHERE bkpf~awkey IS NOT INITIAL AND
+              bkpf~awkey EQ @( |{ <fs_inv>-document_number }{ <fs_inv>-document_creation_date+0(4) }| ) AND
+              bkpf~awtyp EQ 'RMRP'
+        INTO @DATA(ls_acc_inv).
+
+      IF syst-subrc IS INITIAL AND ls_acc_inv IS NOT INITIAL.
+
+
+        APPEND VALUE #( document_number        = ls_acc_inv-document_number
+                        document_category      = mm_document_category-aci
+                        document_creation_date = ls_acc_inv-document_creation_date
+                        document_creation_time = ls_acc_inv-document_creation_time
+                        ) TO lt_mm_document_flow.
+
+      ENDIF.
+
+      CLEAR:ls_acc_inv.
+
+    ENDLOOP.
 
   ENDMETHOD.
 
