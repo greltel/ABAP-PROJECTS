@@ -85,13 +85,13 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
     TYPES:
 
       BEGIN OF ENUM ty_enum_mm_document_category STRUCTURE mm_document_category BASE TYPE char03,
-        pr        VALUE 'PR', "Purchase Requisition
+        pr        VALUE 'PR',  "Purchase Requisition
         rfq       VALUE 'RFQ', "Request for Quotation
-        qu        VALUE 'QU', "Quotation
-        cn        VALUE 'CN', "Contract
-        sa        VALUE 'SA', "Scheduling Agreement
-        po        VALUE 'PO', "Purchase Order
-        md        VALUE 'MD', "Material Document
+        qu        VALUE 'QU',  "Quotation
+        cn        VALUE 'CN',  "Contract
+        sa        VALUE 'SA',  "Scheduling Agreement
+        po        VALUE 'PO',  "Purchase Order
+        md        VALUE 'MD',  "Material Document
         inv       VALUE 'INV', "Invoice
         acm       VALUE 'ACM', "Accounting Document from Material Document
         aci       VALUE 'ACI', "Accounting Document from Invoice
@@ -100,7 +100,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
 
       BEGIN OF ty_mm_document_flow,
         document_number              TYPE ebeln,
-        fiscal_year                  TYPE gjahr,
+        document_year                TYPE gjahr, "fiscal_year
         document_category            TYPE ty_enum_mm_document_category,
         movement_type                TYPE bwart,
         movement_type_description    TYPE btext,
@@ -124,25 +124,25 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
     CONSTANTS:
 
       BEGIN OF purchasing_document_category,
-        info_record                VALUE 'I',
-        service_entry_sheet        VALUE 'Q',
-        simple_service_entry_sheet VALUE 'S',
-        source_list                VALUE 'W',
-        pr                         VALUE 'B',
-        rfq                        VALUE 'R',
-        rfq_2                      VALUE 'A',
-        qu                         VALUE 'O',
-        cn                         VALUE 'K',
-        sa                         VALUE 'L',
-        po                         VALUE 'F',
-        cen_cn                     VALUE 'C',
-        cen_po                     VALUE 'P',
+        info_record                TYPE ebstyp VALUE 'I',
+        service_entry_sheet        TYPE ebstyp VALUE 'Q',
+        simple_service_entry_sheet TYPE ebstyp VALUE 'S',
+        source_list                TYPE ebstyp VALUE 'W',
+        pr                         TYPE ebstyp VALUE 'B',
+        rfq                        TYPE ebstyp VALUE 'R',
+        rfq_2                      TYPE ebstyp VALUE 'A',
+        qu                         TYPE ebstyp VALUE 'O',
+        cn                         TYPE ebstyp VALUE 'K',
+        sa                         TYPE ebstyp VALUE 'L',
+        po                         TYPE ebstyp VALUE 'F',
+        cen_cn                     TYPE ebstyp VALUE 'C',
+        cen_po                     TYPE ebstyp VALUE 'P',
       END OF purchasing_document_category,
 
       BEGIN OF type_of_document_change,
-        change VALUE 'U',
-        insert VALUE 'I',
-        delete VALUE 'D',
+        change TYPE cdchngindh VALUE 'U',
+        insert TYPE cdchngindh VALUE 'I',
+        delete TYPE cdchngindh VALUE 'D',
       END OF type_of_document_change,
 
       BEGIN OF accounting_object_key,
@@ -152,7 +152,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
 
     "SINGLETON DESIGN PATTERN
     CLASS-DATA:
-    mo_instance TYPE REF TO lcl_mm_doc_flow.
+      mo_instance TYPE REF TO lcl_mm_doc_flow.
 
     "PRIVATE DATA
     DATA:
@@ -426,21 +426,21 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    "ACCOUNTING DOCUMENT FROM INVOICE
-    CLEAR:lv_exists.
-    SELECT SINGLE @abap_true FROM bkpf WHERE belnr EQ @me->lv_document AND awtyp EQ @me->accounting_object_key-invoice INTO @lv_exists.
-
-    IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
-      me->lv_document_category = me->mm_document_category-aci.
-      RETURN.
-    ENDIF.
-
     "ACCOUNTING DOCUMENT FROM MATERIAL DOCUMENT
     CLEAR:lv_exists.
     SELECT SINGLE @abap_true FROM bkpf WHERE belnr EQ @me->lv_document AND awtyp EQ @me->accounting_object_key-material_document INTO @lv_exists.
 
     IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
       me->lv_document_category = me->mm_document_category-acm.
+      RETURN.
+    ENDIF.
+
+    "ACCOUNTING DOCUMENT FROM INVOICE
+    CLEAR:lv_exists.
+    SELECT SINGLE @abap_true FROM bkpf WHERE belnr EQ @me->lv_document AND awtyp EQ @me->accounting_object_key-invoice INTO @lv_exists.
+
+    IF sy-subrc IS INITIAL AND lv_exists EQ abap_true.
+      me->lv_document_category = me->mm_document_category-aci.
       RETURN.
     ENDIF.
 
@@ -502,6 +502,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Purchase Requisition
     SELECT SINGLE
       eban~banfn  AS document_number,
+      substring( eban~badat, 1 , 4 )  AS document_year,
       cdhdr~udate AS document_creation_date,
       cdhdr~utime AS document_creation_time
 
@@ -514,6 +515,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     IF sy-subrc IS INITIAL AND ls_pr IS NOT INITIAL.
 
       APPEND VALUE #( document_number        = ls_pr-document_number
+                      document_year          = ls_pr-document_year
                       document_category      = mm_document_category-pr
                       document_creation_date = ls_pr-document_creation_date
                       document_creation_time = ls_pr-document_creation_time ) TO lt_mm_document_flow.
@@ -523,6 +525,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Outline agreement( Contract and Scheduling Agreement )
     SELECT
       DISTINCT ( ekpo~konnr )  AS document_number,
+      substring( ekko~bedat, 1 , 4 )  AS document_year,
       cdhdr~udate AS document_creation_date,
       cdhdr~utime AS document_creation_time
     FROM ekpo
@@ -539,12 +542,13 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
         SELECT SINGLE bstyp FROM ekpo WHERE konnr EQ @<fs_oa>-document_number AND banfn EQ @lv_document INTO @DATA(lv_document_category).
 
-        APPEND VALUE #( document_number      = <fs_oa>-document_number
-                      document_category      = COND #( WHEN lv_document_category EQ me->purchasing_document_category-cn THEN mm_document_category-cn
-                                                       WHEN lv_document_category EQ me->purchasing_document_category-sa THEN mm_document_category-sa
-                                                       ELSE mm_document_category-cn )
-                      document_creation_date = <fs_oa>-document_creation_date
-                      document_creation_time = <fs_oa>-document_creation_time ) TO lt_mm_document_flow.
+        APPEND VALUE #( document_number       = <fs_oa>-document_number
+                        document_year         = <fs_oa>-document_year
+                        document_category     = COND #( WHEN lv_document_category EQ me->purchasing_document_category-cn THEN mm_document_category-cn
+                                                        WHEN lv_document_category EQ me->purchasing_document_category-sa THEN mm_document_category-sa
+                                                        ELSE mm_document_category-cn )
+                        document_creation_date = <fs_oa>-document_creation_date
+                        document_creation_time = <fs_oa>-document_creation_time ) TO lt_mm_document_flow.
 
         CLEAR:lv_document_category.
 
@@ -555,6 +559,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Purchase Order
     SELECT
     DISTINCT ( ekko~ebeln )  AS document_number,
+    substring( ekko~bedat, 1 , 4 )  AS document_year,
     cdhdr~udate AS document_creation_date,
     cdhdr~utime AS document_creation_time
 
@@ -570,6 +575,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       LOOP AT lt_po ASSIGNING FIELD-SYMBOL(<fs_po>).
 
         APPEND VALUE #( document_number        = <fs_po>-document_number
+                        document_year          = <fs_po>-document_year
                         document_category      = mm_document_category-po
                         document_creation_date = <fs_po>-document_creation_date
                         document_creation_time = <fs_po>-document_creation_time ) TO lt_mm_document_flow.
@@ -583,11 +589,12 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       SELECT
        DISTINCT ( ekbe~belnr ) AS document_number,
-       ekbe~bwart AS movement_type,
+       ekbe~gjahr    AS document_year,
+       ekbe~bwart   AS movement_type,
        t156ht~btext AS movement_type_description,
-       ekbe~vgabe AS transaction_type,
-       ekbe~cpudt AS document_creation_date,
-       ekbe~cputm AS document_creation_time
+       ekbe~vgabe   AS transaction_type,
+       ekbe~cpudt   AS document_creation_date,
+       ekbe~cputm   AS document_creation_time
       FROM ekbe
       INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
       LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
@@ -599,6 +606,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         LOOP AT lt_md ASSIGNING FIELD-SYMBOL(<fs_md>).
 
           APPEND VALUE #( document_number              = <fs_md>-document_number
+                          document_year                = <fs_md>-document_year
                           document_category            = mm_document_category-md
                           movement_type                = <fs_md>-movement_type
                           movement_type_description    = <fs_md>-movement_type_description
@@ -617,11 +625,12 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       SELECT
         DISTINCT ( ekbe~belnr ) AS document_number,
-        ekbe~bwart AS movement_type,
+        ekbe~gjahr   AS document_year,
+        ekbe~bwart   AS movement_type,
         t156ht~btext AS movement_type_description,
-        ekbe~vgabe AS transaction_type,
-        ekbe~cpudt AS document_creation_date,
-        ekbe~cputm AS document_creation_time
+        ekbe~vgabe   AS transaction_type,
+        ekbe~cpudt   AS document_creation_date,
+        ekbe~cputm   AS document_creation_time
        FROM ekbe
        INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
        LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
@@ -633,6 +642,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         LOOP AT lt_inv ASSIGNING FIELD-SYMBOL(<fs_inv>).
 
           APPEND VALUE #( document_number              = <fs_inv>-document_number
+                          document_year                = <fs_inv>-document_year
                           document_category            = mm_document_category-inv
                           movement_type                = <fs_inv>-movement_type
                           movement_type_description    = <fs_inv>-movement_type_description
@@ -668,6 +678,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     SELECT SINGLE FROM ekko
       LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
       FIELDS ekko~ebeln AS document_number,
+             substring( ekko~bedat, 1 , 4 )  AS document_year,
              cdhdr~udate AS document_creation_date,
              cdhdr~utime AS document_creation_time
       WHERE ebeln EQ @me->lv_document AND
@@ -677,6 +688,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     IF syst-subrc IS INITIAL AND ls_cn IS NOT INITIAL.
 
       APPEND VALUE #( document_number        = ls_cn-document_number
+                      document_year          = ls_cn-document_year
                       document_category      = mm_document_category-cn
                       document_creation_date = ls_cn-document_creation_date
                       document_creation_time = ls_cn-document_creation_time
@@ -690,6 +702,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
       FIELDS
       DISTINCT ( ekko~ebeln ) AS document_number,
+      substring( ekko~bedat, 1 , 4 )  AS document_year,
       cdhdr~udate AS document_creation_date,
       cdhdr~utime AS document_creation_time
       WHERE ekko~konnr EQ @me->lv_document
@@ -700,6 +713,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       LOOP AT lt_po ASSIGNING FIELD-SYMBOL(<fs_po>).
 
         APPEND VALUE #( document_number        = <fs_po>-document_number
+                        document_year          = <fs_po>-document_year
                         document_category      = mm_document_category-po
                         document_creation_date = <fs_po>-document_creation_date
                         document_creation_time = <fs_po>-document_creation_time
@@ -712,6 +726,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "PURCHASE REQUISITION
     SELECT
     DISTINCT ( eban~banfn )  AS document_number,
+    substring( eban~badat, 1 , 4 )  AS document_year,
     cdhdr~udate AS document_creation_date,
     cdhdr~utime AS document_creation_time
     FROM ekpo
@@ -725,6 +740,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       LOOP AT lt_pr ASSIGNING FIELD-SYMBOL(<fs_pr>).
         APPEND VALUE #( document_number        = <fs_pr>-document_number
+                        document_year          = <fs_pr>-document_year
                         document_category      = mm_document_category-pr
                         document_creation_date = <fs_pr>-document_creation_date
                         document_creation_time = <fs_pr>-document_creation_time ) TO lt_mm_document_flow.
@@ -733,69 +749,80 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     ENDIF.
 
     "MATERIAL DOCUMENT COMING FROM PO OF CONTRACT
-    SELECT
-     DISTINCT ( ekbe~belnr ) AS document_number,
-     ekbe~bwart AS movement_type,
-     t156ht~btext AS movement_type_description,
-     ekbe~vgabe AS transaction_type,
-     ekbe~cpudt AS document_creation_date,
-     ekbe~cputm AS document_creation_time
-    FROM ekbe
-    INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
-    LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
-    WHERE  ekbe~bwart IS NOT INITIAL
-    INTO TABLE @DATA(lt_md).
+    IF lt_po IS NOT INITIAL.
 
-    IF sy-subrc IS INITIAL AND lt_md IS NOT INITIAL.
+      SELECT
+       DISTINCT ( ekbe~belnr ) AS document_number,
+       ekbe~gjahr    AS document_year,
+       ekbe~bwart AS movement_type,
+       t156ht~btext AS movement_type_description,
+       ekbe~vgabe AS transaction_type,
+       ekbe~cpudt AS document_creation_date,
+       ekbe~cputm AS document_creation_time
+      FROM ekbe
+      INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
+      LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+      WHERE  ekbe~bwart IS NOT INITIAL
+      INTO TABLE @DATA(lt_md).
 
-      LOOP AT lt_md ASSIGNING FIELD-SYMBOL(<fs_md>).
+      IF sy-subrc IS INITIAL AND lt_md IS NOT INITIAL.
 
-        APPEND VALUE #( document_number              = <fs_md>-document_number
-                        document_category            = mm_document_category-md
-                        movement_type                = <fs_md>-movement_type
-                        movement_type_description    = <fs_md>-movement_type_description
-                        transaction_type             = <fs_md>-transaction_type
-                        document_creation_date       = <fs_md>-document_creation_date
-                        document_creation_time       = <fs_md>-document_creation_time ) TO lt_mm_document_flow.
+        LOOP AT lt_md ASSIGNING FIELD-SYMBOL(<fs_md>).
 
-      ENDLOOP.
+          APPEND VALUE #( document_number              = <fs_md>-document_number
+                          document_year                = <fs_md>-document_year
+                          document_category            = mm_document_category-md
+                          movement_type                = <fs_md>-movement_type
+                          movement_type_description    = <fs_md>-movement_type_description
+                          transaction_type             = <fs_md>-transaction_type
+                          document_creation_date       = <fs_md>-document_creation_date
+                          document_creation_time       = <fs_md>-document_creation_time ) TO lt_mm_document_flow.
 
-    ENDIF.
+        ENDLOOP.
 
-    "INVOICE COMING FROM PO OF CONTRACT
-    SELECT
-    DISTINCT ( ekbe~belnr ) AS document_number,
-    ekbe~bwart AS movement_type,
-    t156ht~btext AS movement_type_description,
-    ekbe~vgabe AS transaction_type,
-    ekbe~cpudt AS document_creation_date,
-    ekbe~cputm AS document_creation_time
-
-   FROM ekbe
-   INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
-   LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
-   WHERE ekbe~bwart IS INITIAL
-   INTO TABLE @DATA(lt_inv).
-
-    IF sy-subrc IS INITIAL AND lt_inv IS NOT INITIAL.
-
-      LOOP AT lt_inv ASSIGNING FIELD-SYMBOL(<fs_inv>).
-
-        APPEND VALUE #( document_number              = <fs_inv>-document_number
-                        document_category            = mm_document_category-inv
-                        movement_type                = <fs_inv>-movement_type
-                        movement_type_description    = <fs_inv>-movement_type_description
-                        transaction_type             = <fs_inv>-transaction_type
-                        document_creation_date       = <fs_inv>-document_creation_date
-                        document_creation_time       = <fs_inv>-document_creation_time ) TO lt_mm_document_flow.
-
-      ENDLOOP.
+      ENDIF.
 
     ENDIF.
 
+    IF lt_po IS NOT INITIAL.
 
-    "ACCOUNTING FROM INVOICE
+      "INVOICE COMING FROM PO OF CONTRACT
+      SELECT
+      DISTINCT ( ekbe~belnr ) AS document_number,
+      ekbe~gjahr   AS document_year,
+      ekbe~bwart AS movement_type,
+      t156ht~btext AS movement_type_description,
+      ekbe~vgabe AS transaction_type,
+      ekbe~cpudt AS document_creation_date,
+      ekbe~cputm AS document_creation_time
 
+     FROM ekbe
+     INNER JOIN @lt_po AS a ON a~document_number EQ ekbe~ebeln
+     LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+     WHERE ekbe~bwart IS INITIAL
+     INTO TABLE @DATA(lt_inv).
+
+      IF sy-subrc IS INITIAL AND lt_inv IS NOT INITIAL.
+
+        LOOP AT lt_inv ASSIGNING FIELD-SYMBOL(<fs_inv>).
+
+          APPEND VALUE #( document_number              = <fs_inv>-document_number
+                          document_year                = <fs_inv>-document_year
+                          document_category            = mm_document_category-inv
+                          movement_type                = <fs_inv>-movement_type
+                          movement_type_description    = <fs_inv>-movement_type_description
+                          transaction_type             = <fs_inv>-transaction_type
+                          document_creation_date       = <fs_inv>-document_creation_date
+                          document_creation_time       = <fs_inv>-document_creation_time ) TO lt_mm_document_flow.
+
+        ENDLOOP.
+
+      ENDIF.
+
+    ENDIF.
+
+    "ACCOUNTING DOCUMENTS
+    me->get_accounting_documents( ).
 
   ENDMETHOD.
 
@@ -807,6 +834,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Purchase Requisition
     SELECT
       DISTINCT ( eban~banfn )  AS document_number,
+      substring( eban~badat, 1 , 4 )  AS document_year,
       cdhdr~udate AS document_creation_date,
       cdhdr~utime AS document_creation_time
 
@@ -821,6 +849,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       LOOP AT lt_pr ASSIGNING FIELD-SYMBOL(<fs_pr>).
         APPEND VALUE #( document_number        = <fs_pr>-document_number
+                        document_year          = <fs_pr>-document_year
                         document_category      = mm_document_category-pr
                         document_creation_date = <fs_pr>-document_creation_date
                         document_creation_time = <fs_pr>-document_creation_time ) TO lt_mm_document_flow.
@@ -831,6 +860,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Outline agreement( Contract and Scheduling Agreement )
     SELECT
       DISTINCT ( ekpo~konnr )  AS document_number,
+      substring( ekko~bedat, 1 , 4 )  AS document_year,
       cdhdr~udate AS document_creation_date,
       cdhdr~utime AS document_creation_time
     FROM ekpo
@@ -847,11 +877,12 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         SELECT SINGLE bstyp FROM ekko WHERE ebeln EQ @<ls_oa>-document_number INTO @DATA(lv_document_category).
 
         APPEND VALUE #( document_number      = <ls_oa>-document_number
-                      document_category      = COND #( WHEN lv_document_category EQ me->purchasing_document_category-cn THEN mm_document_category-cn
-                                                       WHEN lv_document_category EQ me->purchasing_document_category-sa THEN mm_document_category-sa
-                                                       ELSE mm_document_category-cn )
-                      document_creation_date = <ls_oa>-document_creation_date
-                      document_creation_time = <ls_oa>-document_creation_time ) TO lt_mm_document_flow.
+                        document_year        = <ls_oa>-document_year
+                        document_category      = COND #( WHEN lv_document_category EQ me->purchasing_document_category-cn THEN mm_document_category-cn
+                                                         WHEN lv_document_category EQ me->purchasing_document_category-sa THEN mm_document_category-sa
+                                                         ELSE mm_document_category-cn )
+                        document_creation_date = <ls_oa>-document_creation_date
+                        document_creation_time = <ls_oa>-document_creation_time ) TO lt_mm_document_flow.
 
       ENDLOOP.
 
@@ -862,6 +893,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Purchase Order
     SELECT SINGLE
     ekko~ebeln  AS document_number,
+    substring( ekko~bedat, 1 , 4 )  AS document_year,
     cdhdr~udate AS document_creation_date,
     cdhdr~utime AS document_creation_time
 
@@ -873,6 +905,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     IF sy-subrc IS INITIAL AND ls_po IS NOT INITIAL.
       APPEND VALUE #( document_number        = ls_po-document_number
+                      document_year          = ls_po-document_year
                       document_category      = mm_document_category-po
                       document_creation_date = ls_po-document_creation_date
                       document_creation_time = ls_po-document_creation_time ) TO lt_mm_document_flow.
@@ -881,12 +914,13 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Material Document
     SELECT
      DISTINCT ( ekbe~belnr ) AS document_number,
-     ekbe~bwart AS movement_type,
+     ekbe~gjahr    AS document_year,
+     ekbe~bwart   AS movement_type,
      t156ht~btext AS movement_type_description,
-     ekbe~vgabe AS transaction_type,
-     a~ddtext AS transaction_type_description,
-     ekbe~cpudt AS document_creation_date,
-     ekbe~cputm AS document_creation_time
+     ekbe~vgabe   AS transaction_type,
+     a~ddtext     AS transaction_type_description,
+     ekbe~cpudt   AS document_creation_date,
+     ekbe~cputm   AS document_creation_time
 
       FROM ekbe
       LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
@@ -900,6 +934,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       LOOP AT lt_md ASSIGNING FIELD-SYMBOL(<fs_md>).
 
         APPEND VALUE #( document_number              = <fs_md>-document_number
+                        document_year                = <fs_md>-document_year
                         document_category            = mm_document_category-md
                         movement_type                = <fs_md>-movement_type
                         movement_type_description    = <fs_md>-movement_type_description
@@ -915,12 +950,13 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "INVOICE
     SELECT
     DISTINCT ( ekbe~belnr ) AS document_number,
-    ekbe~bwart AS movement_type,
+    ekbe~gjahr   AS document_year,
+    ekbe~bwart   AS movement_type,
     t156ht~btext AS movement_type_description,
-    ekbe~vgabe AS transaction_type,
-    a~ddtext AS transaction_type_description,
-    ekbe~cpudt AS document_creation_date,
-    ekbe~cputm AS document_creation_time
+    ekbe~vgabe   AS transaction_type,
+    a~ddtext     AS transaction_type_description,
+    ekbe~cpudt   AS document_creation_date,
+    ekbe~cputm   AS document_creation_time
 
    FROM ekbe
    LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
@@ -934,6 +970,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       LOOP AT lt_inv ASSIGNING FIELD-SYMBOL(<fs_inv>).
 
         APPEND VALUE #( document_number              = <fs_inv>-document_number
+                        document_year                = <fs_inv>-document_year
                         document_category            = mm_document_category-inv
                         movement_type                = <fs_inv>-movement_type
                         movement_type_description    = <fs_inv>-movement_type_description
@@ -959,6 +996,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Purchase Order
     SELECT SINGLE
     ekko~ebeln  AS document_number,
+    substring( ekko~bedat, 1 , 4 )  AS document_year,
     cdhdr~udate AS document_creation_date,
     cdhdr~utime AS document_creation_time
 
@@ -971,6 +1009,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     IF sy-subrc IS INITIAL AND ls_po IS NOT INITIAL.
       APPEND VALUE #( document_number        = ls_po-document_number
+                      document_year          = ls_po-document_year
                       document_category      = mm_document_category-po
                       document_creation_date = ls_po-document_creation_date
                       document_creation_time = ls_po-document_creation_time ) TO lt_mm_document_flow.
@@ -981,6 +1020,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       SELECT
         DISTINCT ( eban~banfn )  AS document_number,
+        substring( eban~badat, 1 , 4 )  AS document_year,
         cdhdr~udate AS document_creation_date,
         cdhdr~utime AS document_creation_time
 
@@ -995,6 +1035,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
         LOOP AT lt_pr ASSIGNING FIELD-SYMBOL(<fs_pr>).
           APPEND VALUE #( document_number        = <fs_pr>-document_number
+                          document_year          = <fs_pr>-document_year
                           document_category      = mm_document_category-pr
                           document_creation_date = <fs_pr>-document_creation_date
                           document_creation_time = <fs_pr>-document_creation_time ) TO lt_mm_document_flow.
@@ -1009,6 +1050,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       SELECT
         DISTINCT ( ekpo~konnr )  AS document_number,
+        substring( ekko~bedat, 1 , 4 )  AS document_year,
         cdhdr~udate AS document_creation_date,
         cdhdr~utime AS document_creation_time
       FROM ekpo
@@ -1025,11 +1067,12 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
           SELECT SINGLE bstyp FROM ekko WHERE ebeln EQ @<ls_oa>-document_number INTO @DATA(lv_document_category).
 
           APPEND VALUE #( document_number      = <ls_oa>-document_number
-                        document_category      = COND #( WHEN lv_document_category EQ me->purchasing_document_category-cn THEN mm_document_category-cn
-                                                         WHEN lv_document_category EQ me->purchasing_document_category-sa THEN mm_document_category-sa
-                                                         ELSE mm_document_category-cn )
-                        document_creation_date = <ls_oa>-document_creation_date
-                        document_creation_time = <ls_oa>-document_creation_time ) TO lt_mm_document_flow.
+                          document_year        = <ls_oa>-document_year
+                          document_category      = COND #( WHEN lv_document_category EQ me->purchasing_document_category-cn THEN mm_document_category-cn
+                                                           WHEN lv_document_category EQ me->purchasing_document_category-sa THEN mm_document_category-sa
+                                                           ELSE mm_document_category-cn )
+                          document_creation_date = <ls_oa>-document_creation_date
+                          document_creation_time = <ls_oa>-document_creation_time ) TO lt_mm_document_flow.
 
         ENDLOOP.
 
@@ -1040,12 +1083,13 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Material Document
     SELECT
     DISTINCT ( ekbe~belnr ) AS document_number,
-    ekbe~bwart AS movement_type,
+    ekbe~gjahr   AS document_year,
+    ekbe~bwart   AS movement_type,
     t156ht~btext AS movement_type_description,
-    ekbe~vgabe AS transaction_type,
-    a~ddtext AS transaction_type_description,
-    ekbe~cpudt AS document_creation_date,
-    ekbe~cputm AS document_creation_time
+    ekbe~vgabe   AS transaction_type,
+    a~ddtext     AS transaction_type_description,
+    ekbe~cpudt   AS document_creation_date,
+    ekbe~cputm   AS document_creation_time
 
      FROM ekbe
      LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
@@ -1059,6 +1103,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       LOOP AT lt_md ASSIGNING FIELD-SYMBOL(<fs_md>).
 
         APPEND VALUE #( document_number              = <fs_md>-document_number
+                        document_year                = <fs_md>-document_year
                         document_category            = mm_document_category-md
                         movement_type                = <fs_md>-movement_type
                         movement_type_description    = <fs_md>-movement_type_description
@@ -1076,12 +1121,13 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       SELECT
       DISTINCT ( ekbe~belnr ) AS document_number,
-      ekbe~bwart AS movement_type,
+      ekbe~gjahr   AS document_year,
+      ekbe~bwart   AS movement_type,
       t156ht~btext AS movement_type_description,
-      ekbe~vgabe AS transaction_type,
-      a~ddtext AS transaction_type_description,
-      ekbe~cpudt AS document_creation_date,
-      ekbe~cputm AS document_creation_time
+      ekbe~vgabe   AS transaction_type,
+      a~ddtext     AS transaction_type_description,
+      ekbe~cpudt   AS document_creation_date,
+      ekbe~cputm   AS document_creation_time
 
      FROM ekbe
      LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
@@ -1095,6 +1141,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         LOOP AT lt_inv ASSIGNING FIELD-SYMBOL(<fs_inv>).
 
           APPEND VALUE #( document_number              = <fs_inv>-document_number
+                          document_year                = <fs_inv>-document_year
                           document_category            = mm_document_category-inv
                           movement_type                = <fs_inv>-movement_type
                           movement_type_description    = <fs_inv>-movement_type_description
@@ -1108,6 +1155,9 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       ENDIF.
 
     ENDIF.
+
+    "ACCOUNTING DOCUMENTS
+    me->get_accounting_documents( ).
 
 
   ENDMETHOD.
@@ -1161,17 +1211,19 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       SELECT SINGLE
       bkpf~belnr AS document_number,
+      bkpf~gjahr AS document_year,
       bkpf~cputm AS document_creation_time,
       bkpf~budat AS document_creation_date
       FROM bkpf
       WHERE bkpf~awkey IS NOT INITIAL AND
-            bkpf~awkey EQ @( |{ <fs_doc_flow>-document_number }{ <fs_doc_flow>-document_creation_date+0(4) }| ) AND
+            bkpf~awkey EQ @( |{ <fs_doc_flow>-document_number }{ <fs_doc_flow>-document_year }| ) AND
             bkpf~awtyp EQ @me->accounting_object_key-material_document
       INTO @DATA(ls_acc_md).
 
       IF syst-subrc IS INITIAL AND ls_acc_md IS NOT INITIAL.
 
         APPEND VALUE #( document_number        = ls_acc_md-document_number
+                        document_year          = ls_acc_md-document_year
                         document_category      = mm_document_category-acm
                         document_creation_date = ls_acc_md-document_creation_date
                         document_creation_time = ls_acc_md-document_creation_time
@@ -1188,17 +1240,19 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       SELECT SINGLE
         bkpf~belnr AS document_number,
+        bkpf~gjahr AS document_year,
         bkpf~cputm AS document_creation_time,
         bkpf~budat AS document_creation_date
         FROM bkpf
         WHERE bkpf~awkey IS NOT INITIAL AND
-              bkpf~awkey EQ @( |{ <fs_doc_flow>-document_number }{ <fs_doc_flow>-document_creation_date+0(4) }| ) AND
+              bkpf~awkey EQ @( |{ <fs_doc_flow>-document_number }{ <fs_doc_flow>-document_year }| ) AND
               bkpf~awtyp EQ @me->accounting_object_key-invoice
         INTO @DATA(ls_acc_inv).
 
       IF syst-subrc IS INITIAL AND ls_acc_inv IS NOT INITIAL.
 
         APPEND VALUE #( document_number        = ls_acc_inv-document_number
+                        document_year          = ls_acc_inv-document_year
                         document_category      = mm_document_category-aci
                         document_creation_date = ls_acc_inv-document_creation_date
                         document_creation_time = ls_acc_inv-document_creation_time
@@ -1222,8 +1276,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                     text      = |Document Flow { me->lv_document_category } { lv_document ALPHA = OUT }|
                     n_image   = icon_system_favorites
                     exp_image = icon_system_favorites ) TO lt_tree_nodes.
-
-    SORT lt_mm_document_flow STABLE BY transaction_type ASCENDING.
 
     "Construct Nodes Table with Scenario Nodes
     LOOP AT lt_mm_document_flow ASSIGNING FIELD-SYMBOL(<fs_mm_document_flow>) GROUP BY <fs_mm_document_flow>-document_category.
@@ -1353,7 +1405,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     IF ls_selection_data-isfolder IS INITIAL AND ls_selection_data-node_key IS NOT INITIAL.
       me->display_document_details( im_document      = CONV #( |{ ls_selection_data-node_key ALPHA = IN }| )
                                     im_document_cat  = CONV #( ls_selection_data-relatkey )
-                                    im_document_year = CONV #( VALUE #( me->lt_mm_document_flow[ document_number = ls_selection_data-node_key ]-document_creation_date+0(4) OPTIONAL ) ) ).
+                                    im_document_year = CONV #( VALUE #( me->lt_mm_document_flow[ document_number = ls_selection_data-node_key ]-document_year OPTIONAL ) ) ).
     ENDIF.
 
     "REFRESH DATA
@@ -1391,7 +1443,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Field Catalog Modifications
     LOOP AT lt_fieldcat ASSIGNING FIELD-SYMBOL(<fs_fieldcat>).
 
-      <fs_fieldcat>-just = 'C'.
+      <fs_fieldcat>-just = cl_wer_ui_const=>c_just_center.
 
       CASE <fs_fieldcat>-fieldname.
         WHEN 'MANDT'.
