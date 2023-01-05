@@ -179,7 +179,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
     METHODS:
       create_containers           RAISING lcx_exception,
       create_tree                 RAISING lcx_exception,
-      populate_category_descr RAISING lcx_exception,
+      populate_category_descr     RAISING lcx_exception,
       determine_document_category RAISING lcx_exception,
       get_mm_document_flow        RAISING lcx_exception,
       get_flow_from_pr            RAISING lcx_exception,
@@ -498,14 +498,12 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
   METHOD get_flow_from_pr.
 
     "Purchase Requisition
-    SELECT SINGLE
-      eban~banfn  AS document_number,
-      substring( eban~badat, 1 , 4 )  AS document_year,
-      cdhdr~udate AS document_creation_date,
-      cdhdr~utime AS document_creation_time
-
-      FROM eban
+    SELECT SINGLE FROM eban
       LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ eban~banfn AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+      FIELDS eban~banfn                      AS document_number,
+             substring( eban~badat, 1 , 4 )  AS document_year,
+             cdhdr~udate                     AS document_creation_date,
+             cdhdr~utime                     AS document_creation_time
       WHERE eban~banfn EQ @lv_document AND
             eban~bstyp EQ @me->purchasing_document_category-pr
       INTO @DATA(ls_pr).
@@ -521,15 +519,15 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     ENDIF.
 
     "Outline agreement( Contract and Scheduling Agreement )
-    SELECT
-      DISTINCT ( ekpo~konnr )  AS document_number,
-      substring( ekko~bedat, 1 , 4 )  AS document_year,
-      cdhdr~udate AS document_creation_date,
-      cdhdr~utime AS document_creation_time
-    FROM ekpo
-    INNER JOIN ekko ON ekko~ebeln EQ ekpo~ebeln
-    INNER JOIN eban ON ekpo~banfn EQ eban~banfn
-    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+    SELECT FROM ekpo
+      INNER JOIN ekko ON ekko~ebeln EQ ekpo~ebeln
+      INNER JOIN eban ON ekpo~banfn EQ eban~banfn
+      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+      FIELDS DISTINCT ( ekpo~konnr )        AS document_number,
+             substring( ekko~bedat, 1 , 4 ) AS document_year,
+             cdhdr~udate                    AS document_creation_date,
+             cdhdr~utime                    AS document_creation_time,
+             ekpo~bstyp                     AS document_category
     WHERE ekpo~banfn EQ @lv_document AND
           ekpo~konnr IS NOT INITIAL
     INTO TABLE @DATA(lt_oa).
@@ -538,33 +536,27 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
       LOOP AT lt_oa ASSIGNING FIELD-SYMBOL(<fs_oa>).
 
-        SELECT SINGLE bstyp FROM ekpo WHERE konnr EQ @<fs_oa>-document_number AND banfn EQ @lv_document INTO @DATA(lv_document_category).
-
         APPEND VALUE #( document_number       = <fs_oa>-document_number
                         document_year         = <fs_oa>-document_year
-                        document_category     = COND #( WHEN lv_document_category EQ me->purchasing_document_category-cn THEN mm_document_category-cn
-                                                        WHEN lv_document_category EQ me->purchasing_document_category-sa THEN mm_document_category-sa
+                        document_category     = COND #( WHEN <fs_oa>-document_category EQ me->purchasing_document_category-cn THEN mm_document_category-cn
+                                                        WHEN <fs_oa>-document_category EQ me->purchasing_document_category-sa THEN mm_document_category-sa
                                                         ELSE mm_document_category-cn )
                         document_creation_date = <fs_oa>-document_creation_date
                         document_creation_time = <fs_oa>-document_creation_time ) TO lt_mm_document_flow.
-
-        CLEAR:lv_document_category.
 
       ENDLOOP.
 
     ENDIF.
 
     "Purchase Order
-    SELECT
-    DISTINCT ( ekko~ebeln )  AS document_number,
-    substring( ekko~bedat, 1 , 4 )  AS document_year,
-    cdhdr~udate AS document_creation_date,
-    cdhdr~utime AS document_creation_time
-
-    FROM ekko
-    INNER JOIN ekpo ON ekko~ebeln EQ ekpo~ebeln
-    INNER JOIN eban ON ekpo~banfn EQ eban~banfn
-    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+    SELECT FROM ekko
+      INNER JOIN ekpo ON ekko~ebeln EQ ekpo~ebeln
+      INNER JOIN eban ON ekpo~banfn EQ eban~banfn
+      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+      FIELDS DISTINCT ( ekko~ebeln )        AS document_number,
+             substring( ekko~bedat, 1 , 4 ) AS document_year,
+             cdhdr~udate                    AS document_creation_date,
+             cdhdr~utime                    AS document_creation_time
     WHERE ekpo~banfn EQ @lv_document
     INTO TABLE @DATA(lt_po).
 
@@ -1575,7 +1567,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     ENDIF.
 
     "Set Ready for input for Style.
-    lo_alv_details->set_ready_for_input( i_ready_for_input = 1 ).
+    lo_alv_details->set_ready_for_input( ).
 
 *    lo_alv_details->refresh_table_display( is_stable = VALUE lvc_s_stbl( row = abap_true col = abap_true ) ).
 
@@ -1736,7 +1728,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       CALL TRANSACTION lv_transaction_code WITH AUTHORITY-CHECK AND SKIP FIRST SCREEN.
 
     ENDIF.
-
 
   ENDMETHOD.
 
