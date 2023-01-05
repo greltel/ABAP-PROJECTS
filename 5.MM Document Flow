@@ -193,15 +193,13 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
       get_accounting_documents    RAISING lcx_exception,
       display_document_details    IMPORTING im_document      TYPE ebeln
                                             im_document_cat  TYPE ty_enum_mm_document_category
-                                            im_document_year TYPE gjahr OPTIONAL
-                                  RAISING   lcx_exception,
+                                            im_document_year TYPE gjahr OPTIONAL,
       get_details_table           IMPORTING im_document      TYPE ebeln
                                             im_document_cat  TYPE ty_enum_mm_document_category
                                             im_document_year TYPE gjahr OPTIONAL
-                                  RETURNING VALUE(re_table)  TYPE REF TO data
-                                  RAISING   lcx_exception,
+                                  RETURNING VALUE(re_table)  TYPE REF TO data,
       build_node_table            RAISING lcx_exception,
-      reset_tree_selection        RAISING lcx_exception.
+      reset_tree_selection.
 
     "TREE EVENT METHODS
     METHODS:
@@ -1518,7 +1516,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         cl_salv_table=>factory( IMPORTING r_salv_table = DATA(salv_table) CHANGING t_table = <fs_table> ).
         DATA(lt_fieldcat) = cl_salv_controller_metadata=>get_lvc_fieldcatalog( r_columns = salv_table->get_columns( ) r_aggregations = salv_table->get_aggregations( ) ).
       CATCH cx_salv_msg.
-        RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error Loading the Field Catalog'.
+        RETURN.
     ENDTRY.
 
     "Field Catalog Modifications
@@ -1573,7 +1571,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
         OTHERS                        = 4 ).
 
     IF sy-subrc IS NOT INITIAL.
-      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error Loading the ALV'.
+      RETURN.
     ENDIF.
 
     "Set Ready for input for Style.
