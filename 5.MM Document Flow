@@ -986,40 +986,28 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     DATA(lt_vgabe_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'VGABE' ) )->get_ddic_fixed_values( sy-langu ).
     DATA(lt_bsart_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'BSART' ) )->get_ddic_fixed_values( sy-langu ).
 
-    "Purchase Order
-    SELECT SINGLE
-    ekko~ebeln  AS document_number,
-    substring( ekko~bedat, 1 , 4 )  AS document_year,
-    cdhdr~udate AS document_creation_date,
-    cdhdr~utime AS document_creation_time
-
-    FROM ekko
+    "Get Purchase Order
+    SELECT SINGLE FROM ekko
     INNER JOIN ekpo ON ekko~ebeln EQ ekpo~ebeln
     INNER JOIN mseg ON mseg~ebeln EQ ekko~ebeln
     LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+    FIELDS  ekko~ebeln                     AS document_number,
+            substring( ekko~bedat, 1 , 4 ) AS document_year,
+            cdhdr~udate                    AS document_creation_date,
+            cdhdr~utime                    AS document_creation_time
     WHERE mseg~mblnr EQ @lv_document
     INTO @DATA(ls_po).
-
-    IF sy-subrc IS INITIAL AND ls_po IS NOT INITIAL.
-      APPEND VALUE #( document_number        = ls_po-document_number
-                      document_year          = ls_po-document_year
-                      document_category      = mm_document_category-po
-                      document_creation_date = ls_po-document_creation_date
-                      document_creation_time = ls_po-document_creation_time ) TO lt_mm_document_flow.
-    ENDIF.
 
     "Purchase Requisition
     IF ls_po IS NOT INITIAL.
 
-      SELECT
-        DISTINCT ( eban~banfn )  AS document_number,
-        substring( eban~badat, 1 , 4 )  AS document_year,
-        cdhdr~udate AS document_creation_date,
-        cdhdr~utime AS document_creation_time
-
-        FROM ekpo
+      SELECT FROM ekpo
         INNER JOIN eban ON eban~banfn EQ ekpo~banfn
         LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ eban~banfn AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+        FIELDS DISTINCT ( eban~banfn )                   AS document_number,
+                          substring( eban~badat, 1 , 4 ) AS document_year,
+                          cdhdr~udate                    AS document_creation_date,
+                          cdhdr~utime                    AS document_creation_time
         WHERE ekpo~ebeln EQ @ls_po-document_number AND
               eban~bstyp EQ @me->purchasing_document_category-pr
         INTO TABLE @DATA(lt_pr).
@@ -1027,11 +1015,13 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
       IF sy-subrc IS INITIAL AND lt_pr IS NOT INITIAL.
 
         LOOP AT lt_pr ASSIGNING FIELD-SYMBOL(<fs_pr>).
+
           APPEND VALUE #( document_number        = <fs_pr>-document_number
                           document_year          = <fs_pr>-document_year
                           document_category      = mm_document_category-pr
                           document_creation_date = <fs_pr>-document_creation_date
                           document_creation_time = <fs_pr>-document_creation_time ) TO lt_mm_document_flow.
+
         ENDLOOP.
 
       ENDIF.
@@ -1041,14 +1031,13 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Outline agreement( Contract and Scheduling Agreement )
     IF ls_po IS NOT INITIAL.
 
-      SELECT
-        DISTINCT ( ekpo~konnr )  AS document_number,
-        substring( ekko~bedat, 1 , 4 )  AS document_year,
-        cdhdr~udate AS document_creation_date,
-        cdhdr~utime AS document_creation_time
-      FROM ekpo
-      INNER JOIN ekko ON ekko~ebeln EQ ekpo~ebeln
-      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+      SELECT FROM ekpo
+        INNER JOIN ekko ON ekko~ebeln EQ ekpo~ebeln
+        LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+        FIELDS DISTINCT ( ekpo~konnr )                   AS document_number,
+                          substring( ekko~bedat, 1 , 4 ) AS document_year,
+                          cdhdr~udate                    AS document_creation_date,
+                          cdhdr~utime                    AS document_creation_time
       WHERE ekpo~ebeln EQ @ls_po-document_number AND
             ekpo~konnr IS NOT INITIAL
       INTO TABLE @DATA(lt_oa).
@@ -1059,13 +1048,15 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
           SELECT SINGLE bstyp FROM ekko WHERE ebeln EQ @<ls_oa>-document_number INTO @DATA(lv_document_category).
 
-          APPEND VALUE #( document_number      = <ls_oa>-document_number
-                          document_year        = <ls_oa>-document_year
+          APPEND VALUE #( document_number        = <ls_oa>-document_number
+                          document_year          = <ls_oa>-document_year
                           document_category      = COND #( WHEN lv_document_category EQ me->purchasing_document_category-cn THEN mm_document_category-cn
                                                            WHEN lv_document_category EQ me->purchasing_document_category-sa THEN mm_document_category-sa
                                                            ELSE mm_document_category-cn )
                           document_creation_date = <ls_oa>-document_creation_date
                           document_creation_time = <ls_oa>-document_creation_time ) TO lt_mm_document_flow.
+
+          CLEAR:lv_document_category.
 
         ENDLOOP.
 
@@ -1073,20 +1064,29 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     ENDIF.
 
-    "Material Document
-    SELECT
-    DISTINCT ( ekbe~belnr ) AS document_number,
-    ekbe~gjahr   AS document_year,
-    ekbe~bwart   AS movement_type,
-    t156ht~btext AS movement_type_description,
-    ekbe~vgabe   AS transaction_type,
-    a~ddtext     AS transaction_type_description,
-    ekbe~cpudt   AS document_creation_date,
-    ekbe~cputm   AS document_creation_time
+    "Append Purchase Order to Final Table
+    IF ls_po IS NOT INITIAL.
 
-     FROM ekbe
+      APPEND VALUE #( document_number        = ls_po-document_number
+                      document_year          = ls_po-document_year
+                      document_category      = mm_document_category-po
+                      document_creation_date = ls_po-document_creation_date
+                      document_creation_time = ls_po-document_creation_time ) TO lt_mm_document_flow.
+
+    ENDIF.
+
+    "Material Document
+    SELECT FROM ekbe
      LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
      LEFT OUTER JOIN @lt_vgabe_domain_values AS a ON a~low EQ ekbe~vgabe ##ITAB_KEY_IN_SELECT
+     FIELDS DISTINCT ( ekbe~belnr ) AS document_number,
+                       ekbe~gjahr   AS document_year,
+                       ekbe~bwart   AS movement_type,
+                       t156ht~btext AS movement_type_description,
+                       ekbe~vgabe   AS transaction_type,
+                       a~ddtext     AS transaction_type_description,
+                       ekbe~cpudt   AS document_creation_date,
+                       ekbe~cputm   AS document_creation_time
      WHERE belnr EQ @lv_document AND
            ekbe~bwart IS NOT INITIAL
      INTO TABLE @DATA(lt_md).
@@ -1112,21 +1112,20 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Invoice
     IF ls_po IS NOT INITIAL.
 
-      SELECT
-      DISTINCT ( ekbe~belnr ) AS document_number,
-      ekbe~gjahr   AS document_year,
-      ekbe~bwart   AS movement_type,
-      t156ht~btext AS movement_type_description,
-      ekbe~vgabe   AS transaction_type,
-      a~ddtext     AS transaction_type_description,
-      ekbe~cpudt   AS document_creation_date,
-      ekbe~cputm   AS document_creation_time
-
-     FROM ekbe
-     LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
-     LEFT OUTER JOIN @lt_vgabe_domain_values AS a ON a~low EQ ekbe~vgabe ##ITAB_KEY_IN_SELECT
+      SELECT FROM ekbe
+        LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+        LEFT OUTER JOIN @lt_vgabe_domain_values AS a ON a~low EQ ekbe~vgabe ##ITAB_KEY_IN_SELECT
+        FIELDS DISTINCT ( ekbe~belnr ) AS document_number,
+                          ekbe~gjahr   AS document_year,
+                          ekbe~bwart   AS movement_type,
+                          t156ht~btext AS movement_type_description,
+                          ekbe~vgabe   AS transaction_type,
+                          a~ddtext     AS transaction_type_description,
+                          ekbe~cpudt   AS document_creation_date,
+                          ekbe~cputm   AS document_creation_time
      WHERE ebeln EQ @ls_po-document_number AND
-           ekbe~bwart IS INITIAL
+           ekbe~bwart IS INITIAL AND
+           ekbe~vgabe EQ @me->transaction_type-invoice
      INTO TABLE @DATA(lt_inv).
 
       IF sy-subrc IS INITIAL AND lt_inv IS NOT INITIAL.
@@ -1159,28 +1158,28 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     DATA(lt_vgabe_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'VGABE' ) )->get_ddic_fixed_values( sy-langu ).
     DATA(lt_bsart_domain_values) =  CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( 'BSART' ) )->get_ddic_fixed_values( sy-langu ).
 
-    "Purchase Order
-    SELECT
-    ekko~ebeln  AS document_number,
-    substring( ekko~bedat, 1 , 4 )  AS document_year,
-    cdhdr~udate AS document_creation_date,
-    cdhdr~utime AS document_creation_time
-
-    FROM ekko
-    INNER JOIN ekpo ON ekko~ebeln EQ ekpo~ebeln
-    INNER JOIN ekbe ON ekbe~ebeln EQ ekko~ebeln
-    LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+    "Get Purchase Order
+    SELECT FROM ekko
+      INNER JOIN ekpo ON ekko~ebeln EQ ekpo~ebeln
+      INNER JOIN ekbe ON ekbe~ebeln EQ ekko~ebeln
+      LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekko~ebeln AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+      FIELDS ekko~ebeln                     AS document_number,
+             substring( ekko~bedat, 1 , 4 ) AS document_year,
+             cdhdr~udate                    AS document_creation_date,
+             cdhdr~utime                    AS document_creation_time
     WHERE ekbe~belnr EQ @lv_document
     INTO TABLE @DATA(lt_po).
 
     IF sy-subrc IS INITIAL AND lt_po IS NOT INITIAL.
 
       LOOP AT lt_po ASSIGNING FIELD-SYMBOL(<fs>).
+
         APPEND VALUE #( document_number        = <fs>-document_number
                         document_year          = <fs>-document_year
                         document_category      = mm_document_category-po
                         document_creation_date = <fs>-document_creation_date
                         document_creation_time = <fs>-document_creation_time ) TO lt_mm_document_flow.
+
       ENDLOOP.
 
     ENDIF.
@@ -1188,16 +1187,14 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     "Purchase Requisition
     IF lt_po IS NOT INITIAL.
 
-      SELECT
-        DISTINCT ( eban~banfn )  AS document_number,
-        substring( eban~badat, 1 , 4 )  AS document_year,
-        cdhdr~udate AS document_creation_date,
-        cdhdr~utime AS document_creation_time
-
-        FROM ekpo
+      SELECT FROM ekpo
         INNER JOIN eban ON eban~banfn EQ ekpo~banfn
         INNER JOIN @lt_po AS a ON a~document_number EQ ekpo~ebeln
         LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ eban~banfn AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+        FIELDS DISTINCT ( eban~banfn )                   AS document_number,
+                          substring( eban~badat, 1 , 4 ) AS document_year,
+                          cdhdr~udate                    AS document_creation_date,
+                          cdhdr~utime                    AS document_creation_time
         WHERE eban~bstyp EQ @me->purchasing_document_category-pr
         INTO TABLE @DATA(lt_pr).
 
@@ -1218,7 +1215,9 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     ENDIF.
 
     "Outline agreement( Contract and Scheduling Agreement )
+    IF lt_po IS NOT INITIAL.
 
+    ENDIF.
 
     "Material Document
     IF lt_po IS NOT INITIAL.
@@ -1228,19 +1227,17 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     ENDIF.
 
     "Invoice
-    SELECT SINGLE
-    ekbe~belnr   AS document_number,
-    ekbe~gjahr   AS document_year,
-    ekbe~bwart   AS movement_type,
-    t156ht~btext AS movement_type_description,
-    ekbe~vgabe   AS transaction_type,
-    a~ddtext     AS transaction_type_description,
-    ekbe~cpudt   AS document_creation_date,
-    ekbe~cputm   AS document_creation_time
-
-     FROM ekbe
-     LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
-     LEFT OUTER JOIN @lt_vgabe_domain_values AS a ON a~low EQ ekbe~vgabe ##ITAB_KEY_IN_SELECT
+    SELECT SINGLE FROM ekbe
+      LEFT OUTER JOIN t156ht ON ekbe~bwart EQ t156ht~bwart AND t156ht~spras EQ @sy-langu
+      LEFT OUTER JOIN @lt_vgabe_domain_values AS a ON a~low EQ ekbe~vgabe ##ITAB_KEY_IN_SELECT
+      FIELDS ekbe~belnr   AS document_number,
+             ekbe~gjahr   AS document_year,
+             ekbe~bwart   AS movement_type,
+             t156ht~btext AS movement_type_description,
+             ekbe~vgabe   AS transaction_type,
+             a~ddtext     AS transaction_type_description,
+             ekbe~cpudt   AS document_creation_date,
+             ekbe~cputm   AS document_creation_time
      WHERE belnr EQ @me->lv_document AND
            ekbe~bwart IS INITIAL
      INTO @DATA(ls_inv).
