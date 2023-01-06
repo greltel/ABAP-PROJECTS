@@ -1170,19 +1170,6 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     WHERE ekbe~belnr EQ @lv_document
     INTO TABLE @DATA(lt_po).
 
-    IF sy-subrc IS INITIAL AND lt_po IS NOT INITIAL.
-
-      LOOP AT lt_po ASSIGNING FIELD-SYMBOL(<fs>).
-
-        APPEND VALUE #( document_number        = <fs>-document_number
-                        document_year          = <fs>-document_year
-                        document_category      = mm_document_category-po
-                        document_creation_date = <fs>-document_creation_date
-                        document_creation_time = <fs>-document_creation_time ) TO lt_mm_document_flow.
-
-      ENDLOOP.
-
-    ENDIF.
 
     "Purchase Requisition
     IF lt_po IS NOT INITIAL.
@@ -1216,6 +1203,52 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
     "Outline agreement( Contract and Scheduling Agreement )
     IF lt_po IS NOT INITIAL.
+
+      SELECT FROM ekpo
+        INNER JOIN ekko ON ekko~ebeln EQ ekpo~ebeln
+        INNER JOIN @lt_po AS a ON a~document_number EQ ekpo~ebeln
+        LEFT OUTER JOIN cdhdr ON cdhdr~objectid EQ ekpo~konnr AND cdhdr~change_ind EQ @me->type_of_document_change-insert
+        FIELDS DISTINCT ( ekpo~konnr )                    AS document_number,
+                          substring( ekko~bedat, 1 , 4 )  AS document_year,
+                          cdhdr~udate                     AS document_creation_date,
+                          cdhdr~utime                     AS document_creation_time
+      WHERE ekpo~konnr IS NOT INITIAL
+      INTO TABLE @DATA(lt_oa).
+
+      IF sy-subrc IS INITIAL AND lt_oa IS NOT INITIAL.
+
+        LOOP AT lt_oa ASSIGNING FIELD-SYMBOL(<ls_oa>).
+
+          SELECT SINGLE bstyp FROM ekko WHERE ebeln EQ @<ls_oa>-document_number INTO @DATA(lv_document_category).
+
+          APPEND VALUE #( document_number      = <ls_oa>-document_number
+                          document_year        = <ls_oa>-document_year
+                          document_category      = COND #( WHEN lv_document_category EQ me->purchasing_document_category-cn THEN mm_document_category-cn
+                                                           WHEN lv_document_category EQ me->purchasing_document_category-sa THEN mm_document_category-sa
+                                                           ELSE mm_document_category-cn )
+                          document_creation_date = <ls_oa>-document_creation_date
+                          document_creation_time = <ls_oa>-document_creation_time ) TO lt_mm_document_flow.
+
+          CLEAR:lv_document_category.
+
+        ENDLOOP.
+
+      ENDIF.
+
+    ENDIF.
+
+    "Append Purchase Order
+    IF lt_po IS NOT INITIAL.
+
+      LOOP AT lt_po ASSIGNING FIELD-SYMBOL(<fs>).
+
+        APPEND VALUE #( document_number        = <fs>-document_number
+                        document_year          = <fs>-document_year
+                        document_category      = mm_document_category-po
+                        document_creation_date = <fs>-document_creation_date
+                        document_creation_time = <fs>-document_creation_time ) TO lt_mm_document_flow.
+
+      ENDLOOP.
 
     ENDIF.
 
@@ -1711,6 +1744,9 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                                       WHEN 'MBLNR' THEN 'MBN'
                                       WHEN 'BELNR' THEN 'BLN' ).
 
+    DATA(lv_second_parameter) = SWITCH #( e_column_id
+                                          WHEN 'BELNR' THEN 'GJR' ).
+
     DATA(lv_transaction_code) = SWITCH #( e_column_id
                                       WHEN 'BANFN' THEN 'ME53N'
                                       WHEN 'MATNR' THEN 'MM03'
@@ -1724,6 +1760,11 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     IF lv_parameter_id IS NOT INITIAL AND lv_transaction_code IS NOT INITIAL.
 
       SET PARAMETER ID lv_parameter_id     FIELD <fs_value>.
+
+*      IF lv_second_parameter IS NOT INITIAL.
+*        SET PARAMETER ID lv_second_parameter FIELD '2022'.
+*      ENDIF.
+
       CALL TRANSACTION lv_transaction_code WITH AUTHORITY-CHECK AND SKIP FIRST SCREEN.
 
     ENDIF.
