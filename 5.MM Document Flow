@@ -114,10 +114,16 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
         document_bstyp          TYPE bstyp,
         document_category       TYPE ty_enum_mm_document_category,
         document_category_descr TYPE string,
-
       END OF ty_document_category_descr,
 
+      BEGIN OF ty_parameter_id,
+        transaction_code TYPE tcode,
+        parameter_id     TYPE memoryid,
+        fieldname        TYPE fieldname,
+      END OF ty_parameter_id,
+
       tt_document_category_descr TYPE TABLE OF ty_document_category_descr WITH KEY primary_key COMPONENTS document_bstyp document_category INITIAL SIZE 0,
+      tt_parameter_id            TYPE TABLE OF ty_parameter_id            WITH EMPTY KEY INITIAL SIZE 0,
       tt_mm_document_flow        TYPE TABLE OF ty_mm_document_flow        WITH EMPTY KEY INITIAL SIZE 0,
       tt_trees_node              TYPE TABLE OF mtreesnode                 WITH EMPTY KEY INITIAL SIZE 0.
 
@@ -169,6 +175,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
       lv_screen_title            TYPE gui_title,
       lv_screen_number           TYPE syst-dynnr,
       lt_document_category_descr TYPE tt_document_category_descr,
+      lt_parameter_id            TYPE tt_parameter_id,
       lt_mm_document_flow        TYPE tt_mm_document_flow,
       lt_tree_nodes              TYPE tt_trees_node,
       lo_tree                    TYPE REF TO cl_gui_simple_tree,
@@ -184,7 +191,7 @@ CLASS lcl_mm_doc_flow DEFINITION CREATE PRIVATE FINAL.
     METHODS:
       create_containers           RAISING lcx_exception,
       create_tree                 RAISING lcx_exception,
-      populate_category_descr     RAISING lcx_exception,
+      populate_mapping_tables     RAISING lcx_exception,
       determine_document_category RAISING lcx_exception,
       get_mm_document_flow        RAISING lcx_exception,
       get_flow_from_pr            RAISING lcx_exception,
@@ -308,7 +315,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     me->lv_screen_number    = im_screen_number.
 
     "METHODS
-    me->populate_category_descr( ).
+    me->populate_mapping_tables( ).
     me->determine_document_category( ).
     me->get_mm_document_flow( ).
     me->build_node_table( ).
@@ -340,7 +347,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD populate_category_descr.
+  METHOD populate_mapping_tables.
 
     lt_document_category_descr = VALUE #( ( document_bstyp = purchasing_document_category-pr     document_category = mm_document_category-pr  document_category_descr = 'Purchase Requisition' )
                                           ( document_bstyp = purchasing_document_category-rfq    document_category = mm_document_category-rfq document_category_descr = 'Request for Quotation' )
@@ -355,6 +362,17 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
                                           ( document_bstyp = ''                                  document_category = mm_document_category-inv document_category_descr = 'Invoice' )
                                           ( document_bstyp = ''                                  document_category = mm_document_category-aci document_category_descr = 'Accounting from Invoice' )
                                           ( document_bstyp = ''                                  document_category = mm_document_category-acm document_category_descr = 'Accounting from Material Doc.' ) ).
+
+
+
+    lt_parameter_id             = VALUE #( ( transaction_code = 'ME53N' parameter_id = 'BAN'  fieldname = 'BANFN' )
+                                           ( transaction_code = 'MM03'  parameter_id = 'MAT'  fieldname = 'MATNR' )
+                                           ( transaction_code = 'MIGO'  parameter_id = 'MBN'  fieldname = 'MBLNR' )
+                                           ( transaction_code = 'FB03'  parameter_id = 'BLN'  fieldname = 'BELNR' )
+                                           ( transaction_code = 'FB03'  parameter_id = 'GJR'  fieldname = 'GJAHR' )
+                                           ( transaction_code = 'ME23N' parameter_id = 'BES'  fieldname = 'EBELN' )
+                                           ( transaction_code = 'ME33K' parameter_id = 'CTR'  fieldname = 'EBELN' )
+                                           ( transaction_code = 'ME43'  parameter_id = 'CTR'  fieldname = 'EBELN' ) ).
 
   ENDMETHOD.
 
@@ -1732,6 +1750,7 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
     ASSIGN COMPONENT e_column_id OF STRUCTURE <fs_table>[ es_row_no-row_id ] TO FIELD-SYMBOL(<fs_value>).
     CHECK <fs_value> IS ASSIGNED AND <fs_value> IS NOT INITIAL.
 
+    "Dynamic Mapping of Parameter ID
     DATA(lv_document_category) = VALUE #( lt_mm_document_flow[ document_number = <fs_value> ]-document_category OPTIONAL ).
 
 
