@@ -1742,51 +1742,29 @@ CLASS lcl_mm_doc_flow IMPLEMENTATION.
 
   METHOD handle_hotspot_click.
 
-    FIELD-SYMBOLS: <fs_table> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS: <fs_table>     TYPE STANDARD TABLE.
 
     ASSIGN lr_details_table->* TO <fs_table>.
     CHECK <fs_table> IS ASSIGNED.
 
-    ASSIGN COMPONENT e_column_id OF STRUCTURE <fs_table>[ es_row_no-row_id ] TO FIELD-SYMBOL(<fs_value>).
-    CHECK <fs_value> IS ASSIGNED AND <fs_value> IS NOT INITIAL.
+    "Check Row has Data
+    CHECK <fs_table>[ es_row_no-row_id ] IS NOT INITIAL.
 
-    "Dynamic Mapping of Parameter ID
-    DATA(lv_document_category) = VALUE #( lt_mm_document_flow[ document_number = <fs_value> ]-document_category OPTIONAL ).
+    "Get Transaction to Call
+    DATA(lv_transaction_code) = lt_parameter_id[ fieldname = e_column_id ]-transaction_code .
+    CHECK lv_transaction_code IS NOT INITIAL.
 
+    "Set Parameters IDs of Transaction
+    LOOP AT lt_parameter_id ASSIGNING FIELD-SYMBOL(<fs_line>) WHERE transaction_code = lv_transaction_code.
 
-    DATA(lv_parameter_id) = SWITCH #( e_column_id
-                                      WHEN 'BANFN' THEN 'BAN'
-                                      WHEN 'MATNR' THEN 'MAT'
-                                      WHEN 'EBELN' THEN COND #( WHEN lv_document_category EQ mm_document_category-po  THEN 'BES'
-                                                                WHEN lv_document_category EQ mm_document_category-cn  THEN 'CTR'
-                                                                WHEN lv_document_category EQ mm_document_category-rfq THEN 'CTR'  )
-                                      WHEN 'MBLNR' THEN 'MBN'
-                                      WHEN 'BELNR' THEN 'BLN' ).
+      ASSIGN COMPONENT <fs_line>-fieldname OF STRUCTURE <fs_table>[ es_row_no-row_id ] TO FIELD-SYMBOL(<fs_value>).
+      IF <fs_value> IS ASSIGNED AND <fs_value> IS NOT INITIAL.
+        SET PARAMETER ID <fs_line>-parameter_id FIELD <fs_value>.
+      ENDIF.
 
-    DATA(lv_second_parameter) = SWITCH #( e_column_id
-                                          WHEN 'BELNR' THEN 'GJR' ).
+    ENDLOOP.
 
-    DATA(lv_transaction_code) = SWITCH #( e_column_id
-                                      WHEN 'BANFN' THEN 'ME53N'
-                                      WHEN 'MATNR' THEN 'MM03'
-                                      WHEN 'EBELN' THEN COND #( WHEN lv_document_category EQ mm_document_category-po  THEN 'ME23N'
-                                                                WHEN lv_document_category EQ mm_document_category-cn  THEN 'ME33K'
-                                                                WHEN lv_document_category EQ mm_document_category-rfq THEN 'ME43')
-                                      WHEN 'MBLNR' THEN 'MIGO'
-                                      WHEN 'BELNR' THEN 'FB03' ).
-
-
-    IF lv_parameter_id IS NOT INITIAL AND lv_transaction_code IS NOT INITIAL.
-
-      SET PARAMETER ID lv_parameter_id     FIELD <fs_value>.
-
-*      IF lv_second_parameter IS NOT INITIAL.
-*        SET PARAMETER ID lv_second_parameter FIELD '2022'.
-*      ENDIF.
-
-      CALL TRANSACTION lv_transaction_code WITH AUTHORITY-CHECK AND SKIP FIRST SCREEN.
-
-    ENDIF.
+    CALL TRANSACTION lv_transaction_code WITH AUTHORITY-CHECK AND SKIP FIRST SCREEN.
 
   ENDMETHOD.
 
