@@ -1,3 +1,10 @@
+************************************************************************
+*   Program name: z_dynamic_conversion                                 *
+*   Description :                                                      *
+*                                                                      *
+*   Created   by: GDRAKOS DVALOUXIS                                    *
+*                                                                      *
+************************************************************************
 REPORT z_dynamic_conversion.
 
 CLASS lcl_convertion_class DEFINITION CREATE PUBLIC FINAL.
