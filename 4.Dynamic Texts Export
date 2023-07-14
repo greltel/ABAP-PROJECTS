@@ -64,13 +64,14 @@ CLASS lcl_texts DEFINITION CREATE PUBLIC.
         tdspras    TYPE spras,
         tdtxtlines TYPE tdtxtlines,
         text       TYPE string,
-      END OF t_texts.
+      END OF t_texts,
 
-    DATA:
-          lt_texts TYPE STANDARD TABLE OF t_texts INITIAL SIZE 0.
+      tt_texts TYPE STANDARD TABLE OF t_texts INITIAL SIZE 0.
+
+    DATA:lt_texts TYPE tt_texts.
 
     METHODS:
-      populate_texts CHANGING im_texts LIKE lt_texts.
+      populate_texts.
 
 ENDCLASS.
 
@@ -78,32 +79,31 @@ ENDCLASS.
 *& SELECTION SCREEN DESIGN
 *&---------------------------------------------------------------------*
 
-SELECTION-SCREEN: BEGIN OF BLOCK b02 WITH FRAME TITLE title1.
-SELECTION-SCREEN COMMENT 1(26) t_file FOR FIELD p_file.
-PARAMETERS : p_file TYPE file_table-filename OBLIGATORY.
-SELECTION-SCREEN: END OF BLOCK b02 .
+SELECTION-SCREEN: BEGIN OF BLOCK b0 WITH FRAME TITLE title0.
+  PARAMETERS : p_file TYPE file_table-filename OBLIGATORY.
+SELECTION-SCREEN: END OF BLOCK b0.
 
-SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title2.
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_obj FOR FIELD s_obj.
-SELECT-OPTIONS: s_obj FOR stxh-tdobject OBLIGATORY.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_obj FOR FIELD s_obj.
+    SELECT-OPTIONS: s_obj FOR stxh-tdobject OBLIGATORY.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_tdname FOR FIELD s_tdname.
-SELECT-OPTIONS: s_tdname FOR stxh-tdname OBLIGATORY.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_tdname FOR FIELD s_tdname.
+    SELECT-OPTIONS: s_tdname FOR stxh-tdname OBLIGATORY.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_tdid FOR FIELD s_tdid.
-SELECT-OPTIONS: s_tdid FOR stxh-tdid OBLIGATORY.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_tdid FOR FIELD s_tdid.
+    SELECT-OPTIONS: s_tdid FOR stxh-tdid OBLIGATORY.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_spras FOR FIELD s_spras.
-SELECT-OPTIONS: s_spras FOR stxh-tdspras OBLIGATORY.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_spras FOR FIELD s_spras.
+    SELECT-OPTIONS: s_spras FOR stxh-tdspras OBLIGATORY.
+  SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b1.
 
@@ -124,11 +124,18 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
 *&---------------------------------------------------------------------*
 START-OF-SELECTION.
 
-  DATA(lo_texts) = NEW lcl_texts( ).
 
   TRY.
-      lo_texts->get_data( EXPORTING so_object = s_obj[] so_spras = s_spras[] so_tdid = s_tdid[] so_tdname = s_tdname[] ).
-      lo_texts->download_texts( EXPORTING im_filename = p_file  im_field_labels_as_header = abap_true ).
+      DATA(lo_texts) = NEW lcl_texts( ).
+
+      lo_texts->get_data( so_object = s_obj[]
+                          so_spras  = s_spras[]
+                          so_tdid   = s_tdid[]
+                          so_tdname = s_tdname[] ).
+
+      lo_texts->download_texts( im_filename               = p_file
+                                im_field_labels_as_header = abap_true ).
+
     CATCH lcx_texts INTO DATA(lo_exception).
       MESSAGE lo_exception->get_text( ) TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
   ENDTRY.
@@ -144,14 +151,14 @@ END-OF-SELECTION.
 *&---------------------------------------------------------------------*
 FORM screen_initialization.
 
-  title1  = 'Export Filepath'.
-  title2  = 'Texts Selection'.
+  title0                = 'Export Filepath'.
+  title1                = 'Texts Selection'.
 
-  t_file   = 'Filepath'.
-  t_obj    = icon_object_list &&  'Text Object'.
-  t_tdname = icon_text_field && 'Text Name'.
-  t_tdid   = icon_text_ina && 'Text ID'.
-  t_spras  = icon_eu && 'Language'.
+  %_p_file_%_app_%-text = icon_xls         && 'Excel Filepath'.
+  t_obj                 = icon_object_list &&  'Text Object'.
+  t_tdname              = icon_text_field  && 'Text Name'.
+  t_tdid                = icon_text_ina    && 'Text ID'.
+  t_spras               = icon_eu          && 'Language'.
 
 ENDFORM.
 
@@ -181,11 +188,7 @@ FORM get_export_filepath CHANGING lp_file.
             invalid_default_file_name = 4                 " Invalid default file name
             OTHERS                    = 5 ).
 
-  IF sy-subrc NE 0 OR user_action NE cl_gui_frontend_services=>action_ok.
-    EXIT.
-  ENDIF.
-
-  lp_file = fullpath.
+  lp_file = COND #( WHEN sy-subrc IS INITIAL AND user_action EQ cl_gui_frontend_services=>action_ok THEN fullpath ).
 
 ENDFORM.
 
@@ -218,22 +221,22 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 CLASS lcl_texts IMPLEMENTATION.
 
-
   METHOD get_data.
 
+    CLEAR:me->lt_texts.
     SELECT FROM stxh
       FIELDS tdobject, tdname, tdid, tdspras, tdtxtlines
       WHERE tdobject IN  @so_object
         AND tdname   IN  @so_tdname
         AND tdid     IN  @so_tdid
         AND tdspras  IN  @so_spras
-        INTO CORRESPONDING FIELDS OF TABLE @lt_texts.
+        INTO CORRESPONDING FIELDS OF TABLE @me->lt_texts.
 
-    IF sy-subrc EQ 4.
+    IF syst-subrc IS NOT INITIAL OR lt_texts IS INITIAL.
       RAISE EXCEPTION TYPE lcx_texts EXPORTING text = 'No Texts Found for the Specified Criteria'.
     ENDIF.
 
-    me->populate_texts( CHANGING im_texts = lt_texts ).
+    me->populate_texts( ).
 
   ENDMETHOD.
 
@@ -241,9 +244,9 @@ CLASS lcl_texts IMPLEMENTATION.
 
     DATA:lt_lines TYPE TABLE OF  tline.
 
-    LOOP AT im_texts ASSIGNING FIELD-SYMBOL(<fs_line>).
+    LOOP AT me->lt_texts ASSIGNING FIELD-SYMBOL(<fs_line>).
 
-      CLEAR: lt_lines.
+      CLEAR:lt_lines.
       CALL FUNCTION 'READ_TEXT'
         EXPORTING
           client                  = sy-mandt
@@ -263,13 +266,13 @@ CLASS lcl_texts IMPLEMENTATION.
           wrong_access_to_archive = 7
           OTHERS                  = 8.
 
-      IF sy-subrc EQ 0.
+      IF syst-subrc IS INITIAL AND lt_lines IS NOT INITIAL.
 
-        LOOP AT lt_lines INTO DATA(fs_text_line) WHERE tdline IS NOT INITIAL.
+        LOOP AT lt_lines ASSIGNING FIELD-SYMBOL(<fs_text_line>) WHERE tdline IS NOT INITIAL.
 
-          REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>horizontal_tab IN fs_text_line-tdline WITH space .
-          CONDENSE fs_text_line-tdline.
-          CONCATENATE <fs_line>-text fs_text_line-tdline INTO <fs_line>-text SEPARATED BY space.
+          REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>horizontal_tab IN <fs_text_line>-tdline WITH space .
+          CONDENSE <fs_text_line>-tdline.
+          CONCATENATE <fs_line>-text <fs_text_line>-tdline INTO <fs_line>-text SEPARATED BY space.
 
         ENDLOOP.
 
@@ -281,9 +284,8 @@ CLASS lcl_texts IMPLEMENTATION.
 
   METHOD download_texts.
 
-    DATA:lv_row         TYPE i,
-         lv_column      TYPE i VALUE 1,
-         lv_shell_value TYPE c LENGTH 40.
+    DATA:lv_row    TYPE i,
+         lv_column TYPE i VALUE 1.
 
     TRY.
         DATA(xlsx_handling) = cl_ehfnd_xlsx=>get_instance( ).
@@ -321,12 +323,11 @@ CLASS lcl_texts IMPLEMENTATION.
 
       LOOP AT lt_components INTO DATA(wa_components).
 
-        CLEAR:lv_shell_value.
         DATA(lo_element_def) = CAST cl_abap_elemdescr( lo_struct_def->get_component_type( wa_components-name ) ).
 
         IF NOT lo_element_def->is_ddic_type( ) ."Field is not Dictionary Data Type
 
-          lv_shell_value = wa_components-name.
+          DATA(lv_cell_value) = wa_components-name.
 
         ELSE."Field is Dictionary Data Type
 
@@ -334,28 +335,30 @@ CLASS lcl_texts IMPLEMENTATION.
 
           SELECT SINGLE scrtext_l
                          FROM  dd04t
-                         INTO  @lv_shell_value
+                         INTO  @lv_cell_value
                          WHERE rollname EQ @lw_field_info-rollname AND
                                ddlanguage  EQ @sy-langu.
 
-          IF sy-subrc NE 0."If no Text Exist take Heading Information
+          IF sy-subrc IS NOT INITIAL."If no Text Exist take Heading Information
 
             SELECT SINGLE reptext
              FROM  dd04t
-             INTO  @lv_shell_value
+             INTO  @lv_cell_value
              WHERE rollname EQ @lw_field_info-rollname AND
                    ddlanguage  EQ @sy-langu.
 
           ENDIF.
 
-          IF lv_shell_value IS INITIAL.
-            lv_shell_value = wa_components-name.
+          IF lv_cell_value IS INITIAL.
+            lv_cell_value = wa_components-name.
           ENDIF.
 
         ENDIF.
 
-        first_xlsx_sheet->set_cell_content( iv_row = 1 iv_column = lv_column iv_value = lv_shell_value ).
+        first_xlsx_sheet->set_cell_content( iv_row = 1 iv_column = lv_column iv_value = lv_cell_value ).
         lv_column += 1.
+
+        CLEAR:lv_cell_value.
 
       ENDLOOP.
 
@@ -363,8 +366,8 @@ CLASS lcl_texts IMPLEMENTATION.
 
       lv_row = 2.
 
-      LOOP AT lt_components INTO DATA(component).
-        first_xlsx_sheet->set_cell_content( iv_row = 1 iv_column = lv_column iv_value = component-name ).
+      LOOP AT lt_components ASSIGNINg FIELD-SYMBOL(<Fs_component>).
+        first_xlsx_sheet->set_cell_content( iv_row = 1 iv_column = lv_column iv_value = <Fs_component>-name ).
         lv_column = lv_column + 1.
       ENDLOOP.
 
@@ -436,7 +439,7 @@ CLASS lcl_texts IMPLEMENTATION.
             error_no_gui              = 23
             OTHERS                    = 24 ).
 
-    IF sy-subrc NE 0.
+    IF sy-subrc IS NOT INITIAL.
       RAISE EXCEPTION TYPE lcx_texts EXPORTING text = 'Error Downloading Texts'.
     ENDIF.
 
