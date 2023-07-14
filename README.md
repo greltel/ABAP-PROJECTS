@@ -47,3 +47,7 @@ Download any Texts of SAP System into Excel File directly.
 ## Project 5: MM Document Flow
 
 Update 18/12/2022: Initial Release ready for Testing.
+
+## Project 6: Dynamic Input-Output Convertion
+
+Dynamically convert a DDIC value to Input/Output format.
