@@ -66,7 +66,7 @@ CLASS lcl_convertion_class IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    "ALPHA Conversion for Input
+    "Alpha Conversion
     DATA(function_conversion) = to_upper( condense( |CONVERSION_EXIT_{ lo_elem->get_ddic_field( )-convexit }_{ SWITCH string( im_alpha
                                                                                                                WHEN lcl_convertion_class=>s_alpha_conversion-in  THEN 'INPUT'
                                                                                                                WHEN lcl_convertion_class=>s_alpha_conversion-out THEN 'OUTPUT' )
