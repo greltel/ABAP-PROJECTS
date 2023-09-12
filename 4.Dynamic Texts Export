@@ -60,7 +60,7 @@ CLASS lcl_texts DEFINITION CREATE PUBLIC.
         text       TYPE string,
       END OF t_texts,
 
-      tt_texts TYPE STANDARD TABLE OF t_texts with DEFAULT KEY INITIAL SIZE 0.
+      tt_texts TYPE STANDARD TABLE OF t_texts WITH DEFAULT KEY INITIAL SIZE 0.
 
     DATA:lt_texts TYPE tt_texts.
 
@@ -268,12 +268,11 @@ CLASS lcl_texts IMPLEMENTATION.
         DATA(xlsx_document)    = xlsx_handling->create_doc( ).
         DATA(xlsx_sheets)      = xlsx_document->get_sheets( ).
         DATA(first_xlsx_sheet) = xlsx_document->get_sheet_by_id( xlsx_sheets[ 1 ]-sheet_id ).
-      CATCH cx_openxml_format cx_openxml_not_found cx_openxml_not_allowed INTO DATA(lo_exception_xml).
-        RAISE EXCEPTION TYPE lcx_texts EXPORTING text = lo_exception_xml->get_text( ).
+      CATCH cx_openxml_format cx_openxml_not_found cx_openxml_not_allowed INTO DATA(lo_exception).
+        RAISE EXCEPTION TYPE lcx_texts EXPORTING text = lo_exception->get_text( ).
     ENDTRY.
 
-    DATA(lo_type_def)   = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( me->lt_texts ) ).
-    DATA(lo_struct_def) = CAST cl_abap_structdescr( lo_type_def->get_table_line_type( ) ).
+    DATA(lo_struct_def) = CAST cl_abap_structdescr( CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( me->lt_texts ) )->get_table_line_type( ) ).
     DATA(lt_components) = lo_struct_def->components.
 
     "BUILD EXCEL HEADER LINE
@@ -285,40 +284,26 @@ CLASS lcl_texts IMPLEMENTATION.
 
         DATA(lo_element_def) = CAST cl_abap_elemdescr( lo_struct_def->get_component_type( <fs_components>-name ) ).
 
-        IF NOT lo_element_def->is_ddic_type( ) ."Field is not Dictionary Data Type
+        IF lo_element_def->is_ddic_type( ) AND "Field is Dictionary Data Type
+           lo_element_def->get_ddic_field( )-rollname IS NOT INITIAL.
 
-          DATA(lv_cell_value) = <fs_components>-name.
+          DATA(lv_field_data_element) = lo_element_def->get_ddic_field( )-rollname.
 
-        ELSE."Field is Dictionary Data Type
-
-          DATA(lw_field_info) = lo_element_def->get_ddic_field( ).
-
-          SELECT SINGLE scrtext_l
-                         FROM  dd04t
-                         INTO  @lv_cell_value
-                         WHERE rollname EQ @lw_field_info-rollname AND
-                               ddlanguage  EQ @syst-langu.
-
-          IF syst-subrc IS NOT INITIAL."If no Text Exist take Heading Information
-
-            SELECT SINGLE reptext
-             FROM  dd04t
-             INTO  @lv_cell_value
-             WHERE rollname EQ @lw_field_info-rollname AND
-                   ddlanguage  EQ @syst-langu.
-
-          ENDIF.
-
-          IF lv_cell_value IS INITIAL.
-            lv_cell_value = <fs_components>-name.
-          ENDIF.
+          SELECT SINGLE FROM  dd04t
+                 FIELDS coalesce( scrtext_l, scrtext_m, scrtext_s, reptext )
+                 WHERE rollname   EQ @lv_field_data_element AND
+                       ddlanguage EQ @syst-langu
+                 INTO  @DATA(lv_cell_value).
 
         ENDIF.
 
-        first_xlsx_sheet->set_cell_content( iv_row = 1 iv_column = lv_column iv_value = lv_cell_value ).
+        first_xlsx_sheet->set_cell_content( iv_row    = 1
+                                            iv_column = lv_column
+                                            iv_value  = COND #( WHEN lv_cell_value IS INITIAL THEN <fs_components>-name
+                                                                ELSE lv_cell_value ) ).
         lv_column += 1.
 
-        CLEAR:lv_cell_value.
+        CLEAR:lv_cell_value,lo_element_def,lv_field_data_element.
 
       ENDLOOP.
 
@@ -332,7 +317,11 @@ CLASS lcl_texts IMPLEMENTATION.
           lv_column = 1.
           LOOP AT lt_components ASSIGNING <fs_components>.
             ASSIGN COMPONENT <fs_components>-name OF STRUCTURE <fs_table> TO FIELD-SYMBOL(<columnvalue>).
-            first_xlsx_sheet->set_cell_content( iv_row = lv_row iv_column = lv_column iv_value = <columnvalue> ).
+            IF <columnvalue> IS ASSIGNED.
+              first_xlsx_sheet->set_cell_content( iv_row    = lv_row
+                                                  iv_column = lv_column
+                                                  iv_value  = <columnvalue> ).
+            ENDIF.
             lv_column += 1.
           ENDLOOP.
 
@@ -383,8 +372,8 @@ CLASS lcl_texts IMPLEMENTATION.
           RAISE EXCEPTION TYPE lcx_texts EXPORTING text = 'Error Downloading Texts'.
         ENDIF.
 
-      CATCH cx_openxml_format cx_openxml_not_found cx_openxml_not_allowed  INTO lo_exception_xml.
-        RAISE EXCEPTION TYPE lcx_texts EXPORTING text = lo_exception_xml->get_text( ).
+      CATCH cx_openxml_format cx_openxml_not_found cx_openxml_not_allowed  INTO lo_exception.
+        RAISE EXCEPTION TYPE lcx_texts EXPORTING text = lo_exception->get_text( ).
     ENDTRY.
 
 
