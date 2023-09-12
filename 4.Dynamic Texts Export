@@ -250,7 +250,10 @@ CLASS lcl_texts IMPLEMENTATION.
           EXPORTING
             it_tline       = lt_lines
           IMPORTING
-            ev_text_string = <fs_line>-text.
+            ev_text_string = <fs_line>-text
+          EXCEPTIONS
+            error_message  = 1
+            OTHERS         = 2.
 
       ENDIF.
 
@@ -330,16 +333,17 @@ CLASS lcl_texts IMPLEMENTATION.
         ENDLOOP.
 
         cl_scp_change_db=>xstr_to_xtab( EXPORTING im_xstring = xlsx_document->save( )
-                                        IMPORTING ex_xtab    = DATA(filecontenttab) ).
+                                        IMPORTING ex_xtab    = DATA(filecontenttab)
+                                                  ex_size    = DATA(lv_bin_size) ).
 
         cl_gui_frontend_services=>gui_download(
               EXPORTING
-                bin_filesize              = xstrlen( xlsx_document->save( ) )
+                bin_filesize              = lv_bin_size
                 filename                  = |{ im_filename }|
                 filetype                  = 'BIN'
                 confirm_overwrite         = abap_true
               IMPORTING
-                filelength                = DATA(bytestransferred)
+                filelength                = DATA(lv_bytestransferred)
               CHANGING
                 data_tab                  = filecontenttab
               EXCEPTIONS
