@@ -1,11 +1,11 @@
 ************************************************************************
-*   Program name:                                                      *
-*   Description :                                                      *
-*                                                                      *
-*   Created   by: GDRAKOS DVALOUXIS                                    *
-*                                                                      *
+*   Program name: Z_DYNAMIC_TEXTS_EXPORT
+*   Description :
+*
+*   Created   by: GDRAKOS DVALOUXIS
+*
 ************************************************************************
-REPORT dynamic_texts_export.
+REPORT z_dynamic_texts_export.
 
 TABLES:stxh.
 
@@ -13,11 +13,7 @@ CLASS: lcx_texts DEFINITION DEFERRED,
        lcl_texts DEFINITION DEFERRED.
 
 *&---------------------------------------------------------------------*
-*& CLASS DEFINITIONS
-*&---------------------------------------------------------------------*
-
-*&---------------------------------------------------------------------*
-*& Class LCX_TEXTS
+*& Class LCX_TEXTS DEFINITION
 *&---------------------------------------------------------------------*
 CLASS lcx_texts DEFINITION INHERITING FROM cx_static_check.
 
@@ -34,7 +30,7 @@ CLASS lcx_texts DEFINITION INHERITING FROM cx_static_check.
 ENDCLASS.
 
 *&---------------------------------------------------------------------*
-*& Class LCL_TEXTS
+*& Class LCL_TEXTS DEFINITION
 *&---------------------------------------------------------------------*
 CLASS lcl_texts DEFINITION CREATE PUBLIC.
 
@@ -64,7 +60,7 @@ CLASS lcl_texts DEFINITION CREATE PUBLIC.
         text       TYPE string,
       END OF t_texts,
 
-      tt_texts TYPE STANDARD TABLE OF t_texts INITIAL SIZE 0.
+      tt_texts TYPE STANDARD TABLE OF t_texts with DEFAULT KEY INITIAL SIZE 0.
 
     DATA:lt_texts TYPE tt_texts.
 
@@ -78,30 +74,19 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 
 SELECTION-SCREEN: BEGIN OF BLOCK b0 WITH FRAME TITLE title0.
-  PARAMETERS : p_file TYPE file_table-filename OBLIGATORY.
+PARAMETERS : p_file TYPE file_table-filename OBLIGATORY.
 SELECTION-SCREEN: END OF BLOCK b0.
 
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_obj FOR FIELD s_obj.
-    SELECT-OPTIONS: s_obj FOR stxh-tdobject OBLIGATORY.
-  SELECTION-SCREEN END OF LINE.
+SELECT-OPTIONS: s_obj    FOR stxh-tdobject OBLIGATORY,
+                s_tdname FOR stxh-tdname   OBLIGATORY,
+                s_tdid   FOR stxh-tdid     OBLIGATORY,
+                s_spras  FOR stxh-tdspras  OBLIGATORY.
 
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_tdname FOR FIELD s_tdname.
-    SELECT-OPTIONS: s_tdname FOR stxh-tdname OBLIGATORY.
-  SELECTION-SCREEN END OF LINE.
-
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_tdid FOR FIELD s_tdid.
-    SELECT-OPTIONS: s_tdid FOR stxh-tdid OBLIGATORY.
-  SELECTION-SCREEN END OF LINE.
-
-  SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_spras FOR FIELD s_spras.
-    SELECT-OPTIONS: s_spras FOR stxh-tdspras OBLIGATORY.
-  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE title2.
+PARAMETERS:c_header AS CHECKBOX DEFAULT abap_true.
+SELECTION-SCREEN END OF BLOCK b2.
 
 SELECTION-SCREEN END OF BLOCK b1.
 
@@ -132,7 +117,7 @@ START-OF-SELECTION.
                           so_tdname = s_tdname[] ).
 
       lo_texts->download_texts( im_filename               = p_file
-                                im_field_labels_as_header = abap_true ).
+                                im_field_labels_as_header = c_header ).
 
     CATCH lcx_texts INTO DATA(lo_exception).
       MESSAGE lo_exception->get_text( ) TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
@@ -141,22 +126,21 @@ START-OF-SELECTION.
 END-OF-SELECTION.
 
 *&---------------------------------------------------------------------*
-*& SUBROUTINE CREATION
-*&---------------------------------------------------------------------*
-
-*&---------------------------------------------------------------------*
 *& Form SCREEN INITIALIZATION
 *&---------------------------------------------------------------------*
 FORM screen_initialization.
 
-  title0                = 'Export Filepath'.
-  title1                = 'Texts Selection'.
+  title0                   = 'Export Filepath'.
+  title1                   = 'Texts Selection'.
+  title2                   = 'Properties'.
 
-  %_p_file_%_app_%-text = icon_xls         && 'Excel Filepath'.
-  t_obj                 = icon_object_list &&  'Text Object'.
-  t_tdname              = icon_text_field  && 'Text Name'.
-  t_tdid                = icon_text_ina    && 'Text ID'.
-  t_spras               = icon_eu          && 'Language'.
+  syst-title               = 'Texts Export'.
+  %_p_file_%_app_%-text    = icon_xls         && 'Excel Filepath'.
+  %_s_obj_%_app_%-text     = icon_object_list && 'Text Object'.
+  %_s_tdname_%_app_%-text  = icon_text_field  && 'Text Name'.
+  %_s_tdid_%_app_%-text    = icon_text_ina    && 'Text ID'.
+  %_s_spras_%_app_%-text   = icon_eu          && 'Language'.
+  %_c_header_%_app_%-text  = 'Field Labels as Header'.
 
 ENDFORM.
 
@@ -172,30 +156,26 @@ FORM get_export_filepath CHANGING lp_file.
             window_title              = 'File System of Presentation Server'
             default_extension         = cl_gui_frontend_services=>filetype_excel
             prompt_on_overwrite       = abap_true
-            default_file_name         = 'Texts.XLSX'
+            default_file_name         = 'Exported_Texts.XLSX'
             file_filter               = 'All Files(*.*)|*.*|' && 'Excel Files (*.xlsx)|*.xlsx|' &&'Excel Files (*.xls)|*.xls|'
           CHANGING
-            filename                  = filename          " File Name to Save
-            path                      = path              " Path to File
-            fullpath                  = fullpath          " Path + File Name
-            user_action               = user_action       " User Action (C Class Const ACTION_OK, ACTION_OVERWRITE etc)
+            filename                  = filename
+            path                      = path
+            fullpath                  = fullpath
+            user_action               = user_action
           EXCEPTIONS
-            cntl_error                = 1                 " Control error
-            error_no_gui              = 2                 " No GUI available
-            not_supported_by_gui      = 3                 " GUI does not support this
-            invalid_default_file_name = 4                 " Invalid default file name
+            cntl_error                = 1
+            error_no_gui              = 2
+            not_supported_by_gui      = 3
+            invalid_default_file_name = 4
             OTHERS                    = 5 ).
 
-  lp_file = COND #( WHEN sy-subrc IS INITIAL AND user_action EQ cl_gui_frontend_services=>action_ok THEN fullpath ).
+  lp_file = COND #( WHEN syst-subrc IS INITIAL AND user_action EQ cl_gui_frontend_services=>action_ok THEN fullpath ).
 
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& CLASS IMPLEMENTATIONS
-*&---------------------------------------------------------------------*
-
-*&---------------------------------------------------------------------*
-*& Class LCX_TEXTS
+*& Class LCX_TEXTS IMPLEMENTATION
 *&---------------------------------------------------------------------*
 CLASS lcx_texts IMPLEMENTATION.
 
@@ -215,7 +195,7 @@ CLASS lcx_texts IMPLEMENTATION.
 ENDCLASS.
 
 *&---------------------------------------------------------------------*
-*& Class LCL_TEXTS
+*& Class LCL_TEXTS IMPLEMENTATION
 *&---------------------------------------------------------------------*
 CLASS lcl_texts IMPLEMENTATION.
 
@@ -317,15 +297,15 @@ CLASS lcl_texts IMPLEMENTATION.
                          FROM  dd04t
                          INTO  @lv_cell_value
                          WHERE rollname EQ @lw_field_info-rollname AND
-                               ddlanguage  EQ @sy-langu.
+                               ddlanguage  EQ @syst-langu.
 
-          IF sy-subrc IS NOT INITIAL."If no Text Exist take Heading Information
+          IF syst-subrc IS NOT INITIAL."If no Text Exist take Heading Information
 
             SELECT SINGLE reptext
              FROM  dd04t
              INTO  @lv_cell_value
              WHERE rollname EQ @lw_field_info-rollname AND
-                   ddlanguage  EQ @sy-langu.
+                   ddlanguage  EQ @syst-langu.
 
           ENDIF.
 
@@ -344,9 +324,9 @@ CLASS lcl_texts IMPLEMENTATION.
 
     ENDIF.
 
-    "EXCEL ROWS
-    CLEAR lv_column.
     TRY.
+        "EXCEL ROWS
+        CLEAR lv_column.
         LOOP AT me->lt_texts ASSIGNING FIELD-SYMBOL(<fs_table>).
 
           lv_column = 1.
