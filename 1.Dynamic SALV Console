@@ -1,9 +1,9 @@
 ************************************************************************
-*   Program name:                                                      *
-*   Description :                                                      *
-*                                                                      *
-*   Created   by: GDRAKOS DVALOUXIS                                    *
-*                                                                      *
+*   Program name: Z_SALV_ALV
+*   Description : Dynamic SALV Console
+*
+*   Created   by: GDRAKOS DVALOUXIS
+*
 ************************************************************************
 REPORT z_salv_alv  NO STANDARD PAGE HEADING LINE-COUNT 255.
 
@@ -22,6 +22,7 @@ CLASS: lcl_main_salv       DEFINITION DEFERRED,
        lcl_event_handler   DEFINITION DEFERRED,
        lcl_salv_edit       DEFINITION DEFERRED,
        lcx_exception       DEFINITION DEFERRED.
+
 *&---------------------------------------------------------------------*
 *& GLOBAL DATA DECLARATION
 *&---------------------------------------------------------------------*
@@ -32,7 +33,7 @@ TYPES:BEGIN OF ty_color,
         color_descr TYPE as4text,
       END OF ty_color.
 
-DATA: t_color TYPE STANDARD TABLE OF ty_color.
+DATA: t_color TYPE STANDARD TABLE OF ty_color WITH DEFAULT KEY.
 
 *----------------------------------------------------------------------*
 *       CLASS LCX_EXCEPTION
@@ -57,23 +58,25 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
 
   PUBLIC SECTION.
 
-    TYPES:BEGIN OF ENUM en_alv_version,
-            gui,
-            fiori,
-          END OF ENUM en_alv_version.
+    TYPES:
 
-    TYPES:BEGIN OF ENUM en_alv_container,
-            standard,
-            bottom,
-            splitter,
-            dialog,
-            context,
-          END OF ENUM en_alv_container.
+      BEGIN OF ENUM en_alv_version,
+        gui,
+        fiori,
+      END OF ENUM en_alv_version,
 
-    TYPES:BEGIN OF ENUM en_data_source,
-            excel,
-            database,
-          END OF ENUM en_data_source.
+      BEGIN OF ENUM en_alv_container,
+        standard,
+        bottom,
+        splitter,
+        dialog,
+        context,
+      END OF ENUM en_alv_container,
+
+      BEGIN OF ENUM en_data_source,
+        excel,
+        database,
+      END OF ENUM en_data_source.
 
     "Public Methods
     METHODS:
@@ -146,6 +149,7 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
       display_alv.
 
 ENDCLASS.
+
 *----------------------------------------------------------------------*
 *       CLASS LCL_GENERAL_UTIL DEFINITION
 *----------------------------------------------------------------------*
@@ -188,6 +192,7 @@ CLASS lcl_general_util DEFINITION CREATE PUBLIC.
                                 RETURNING VALUE(re_date_internal) TYPE tumls_date.
 
 ENDCLASS.
+
 *----------------------------------------------------------------------*
 *       CLASS lcl_salv_edit DEFINITION
 *----------------------------------------------------------------------*
@@ -226,7 +231,8 @@ CLASS lcl_event_handler DEFINITION FINAL CREATE PUBLIC.
     INTERFACES if_alv_rm_grid_friend.
 
     "SALV EVENTS
-    CLASS-METHODS: handle_double_click    FOR EVENT double_click        OF cl_salv_events_table IMPORTING row column,
+    CLASS-METHODS:
+      handle_double_click    FOR EVENT double_click        OF cl_salv_events_table IMPORTING row column,
       handle_hotspot         FOR EVENT link_click          OF cl_salv_events_table IMPORTING row column,
       on_user_command        FOR EVENT added_function      OF cl_salv_events_table IMPORTING e_salv_function,
       on_end_of_page         FOR EVENT end_of_page         OF cl_salv_events_table IMPORTING r_end_of_page page,
@@ -499,19 +505,19 @@ START-OF-SELECTION.
                                              im_line_color              = p_coll
                                              im_handle_gui_grid_events  = p_event ).
 
-      go_lcl_main->get_data( im_data_source = COND #( WHEN db EQ abap_true THEN lcl_main_salv=>database
-                                                      WHEN file EQ abap_true THEN lcl_main_salv=>excel
-                                                      ELSE THROW lcx_exception( text = 'Invalid Data Source Selection' )  )
-                             im_filepath = p_excel
-                             im_sheet_name = p_sheet
-                             im_head = p_head
-                             im_table = p_table
+      go_lcl_main->get_data( im_data_source     = COND #( WHEN db EQ abap_true THEN lcl_main_salv=>database
+                                                          WHEN file EQ abap_true THEN lcl_main_salv=>excel
+                                                          ELSE THROW lcx_exception( text = 'Invalid Data Source Selection' )  )
+                             im_filepath        = p_excel
+                             im_sheet_name      = p_sheet
+                             im_head            = p_head
+                             im_table           = p_table
                              im_number_of_lines = p_hits
-                             im_comp = p_comp
-                             im_field = p_fiel
-                             im_val = p_val
+                             im_comp            = p_comp
+                             im_field           = p_fiel
+                             im_val             = p_val
                              im_checkbox_column = p_check
-                             im_icon_column  = p_icon ).
+                             im_icon_column     = p_icon ).
 
       go_lcl_main->process_data( ).
       go_lcl_main->display_data( ).
@@ -744,18 +750,18 @@ CLASS lcl_main_salv IMPLEMENTATION.
   METHOD constructor.
 
     "SET VALUES FOR ATTRIBUTES
-    lv_layout = im_layout.
-    lv_technical_names = im_technical_names.
-    lv_hotspot_field = im_hotspot_field.
-    lv_hotspot_color = im_hotspot_color.
-    lv_line_color = im_line_color.
+    lv_layout                 = im_layout.
+    lv_technical_names        = im_technical_names.
+    lv_hotspot_field          = im_hotspot_field.
+    lv_hotspot_color          = im_hotspot_color.
+    lv_line_color             = im_line_color.
     lv_handle_gui_grid_events = im_handle_gui_grid_events.
-    lv_version = im_version.
-    lv_container = im_container.
-    lv_status = im_status.
+    lv_version                = im_version.
+    lv_container              = im_container.
+    lv_status                 = im_status.
 
     "SET TITLE FOR ALV SCREEN
-    sy-title = gc_report_heading.
+    syst-title = gc_report_heading.
 
   ENDMETHOD.
 
@@ -931,7 +937,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
       "Icons
       IF <lv_icon_value> IS ASSIGNED.
-        CASE sy-tabix MOD 4.
+        CASE syst-tabix MOD 4.
           WHEN 1.
             <lv_icon_value> =  icon_green_light.
           WHEN 2.
@@ -947,29 +953,28 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   ENDMETHOD.
 
-
   METHOD display_data.
 
 *----------------------------INSTANTIATE ALV OBJECT----------------------------*
-    CALL METHOD me->create_alv.
+    me->create_alv( ).
 *----------------------FIELD CATALOG-FIELD LABELS------------------------------*
-    CALL METHOD me->field_catalog.
+    me->field_catalog( ).
 *-------------------COLUMN MANIPULATION-SORT-AGGREGATION-COLOUR----------------*
-    CALL METHOD me->column_properties.
+    me->column_properties( ).
 *--------------------LAYOUTSETTINGS-DISPLAY SETTINGS-------------------*
-    CALL METHOD me->display_settings_header.
+    me->display_settings_header( ).
 *--------------------------------HEADER----------------------------------------*
-    CALL METHOD me->header_creation.
+    me->header_creation( ).
 *--------------------------------FOOTER----------------------------------------*
-    CALL METHOD me->footer_creation.
+    me->footer_creation( ).
 *------------------------FUNCTIONS-TOOLBAR-CUSTOM STATUS-----------------------*
-    CALL METHOD me->toolbar_status.
+    me->toolbar_status( ).
 *----------------------------Handle GUI Grid Events----------------------------*
-    CALL METHOD me->handle_gui_grid_events.
+    me->handle_gui_grid_events( ).
 *---------------------------------EVENT HANDLING-------------------------------*
-    CALL METHOD me->event_handling.
+    me->event_handling( ).
 *--------------------------------ALV DISPLAY-----------------------------------*
-    CALL METHOD me->display_alv.
+    me->display_alv( ).
 
   ENDMETHOD.
 
@@ -1417,9 +1422,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
                                                                "OBLIGATORY = IF_SALV_C_BOOL_SAP=>FALSE
                                                                ).
         "SUBTOTALS
-        CALL METHOD lr_sort_column->set_subtotal
-          EXPORTING
-            value = if_salv_c_bool_sap=>true.
+        lr_sort_column->set_subtotal( EXPORTING value = if_salv_c_bool_sap=>true ).
 
       CATCH cx_salv_existing cx_salv_not_found cx_salv_data_error . "#EC NO_HANDLER
     ENDTRY.
