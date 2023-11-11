@@ -230,7 +230,7 @@ CLASS lcl_xml IMPLEMENTATION.
 
       TRY.
           DATA(lo_xml) = NEW cl_xml_document( ).
-          IF lo_xml->import_from_file( CONV #( lv_filepath ) ) EQ 0.
+          IF lo_xml->import_from_file( CONV #( lv_filepath ) ) IS INITIAL.
 
             lo_xml->render_2_string( EXPORTING
                                      pretty_print = abap_true
@@ -246,6 +246,8 @@ CLASS lcl_xml IMPLEMENTATION.
                                       size    = lv_size ##NEEDED
                                       stream  = lv_xml_xstring ).
 
+          ELSE.
+            RAISE EXCEPTION TYPE lcx_xml EXPORTING text = 'Error Uploading the XML File'.
           ENDIF.
         CATCH cx_root INTO DATA(lo_exception).
           RAISE EXCEPTION TYPE lcx_xml EXPORTING text = lo_exception->get_text( ).
@@ -474,7 +476,7 @@ CLASS lcl_xml IMPLEMENTATION.
     CHECK <fs_itab> IS ASSIGNED.
 
     TRY.
-        cl_salv_table=>factory( EXPORTING r_container = cl_gui_container=>default_screen  list_display = if_salv_c_bool_sap=>false
+        cl_salv_table=>factory( EXPORTING r_container = cl_gui_container=>default_screen list_display = if_salv_c_bool_sap=>false
                                 IMPORTING r_salv_table = DATA(lo_alv)
                                 CHANGING  t_table = <fs_itab> ).
       CATCH cx_salv_msg INTO DATA(lo_exception).
@@ -509,7 +511,7 @@ CLASS lcl_xml IMPLEMENTATION.
                       )->set_save_restriction( if_salv_c_layout=>restrict_none ).
 
     "Event Handling
-    SET HANDLER: lcl_xml=>on_user_command FOR lo_alv->get_event( ).
+    SET HANDLER: lcl_xml=>on_user_command FOR lo_alv->get_event( ) ACTIVATION abap_true.
 
     "ADD Custom Button
     TRY.
