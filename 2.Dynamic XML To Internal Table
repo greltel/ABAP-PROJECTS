@@ -36,7 +36,10 @@ CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
     CLASS-METHODS:
 
-      open_dialog_xml RETURNING VALUE(re_filepath)  TYPE file_table-filename.
+      open_dialog_xml RETURNING VALUE(re_filepath)  TYPE file_table-filename,
+
+      display_table IMPORTING im_table TYPE REF TO data
+                    RAISING   lcx_xml.
 
     METHODS:
 
@@ -44,23 +47,28 @@ CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
       get_structured_table_from_xml IMPORTING im_attribute_node TYPE cname OPTIONAL
                                     EXPORTING ex_table          TYPE REF TO data
-                                    RAISING   lcx_xml,
-
-      display_table IMPORTING im_table TYPE REF TO data
-                    RAISING   lcx_xml.
+                                    RAISING   lcx_xml.
 
   PRIVATE SECTION.
 
+    CLASS-DATA:lv_xml_string  TYPE string.
+
     DATA: lv_filepath    TYPE file_table-filename,
-          lv_xml_string  TYPE string,
           lv_xml_xstring TYPE xstring,
-          lv_xml_table   TYPE hrpayfr_t_smum_xmltb.
+          lt_xml         TYPE hrpayfr_t_smum_xmltb.
+
+    CLASS-METHODS:
+
+      on_user_command FOR EVENT added_function OF cl_salv_events_table IMPORTING e_salv_function,
+
+      display_xml.
+
 
     METHODS:
 
-      read_xml_to_string_xstring RAISING   lcx_xml,
+      read_xml_to_string_xstring RAISING lcx_xml,
 
-      read_xml_to_table  RAISING   lcx_xml,
+      read_xml_to_table  RAISING lcx_xml,
 
       get_dynamic_table_from_xml IMPORTING im_attribute_node TYPE cname OPTIONAL
                                  EXPORTING ex_table          TYPE REF TO data
@@ -68,12 +76,7 @@ CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
       populate_table_from_xml    IMPORTING im_attribute_node TYPE cname OPTIONAL
                                  CHANGING  ex_table          TYPE ANY TABLE
-                                 RAISING   lcx_xml,
-
-      display_xml,
-
-      on_user_command FOR EVENT added_function OF cl_salv_events_table IMPORTING e_salv_function.
-
+                                 RAISING   lcx_xml.
 
 ENDCLASS.
 
@@ -116,15 +119,10 @@ START-OF-SELECTION.
 
   TRY.
 
-      DATA(lo_xml) = NEW lcl_xml( p_file ).
+      NEW lcl_xml( p_file )->get_structured_table_from_xml( EXPORTING im_attribute_node = p_attr
+                                                            IMPORTING ex_table = DATA(lr_table) ).
 
-      lo_xml->get_structured_table_from_xml(
-        EXPORTING
-          im_attribute_node = p_attr
-        IMPORTING
-          ex_table = DATA(lr_table) ).
-
-      lo_xml->display_table( lr_table ).
+      lcl_xml=>display_table( lr_table ).
 
     CATCH lcx_xml INTO DATA(lo_exception).
       MESSAGE lo_exception->get_text( ) TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
@@ -198,7 +196,7 @@ CLASS lcl_xml IMPLEMENTATION.
     DATA: lt_file_table TYPE filetable,
           lv_return     TYPE i.
 
-    CALL METHOD cl_gui_frontend_services=>file_open_dialog
+    cl_gui_frontend_services=>file_open_dialog(
       EXPORTING
         window_title            = 'File System of Presentation Server'
         default_extension       = cl_gui_frontend_services=>filetype_xml
@@ -210,9 +208,9 @@ CLASS lcl_xml IMPLEMENTATION.
         file_open_dialog_failed = 1
         cntl_error              = 2
         error_no_gui            = 3
-        OTHERS                  = 4.
+        OTHERS                  = 4 ).
 
-    CHECK sy-subrc IS INITIAL.
+    CHECK syst-subrc IS INITIAL.
     re_filepath =  VALUE #( lt_file_table[ 1 ]-filename OPTIONAL ).
 
   ENDMETHOD.
@@ -263,14 +261,15 @@ CLASS lcl_xml IMPLEMENTATION.
 
     CALL FUNCTION 'SMUM_XML_PARSE'
       EXPORTING
-        xml_input = me->lv_xml_xstring
+        xml_input     = me->lv_xml_xstring
       TABLES
-        xml_table = lv_xml_table
-        return    = lt_return
+        xml_table     = lt_xml
+        return        = lt_return
       EXCEPTIONS
-        OTHERS    = 1.
+        error_message = 1
+        OTHERS        = 2.
 
-    IF sy-subrc IS NOT INITIAL OR
+    IF syst-subrc IS NOT INITIAL OR
        line_exists( lt_return[ type = cl_cms_common=>con_msg_typ_e ] ) OR
        line_exists( lt_return[ type = cl_cms_common=>con_msg_typ_a ] ) OR
        line_exists( lt_return[ type = cl_cms_common=>con_msg_typ_x ] ).
@@ -283,31 +282,25 @@ CLASS lcl_xml IMPLEMENTATION.
 
   METHOD get_structured_table_from_xml.
 
-    me->get_dynamic_table_from_xml(
-      EXPORTING
-        im_attribute_node = im_attribute_node
-      IMPORTING
-        ex_table  = DATA(lr_table) ).
+    me->get_dynamic_table_from_xml( EXPORTING im_attribute_node = im_attribute_node
+                                    IMPORTING ex_table          = DATA(lr_table) ).
 
     ASSIGN lr_table->* TO FIELD-SYMBOL(<fs_itab>).
 
-    me->populate_table_from_xml(
-      EXPORTING
-        im_attribute_node = im_attribute_node
-      CHANGING
-        ex_table = <fs_itab> ).
+    me->populate_table_from_xml( EXPORTING im_attribute_node = im_attribute_node
+                                 CHANGING  ex_table          = <fs_itab> ).
 
-    ex_table = REF #( <fs_itab> ).
+    ex_table = lr_table.
 
   ENDMETHOD.
 
   METHOD get_dynamic_table_from_xml.
 
-    DATA: lv_line_counter TYPE sy-tabix,
+    DATA: lv_line_counter TYPE syst-tabix,
           lt_components   TYPE  cl_abap_structdescr=>component_table.
 
     "First get the Components of Internal Table
-    LOOP AT lv_xml_table ASSIGNING FIELD-SYMBOL(<fs_xml_line>).
+    LOOP AT me->lt_xml ASSIGNING FIELD-SYMBOL(<fs_xml_line>).
 
       DATA(lv_tabix) = syst-tabix.
 
@@ -316,8 +309,8 @@ CLASS lcl_xml IMPLEMENTATION.
         CLEAR:lv_line_counter.
         DO.
           lv_line_counter += 1.
-          DATA(ls_xml_table) = VALUE #( lv_xml_table[ ( lv_tabix + lv_line_counter ) ] OPTIONAL ).
-          IF sy-subrc IS INITIAL AND ls_xml_table IS NOT INITIAL AND ls_xml_table-cname NE im_attribute_node AND ls_xml_table-type EQ 'V' .
+          DATA(ls_xml_table) = VALUE #( me->lt_xml[ ( lv_tabix + lv_line_counter ) ] OPTIONAL ).
+          IF syst-subrc IS INITIAL AND ls_xml_table IS NOT INITIAL AND ls_xml_table-cname NE im_attribute_node AND ls_xml_table-type EQ 'V' .
             APPEND VALUE #( name = ls_xml_table-cname type = cl_abap_elemdescr=>get_c( 80 )  ) TO lt_components.
             CLEAR:ls_xml_table.
           ELSE.
@@ -331,8 +324,8 @@ CLASS lcl_xml IMPLEMENTATION.
         CLEAR:lv_line_counter.
         DO.
           lv_line_counter += 1.
-          ls_xml_table = VALUE #( lv_xml_table[ lv_tabix + lv_line_counter ] OPTIONAL ).
-          IF sy-subrc IS INITIAL AND ls_xml_table IS NOT INITIAL AND ls_xml_table-type EQ 'V'.
+          ls_xml_table = VALUE #( me->lt_xml[ lv_tabix + lv_line_counter ] OPTIONAL ).
+          IF syst-subrc IS INITIAL AND ls_xml_table IS NOT INITIAL AND ls_xml_table-type EQ 'V'.
             APPEND VALUE #( name = ls_xml_table-cname type = cl_abap_elemdescr=>get_c( 80 )  ) TO lt_components.
             CLEAR:ls_xml_table.
           ELSE.
@@ -381,9 +374,9 @@ CLASS lcl_xml IMPLEMENTATION.
     ASSIGN lv_data_reference->* TO <fs_wa>.
 
     "Populate the Table with Values from XML File
-    LOOP AT lv_xml_table ASSIGNING FIELD-SYMBOL(<fs_xml_line>).
+    LOOP AT me->lt_xml ASSIGNING FIELD-SYMBOL(<fs_xml_line>).
 
-      DATA(lv_tabix) = sy-tabix.
+      DATA(lv_tabix) = syst-tabix.
 
       "MAP BY SUPPLIED ATTRIBUTE NODE
       IF im_attribute_node IS NOT INITIAL AND im_attribute_node EQ <fs_xml_line>-cname .
@@ -391,14 +384,14 @@ CLASS lcl_xml IMPLEMENTATION.
         CLEAR:lv_line_counter.
         DO.
           lv_line_counter = lv_line_counter + 1.
-          READ TABLE lv_xml_table INDEX lv_tabix + lv_line_counter INTO DATA(ls_xml_table).
-          IF sy-subrc EQ 0 AND
+          READ TABLE me->lt_xml INDEX lv_tabix + lv_line_counter INTO DATA(ls_xml_table).
+          IF syst-subrc IS INITIAL AND
              ls_xml_table-cname NE im_attribute_node AND
              ls_xml_table-type  EQ 'V' .
 
             ASSIGN COMPONENT lv_line_counter OF STRUCTURE <fs_wa> TO <fs_value>.
 
-            IF <fs_value> IS ASSIGNED AND sy-subrc EQ 0.
+            IF <fs_value> IS ASSIGNED AND syst-subrc IS INITIAL.
               <fs_value> = ls_xml_table-cvalue.
               CONDENSE <fs_value>.
             ENDIF.
@@ -426,13 +419,13 @@ CLASS lcl_xml IMPLEMENTATION.
           CLEAR:lv_line_counter.
           DO.
             lv_line_counter = lv_line_counter + 1.
-            READ TABLE lv_xml_table INDEX lv_tabix + lv_line_counter INTO ls_xml_table.
+            READ TABLE me->lt_xml INDEX lv_tabix + lv_line_counter INTO ls_xml_table.
 
-            IF sy-subrc EQ 0 AND ls_xml_table-type EQ 'V'.
+            IF syst-subrc IS INITIAL AND ls_xml_table-type EQ 'V'.
 
               ASSIGN COMPONENT lv_line_counter OF STRUCTURE <fs_wa> TO <fs_value>.
 
-              IF <fs_value> IS ASSIGNED AND sy-subrc EQ 0.
+              IF <fs_value> IS ASSIGNED AND syst-subrc IS INITIAL.
                 <fs_value> = ls_xml_table-cvalue.
                 CONDENSE <fs_value>.
               ENDIF.
@@ -468,7 +461,7 @@ CLASS lcl_xml IMPLEMENTATION.
 
   METHOD display_xml.
 
-    cl_abap_browser=>show_xml( xml_string = me->lv_xml_string
+    cl_abap_browser=>show_xml( xml_string = lcl_xml=>lv_xml_string
                                title      = 'XML'
                                size       = cl_abap_browser=>large ).
 
@@ -511,20 +504,20 @@ CLASS lcl_xml IMPLEMENTATION.
 
     "Layout Settings
     lo_alv->get_layout(:
-                      )->set_key( value = VALUE salv_s_layout_key( report = sy-repid ) ),"Save the Layout Key.Unique key identifies the Differenet ALVs
+                      )->set_key( value = VALUE salv_s_layout_key( report = syst-repid ) ),"Save the Layout Key.Unique key identifies the Differenet ALVs
                       )->set_default( abap_true )," Set usage of default layouts
                       )->set_save_restriction( if_salv_c_layout=>restrict_none )."Remove Save layout Restriction
 
     "Event Handling
-    SET HANDLER: me->on_user_command FOR lo_alv->get_event( ).
+    SET HANDLER: lcl_xml=>on_user_command FOR lo_alv->get_event( ).
 
     "ADD Custom Button
     TRY.
         lo_alv->get_functions(:
-                                   )->add_function( name = 'XML'"Custom Button Details
-                                                    icon = |{ icon_xml_doc }|
-                                                    text = 'Display XML'
-                                                    tooltip = 'Display XML'
+                                   )->add_function( name     = 'XML'
+                                                    icon     = |{ icon_xml_doc }|
+                                                    text     = 'Display XML'
+                                                    tooltip  = 'Display XML'
                                                     position = if_salv_c_function_position=>right_of_salv_functions ).
       CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported. "#EC NO_HANDLER
     ENDTRY.
@@ -536,9 +529,11 @@ CLASS lcl_xml IMPLEMENTATION.
 
   METHOD on_user_command.
 
+    CHECK e_salv_function IS NOT INITIAL.
+
     CASE e_salv_function.
       WHEN 'XML'.
-        me->display_xml( ).
+        lcl_xml=>display_xml( ).
     ENDCASE.
 
   ENDMETHOD.
