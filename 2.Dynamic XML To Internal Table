@@ -500,13 +500,13 @@ CLASS lcl_xml IMPLEMENTATION.
     lo_alv->get_functions( )->set_all( ).
 
     "Enable Multiple Selection in the ALV Layout and Enable Left Column for Selection
-    lo_alv->get_selections( )->set_selection_mode( if_salv_c_selection_mode=>row_column )."cl_salv_selections=>multiple
+    lo_alv->get_selections( )->set_selection_mode( if_salv_c_selection_mode=>row_column ).
 
     "Layout Settings
     lo_alv->get_layout(:
-                      )->set_key( value = VALUE salv_s_layout_key( report = syst-repid ) ),"Save the Layout Key.Unique key identifies the Differenet ALVs
-                      )->set_default( abap_true )," Set usage of default layouts
-                      )->set_save_restriction( if_salv_c_layout=>restrict_none )."Remove Save layout Restriction
+                      )->set_key( value = VALUE salv_s_layout_key( report = syst-repid ) ),
+                      )->set_default( abap_true ),
+                      )->set_save_restriction( if_salv_c_layout=>restrict_none ).
 
     "Event Handling
     SET HANDLER: lcl_xml=>on_user_command FOR lo_alv->get_event( ).
