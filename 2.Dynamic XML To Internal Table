@@ -116,7 +116,7 @@ START-OF-SELECTION.
 
   TRY.
 
-      DATA(lo_xml) = NEW lcl_xml( im_filepath = p_file ).
+      DATA(lo_xml) = NEW lcl_xml( p_file ).
 
       lo_xml->get_structured_table_from_xml(
         EXPORTING
@@ -124,7 +124,7 @@ START-OF-SELECTION.
         IMPORTING
           ex_table = DATA(lr_table) ).
 
-      lo_xml->display_table( im_table = lr_table ).
+      lo_xml->display_table( lr_table ).
 
     CATCH lcx_xml INTO DATA(lo_exception).
       MESSAGE lo_exception->get_text( ) TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
@@ -468,7 +468,7 @@ CLASS lcl_xml IMPLEMENTATION.
 
   METHOD display_xml.
 
-    cl_abap_browser=>show_xml( xml_string = lv_xml_string
+    cl_abap_browser=>show_xml( xml_string = me->lv_xml_string
                                title      = 'XML'
                                size       = cl_abap_browser=>large ).
 
@@ -481,18 +481,18 @@ CLASS lcl_xml IMPLEMENTATION.
     CHECK <fs_itab> IS ASSIGNED.
 
     TRY.
-        cl_salv_table=>factory( EXPORTING  r_container = cl_gui_container=>default_screen  list_display   = if_salv_c_bool_sap=>false
-                                IMPORTING r_salv_table = DATA(alv)
-                                CHANGING t_table = <fs_itab> ).
+        cl_salv_table=>factory( EXPORTING r_container = cl_gui_container=>default_screen  list_display = if_salv_c_bool_sap=>false
+                                IMPORTING r_salv_table = DATA(lo_alv)
+                                CHANGING  t_table = <fs_itab> ).
       CATCH cx_salv_msg INTO DATA(lo_exception).
         RAISE EXCEPTION TYPE lcx_xml EXPORTING text = lo_exception->get_text( ).
     ENDTRY.
 
     "Columns Optimize
-    alv->get_columns( )->set_optimize( if_salv_c_bool_sap=>true ).
+    lo_alv->get_columns( )->set_optimize( if_salv_c_bool_sap=>true ).
 
     "Build Field Catalog Dynamically in Case of Empty Label
-    LOOP AT alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<fs_cols>).
+    LOOP AT lo_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<fs_cols>).
 
       IF <fs_cols>-r_column->get_medium_text( ) IS INITIAL.
         <fs_cols>-r_column->set_medium_text( CONV #( <fs_cols>-columnname ) ).
@@ -501,27 +501,26 @@ CLASS lcl_xml IMPLEMENTATION.
     ENDLOOP.
 
     "Stripped Display
-    alv->get_display_settings( )->set_striped_pattern( if_salv_c_bool_sap=>true ).
+    lo_alv->get_display_settings( )->set_striped_pattern( if_salv_c_bool_sap=>true ).
 
     "Full Toolbar Options
-    alv->get_functions( )->set_all( ).
+    lo_alv->get_functions( )->set_all( ).
 
-    " Enable Multiple Selection in the ALV Layout and Enable Left Column for Selection
-    alv->get_selections( )->set_selection_mode( if_salv_c_selection_mode=>row_column )."cl_salv_selections=>multiple
+    "Enable Multiple Selection in the ALV Layout and Enable Left Column for Selection
+    lo_alv->get_selections( )->set_selection_mode( if_salv_c_selection_mode=>row_column )."cl_salv_selections=>multiple
 
     "Layout Settings
-    DATA(v_key) = VALUE salv_s_layout_key( report = sy-repid ).
-    alv->get_layout( )->set_key( value = v_key ).
-    alv->get_layout( )->set_default( abap_true ).
-    alv->get_layout( )->set_save_restriction( if_salv_c_layout=>restrict_none ).
-    alv->get_layout( )->set_default( if_salv_c_bool_sap=>true ).
+    lo_alv->get_layout(:
+                      )->set_key( value = VALUE salv_s_layout_key( report = sy-repid ) ),"Save the Layout Key.Unique key identifies the Differenet ALVs
+                      )->set_default( abap_true )," Set usage of default layouts
+                      )->set_save_restriction( if_salv_c_layout=>restrict_none )."Remove Save layout Restriction
 
     "Event Handling
-    SET HANDLER: me->on_user_command FOR alv->get_event( ).
+    SET HANDLER: me->on_user_command FOR lo_alv->get_event( ).
 
     "ADD Custom Button
     TRY.
-        alv->get_functions(:
+        lo_alv->get_functions(:
                                    )->add_function( name = 'XML'"Custom Button Details
                                                     icon = |{ icon_xml_doc }|
                                                     text = 'Display XML'
@@ -530,7 +529,7 @@ CLASS lcl_xml IMPLEMENTATION.
       CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported. "#EC NO_HANDLER
     ENDTRY.
 
-    alv->display( ).
+    lo_alv->display( ).
     WRITE:/ space.
 
   ENDMETHOD.
