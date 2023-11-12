@@ -1,17 +1,17 @@
 ************************************************************************
-*   Program name: Dynamic XML to Table Convertion                      *
-*   Description : Render any XML File to Table                         *
-*                                                                      *
-*   Created   by: GDRAKOS DVALOUXIS                                    *
-*                                                                      *
+*   Program name: Dynamic XML to Table Convertion
+*   Description : Render any XML File to Table
+*
+*   Created   by: GDRAKOS DVALOUXIS
+*
 ************************************************************************
-REPORT xml_to_internal_table.
+REPORT z_xml_to_internal_table.
 
 CLASS: lcx_xml DEFINITION DEFERRED,
        lcl_xml DEFINITION DEFERRED.
 
 *&----------------------------------------------------------------------*
-*&CLASS LCX_XML DEFINITION
+*& CLASS LCX_XML DEFINITION
 *&----------------------------------------------------------------------*
 CLASS lcx_xml DEFINITION INHERITING FROM cx_static_check.
 
@@ -28,7 +28,7 @@ CLASS lcx_xml DEFINITION INHERITING FROM cx_static_check.
 ENDCLASS.
 
 *&----------------------------------------------------------------------*
-*&CLASS LCL_XML DEFINITION
+*& CLASS LCL_XML DEFINITION
 *&----------------------------------------------------------------------*
 CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
@@ -36,7 +36,7 @@ CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
     CLASS-METHODS:
 
-      open_dialog_xml RETURNING VALUE(re_filepath)  TYPE file_table-filename,
+      open_dialog_xml RETURNING VALUE(re_filepath) TYPE file_table-filename,
 
       display_table IMPORTING im_table TYPE REF TO data
                     RAISING   lcx_xml.
@@ -51,6 +51,12 @@ CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
   PRIVATE SECTION.
 
+    CONSTANTS:
+      BEGIN OF c_xml_node_type,
+        value_node     TYPE smum_xmltb-type VALUE 'V',
+        header_element TYPE smum_xmltb-type VALUE 'A',
+      END OF c_xml_node_type.
+
     CLASS-DATA:lv_xml_string  TYPE string.
 
     DATA: lv_filepath    TYPE file_table-filename,
@@ -63,12 +69,11 @@ CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
       display_xml.
 
-
     METHODS:
 
       read_xml_to_string_xstring RAISING lcx_xml,
 
-      read_xml_to_table  RAISING lcx_xml,
+      read_xml_to_table RAISING lcx_xml,
 
       get_dynamic_table_from_xml IMPORTING im_attribute_node TYPE cname OPTIONAL
                                  EXPORTING ex_table          TYPE REF TO data
@@ -85,15 +90,8 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_file FOR FIELD p_file.
-PARAMETERS: p_file TYPE file_table-filename.
-SELECTION-SCREEN END OF LINE.
-
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_attr FOR FIELD p_attr.
-PARAMETERS: p_attr TYPE cname.
-SELECTION-SCREEN END OF LINE.
+PARAMETERS: p_file TYPE file_table-filename,
+            p_attr TYPE cname.
 
 SELECTION-SCREEN END OF BLOCK b1.
 *&---------------------------------------------------------------------*
@@ -101,11 +99,13 @@ SELECTION-SCREEN END OF BLOCK b1.
 *&---------------------------------------------------------------------*
 INITIALIZATION.
   PERFORM screen_initialization.
+
 *&---------------------------------------------------------------------*
 *& AT SELECTION SCREEN ON VALUE REQUESTS (F4)
 *&---------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
-  p_file =  lcl_xml=>open_dialog_xml( ).
+  p_file = lcl_xml=>open_dialog_xml( ).
+
 *&---------------------------------------------------------------------*
 *& AT SELECTION SCREEN Actions(PAI)
 *&---------------------------------------------------------------------*
@@ -139,10 +139,9 @@ END-OF-SELECTION.
 *&---------------------------------------------------------------------*
 FORM screen_initialization.
 
-  title1  = 'XML Selection Criteria'.
-
-  t_file  = icon_xml_doc && 'XML Filepath'.
-  t_attr  = icon_io_attribute && 'Attribute Node'.
+  title1                = 'XML Selection Criteria'.
+  %_p_file_%_app_%-text = icon_xml_doc && 'XML Filepath'.
+  %_p_attr_%_app_%-text = icon_io_attribute && 'Attribute Node'.
 
 ENDFORM.
 
@@ -154,37 +153,15 @@ FORM screen_pai.
   CASE syst-ucomm.
     WHEN 'ONLI'.
       IF p_file IS INITIAL.
-        MESSAGE 'Filepath is Mandatory Field' TYPE 'E'.
+        MESSAGE 'Filepath is Mandatory Field' TYPE cl_cms_common=>con_msg_typ_e.
       ENDIF.
   ENDCASE.
 
 ENDFORM.
 
-
 *&---------------------------------------------------------------------*
 *& CLASS IMPLEMENTATIONS
 *&---------------------------------------------------------------------*
-
-
-*&---------------------------------------------------------------------*
-*& Class LCX_XML
-*&---------------------------------------------------------------------*
-CLASS lcx_xml IMPLEMENTATION.
-
-  METHOD constructor.
-
-    super->constructor( textid = CONV #( text ) ).
-    local_text = text.
-
-  ENDMETHOD.
-
-  METHOD get_text.
-
-    result = me->local_text.
-
-  ENDMETHOD.
-
-ENDCLASS.
 
 *&---------------------------------------------------------------------*
 *& Class LCL_XML
@@ -229,26 +206,29 @@ CLASS lcl_xml IMPLEMENTATION.
     IF lv_xml_string IS INITIAL.
 
       TRY.
+
           DATA(lo_xml) = NEW cl_xml_document( ).
+
           IF lo_xml->import_from_file( CONV #( lv_filepath ) ) IS INITIAL.
 
             lo_xml->render_2_string( EXPORTING
-                                     pretty_print = abap_true
+                                       pretty_print = abap_true
                                     IMPORTING
-                                     retcode = DATA(lv_rc) ##NEEDED
-                                     size    = DATA(lv_size) ##NEEDED
-                                     stream  = lv_xml_string ).
+                                       retcode = DATA(lv_rc) ##NEEDED
+                                       size    = DATA(lv_size) ##NEEDED
+                                       stream  = lv_xml_string ).
 
             lo_xml->render_2_xstring( EXPORTING
-                                      pretty_print = abap_true
+                                        pretty_print = abap_true
                                      IMPORTING
-                                      retcode = lv_rc ##NEEDED
-                                      size    = lv_size ##NEEDED
-                                      stream  = lv_xml_xstring ).
+                                        retcode = lv_rc ##NEEDED
+                                        size    = lv_size ##NEEDED
+                                        stream  = lv_xml_xstring ).
 
           ELSE.
             RAISE EXCEPTION TYPE lcx_xml EXPORTING text = 'Error Uploading the XML File'.
           ENDIF.
+
         CATCH cx_root INTO DATA(lo_exception).
           RAISE EXCEPTION TYPE lcx_xml EXPORTING text = lo_exception->get_text( ).
       ENDTRY.
@@ -271,7 +251,7 @@ CLASS lcl_xml IMPLEMENTATION.
         error_message = 1
         OTHERS        = 2.
 
-    IF syst-subrc IS NOT INITIAL OR
+    IF syst-subrc IS NOT INITIAL                                       OR
        line_exists( lt_return[ type = cl_cms_common=>con_msg_typ_e ] ) OR
        line_exists( lt_return[ type = cl_cms_common=>con_msg_typ_a ] ) OR
        line_exists( lt_return[ type = cl_cms_common=>con_msg_typ_x ] ).
@@ -312,7 +292,7 @@ CLASS lcl_xml IMPLEMENTATION.
         DO.
           lv_line_counter += 1.
           DATA(ls_xml_table) = VALUE #( me->lt_xml[ ( lv_tabix + lv_line_counter ) ] OPTIONAL ).
-          IF syst-subrc IS INITIAL AND ls_xml_table IS NOT INITIAL AND ls_xml_table-cname NE im_attribute_node AND ls_xml_table-type EQ 'V' .
+          IF syst-subrc IS INITIAL AND ls_xml_table IS NOT INITIAL AND ls_xml_table-cname NE im_attribute_node AND ls_xml_table-type EQ c_xml_node_type-value_node.
             APPEND VALUE #( name = ls_xml_table-cname type = cl_abap_elemdescr=>get_c( 80 )  ) TO lt_components.
             CLEAR:ls_xml_table.
           ELSE.
@@ -327,7 +307,7 @@ CLASS lcl_xml IMPLEMENTATION.
         DO.
           lv_line_counter += 1.
           ls_xml_table = VALUE #( me->lt_xml[ lv_tabix + lv_line_counter ] OPTIONAL ).
-          IF syst-subrc IS INITIAL AND ls_xml_table IS NOT INITIAL AND ls_xml_table-type EQ 'V'.
+          IF syst-subrc IS INITIAL AND ls_xml_table IS NOT INITIAL AND ls_xml_table-type EQ c_xml_node_type-value_node.
             APPEND VALUE #( name = ls_xml_table-cname type = cl_abap_elemdescr=>get_c( 80 )  ) TO lt_components.
             CLEAR:ls_xml_table.
           ELSE.
@@ -389,7 +369,7 @@ CLASS lcl_xml IMPLEMENTATION.
           READ TABLE me->lt_xml INDEX lv_tabix + lv_line_counter INTO DATA(ls_xml_table).
           IF syst-subrc IS INITIAL AND
              ls_xml_table-cname NE im_attribute_node AND
-             ls_xml_table-type  EQ 'V' .
+             ls_xml_table-type  EQ c_xml_node_type-value_node .
 
             ASSIGN COMPONENT lv_line_counter OF STRUCTURE <fs_wa> TO <fs_value>.
 
@@ -416,14 +396,14 @@ CLASS lcl_xml IMPLEMENTATION.
 
       ELSEIF im_attribute_node IS INITIAL.
 
-        IF <fs_xml_line>-type EQ 'A'.
+        IF <fs_xml_line>-type EQ c_xml_node_type-header_element.
 
           CLEAR:lv_line_counter.
           DO.
             lv_line_counter = lv_line_counter + 1.
             READ TABLE me->lt_xml INDEX lv_tabix + lv_line_counter INTO ls_xml_table.
 
-            IF syst-subrc IS INITIAL AND ls_xml_table-type EQ 'V'.
+            IF syst-subrc IS INITIAL AND ls_xml_table-type EQ c_xml_node_type-value_node.
 
               ASSIGN COMPONENT lv_line_counter OF STRUCTURE <fs_wa> TO <fs_value>.
 
@@ -537,6 +517,26 @@ CLASS lcl_xml IMPLEMENTATION.
       WHEN 'XML'.
         lcl_xml=>display_xml( ).
     ENDCASE.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+*&---------------------------------------------------------------------*
+*& Class LCX_XML
+*&---------------------------------------------------------------------*
+CLASS lcx_xml IMPLEMENTATION.
+
+  METHOD constructor.
+
+    super->constructor( textid = CONV #( text ) ).
+    local_text = text.
+
+  ENDMETHOD.
+
+  METHOD get_text.
+
+    result = me->local_text.
 
   ENDMETHOD.
 
