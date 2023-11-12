@@ -13,6 +13,7 @@ CLASS lcl_count DEFINITION CREATE PUBLIC FINAL.
   PUBLIC SECTION.
 
     CLASS-METHODS:
+
       count_single_multiple_values IMPORTING VALUE(im_table)    TYPE ANY TABLE
                                              im_column_name     TYPE string
                                    EXPORTING ex_unique_values   TYPE REF TO data
@@ -25,11 +26,11 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 START-OF-SELECTION.
 
-  SELECT FROM vbak FIELDS vbak~* INTO TABLE @DATA(itab) UP TO 2000 ROWS.
+  SELECT FROM vbak FIELDS vbak~* INTO TABLE @DATA(lt_table) UP TO 1000 ROWS.
 
-  lcl_count=>count_single_multiple_values( EXPORTING im_table = itab
-                                                     im_column_name = 'VBTYP'
-                                           IMPORTING ex_unique_values = DATA(lo_unique_values)
+  lcl_count=>count_single_multiple_values( EXPORTING im_table           = lt_table
+                                                     im_column_name     = 'ERNAM'
+                                           IMPORTING ex_unique_values   = DATA(lo_unique_values)
                                                      ex_multiple_values = DATA(lo_multiple_values) ).
 
   CHECK lo_unique_values IS NOT INITIAL AND lo_multiple_values IS NOT INITIAL.
@@ -63,8 +64,7 @@ CLASS lcl_count IMPLEMENTATION.
     "VALIDATIONS
     CHECK im_table IS NOT INITIAL.
 
-    DATA(lo_type_def)  = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( im_table ) ).
-    DATA(lt_components) = CAST cl_abap_structdescr( lo_type_def->get_table_line_type( ) )->components.
+    DATA(lt_components) = CAST cl_abap_structdescr( CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( im_table ) )->get_table_line_type( ) )->components.
     IF NOT line_exists( lt_components[ name = im_column_name ] ).
       RETURN.
     ENDIF.
@@ -91,22 +91,20 @@ CLASS lcl_count IMPLEMENTATION.
 
     TRY.
         DATA(lo_new_struct) = cl_abap_structdescr=>create( VALUE cl_abap_structdescr=>component_table(
-                        ( name = im_column_name type  = CAST #( cl_abap_elemdescr=>describe_by_data( <fs_data> ) ) )
-                        ( name = lc_count_column type  = cl_abap_elemdescr=>get_i( ) ) ) ) .
+                                                          ( name = im_column_name type  = CAST #( cl_abap_elemdescr=>describe_by_data( <fs_data> ) ) )
+                                                          ( name = lc_count_column type  = cl_abap_elemdescr=>get_i( ) ) ) ) .
 
-        DATA(lo_new_tab) = cl_abap_tabledescr=>create(
-                        p_line_type  = lo_new_struct
-                        p_table_kind = cl_abap_tabledescr=>tablekind_hashed
-                        p_unique     = abap_true
-                        p_key        = VALUE abap_keydescr_tab( ( name = im_column_name ) )
-                        p_key_kind   = cl_abap_tabledescr=>keydefkind_user ).
+        DATA(lo_new_tab) = cl_abap_tabledescr=>create( p_line_type  = lo_new_struct
+                                                       p_table_kind = cl_abap_tabledescr=>tablekind_hashed
+                                                       p_unique     = abap_true
+                                                       p_key        = VALUE abap_keydescr_tab( ( name = im_column_name ) )
+                                                       p_key_kind   = cl_abap_tabledescr=>keydefkind_user ).
 
-        DATA(lo_new_tab_temp) = cl_abap_tabledescr=>create(
-                              p_line_type  = cl_abap_structdescr=>create( VALUE cl_abap_structdescr=>component_table(
-                             ( name = im_column_name type  = CAST #( cl_abap_elemdescr=>describe_by_data( <fs_data> ) ) ) ) )
-                              p_table_kind = cl_abap_tabledescr=>tablekind_sorted
-                              p_key = VALUE abap_keydescr_tab( ( name = im_column_name ) )
-                              p_unique     = abap_false ).
+        DATA(lo_new_tab_temp) = cl_abap_tabledescr=>create( p_line_type  = cl_abap_structdescr=>create( VALUE cl_abap_structdescr=>component_table(
+                                                           ( name = im_column_name type  = CAST #( cl_abap_elemdescr=>describe_by_data( <fs_data> ) ) ) ) )
+                                                            p_table_kind = cl_abap_tabledescr=>tablekind_sorted
+                                                            p_key = VALUE abap_keydescr_tab( ( name = im_column_name ) )
+                                                            p_unique     = abap_false ).
 
       CATCH cx_sy_struct_attributes cx_sy_table_attributes INTO DATA(lo_exception).
         lv_exception_text = lo_exception->get_longtext( ).
@@ -135,13 +133,13 @@ CLASS lcl_count IMPLEMENTATION.
     "BUILD UNIQUE-MULTIPLE VALUE TABLES
     LOOP AT <fs_imported_table> ASSIGNING FIELD-SYMBOL(<fs_line>).
 
-      DATA(lv_tabix) = sy-tabix.
+      DATA(lv_tabix) = syst-tabix.
       ASSIGN COMPONENT im_column_name OF STRUCTURE <fs_line> TO FIELD-SYMBOL(<fs_value>).
 
       IF <fs_value> IS  ASSIGNED.
 
         READ TABLE <fs_multiple_values_table> WITH KEY (im_column_name) = <fs_value> TRANSPORTING NO FIELDS.
-        IF sy-subrc EQ 0.
+        IF syst-subrc IS INITIAL.
           CONTINUE.
         ENDIF.
 
