@@ -74,19 +74,19 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 
 SELECTION-SCREEN: BEGIN OF BLOCK b0 WITH FRAME TITLE title0.
-PARAMETERS : p_file TYPE file_table-filename OBLIGATORY.
+  PARAMETERS : p_file TYPE file_table-filename OBLIGATORY.
 SELECTION-SCREEN: END OF BLOCK b0.
 
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
 
-SELECT-OPTIONS: s_obj    FOR stxh-tdobject OBLIGATORY,
-                s_tdname FOR stxh-tdname   OBLIGATORY,
-                s_tdid   FOR stxh-tdid     OBLIGATORY,
-                s_spras  FOR stxh-tdspras  OBLIGATORY.
+  SELECT-OPTIONS: s_obj    FOR stxh-tdobject OBLIGATORY DEFAULT 'TEXT',
+                  s_tdname FOR stxh-tdname   OBLIGATORY DEFAULT 'SAPSCRIPT-TEST_01',
+                  s_tdid   FOR stxh-tdid     OBLIGATORY DEFAULT 'ST',
+                  s_spras  FOR stxh-tdspras  OBLIGATORY DEFAULT syst-langu.
 
-SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE title2.
-PARAMETERS:c_header AS CHECKBOX DEFAULT abap_true.
-SELECTION-SCREEN END OF BLOCK b2.
+  SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE title2.
+    PARAMETERS:c_header AS CHECKBOX DEFAULT abap_true.
+  SELECTION-SCREEN END OF BLOCK b2.
 
 SELECTION-SCREEN END OF BLOCK b1.
 
@@ -106,7 +106,6 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
 *& EXECUTABLE CODE
 *&---------------------------------------------------------------------*
 START-OF-SELECTION.
-
 
   TRY.
       DATA(lo_texts) = NEW lcl_texts( ).
@@ -140,7 +139,7 @@ FORM screen_initialization.
   %_s_tdname_%_app_%-text  = icon_text_field  && 'Text Name'.
   %_s_tdid_%_app_%-text    = icon_text_ina    && 'Text ID'.
   %_s_spras_%_app_%-text   = icon_eu          && 'Language'.
-  %_c_header_%_app_%-text  = 'Field Labels as Header'.
+  %_c_header_%_app_%-text  = 'Field Labels as Excel Header'.
 
 ENDFORM.
 
@@ -242,7 +241,8 @@ CLASS lcl_texts IMPLEMENTATION.
           object                  = 5
           reference_check         = 6
           wrong_access_to_archive = 7
-          OTHERS                  = 8.
+          error_message           = 8
+          OTHERS                  = 9.
 
       IF syst-subrc IS INITIAL AND lt_lines IS NOT INITIAL.
 
@@ -263,123 +263,81 @@ CLASS lcl_texts IMPLEMENTATION.
 
   METHOD download_texts.
 
-    DATA:lv_row    TYPE i VALUE 1,
-         lv_column TYPE i VALUE 1.
-
     TRY.
-        DATA(xlsx_handling)    = cl_ehfnd_xlsx=>get_instance( ).
-        DATA(xlsx_document)    = xlsx_handling->create_doc( ).
-        DATA(xlsx_sheets)      = xlsx_document->get_sheets( ).
-        DATA(first_xlsx_sheet) = xlsx_document->get_sheet_by_id( xlsx_sheets[ 1 ]-sheet_id ).
-      CATCH cx_openxml_format cx_openxml_not_found cx_openxml_not_allowed INTO DATA(lo_exception).
-        RAISE EXCEPTION TYPE lcx_texts EXPORTING text = lo_exception->get_text( ).
+        cl_salv_table=>factory( IMPORTING r_salv_table   = DATA(lo_salv) CHANGING t_table = me->lt_texts ).
+        DATA(lt_fieldcatalog) = cl_salv_controller_metadata=>get_lvc_fieldcatalog( r_columns = lo_salv->get_columns( ) r_aggregations = lo_salv->get_aggregations( ) ).
+      CATCH cx_salv_msg INTO DATA(lo_exception).
+        EXIT.
     ENDTRY.
 
-    DATA(lo_struct_def) = CAST cl_abap_structdescr( CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( me->lt_texts ) )->get_table_line_type( ) ).
-    DATA(lt_components) = lo_struct_def->components.
+    IF im_field_labels_as_header EQ abap_true."BUILD EXCEL HEADER LINE
 
-    "BUILD EXCEL HEADER LINE
-    IF im_field_labels_as_header EQ abap_true.
-
-      lv_row = 2.
-
-      LOOP AT lt_components ASSIGNING FIELD-SYMBOL(<fs_components>).
-
-        DATA(lo_element_def) = CAST cl_abap_elemdescr( lo_struct_def->get_component_type( <fs_components>-name ) ).
-
-        IF lo_element_def->is_ddic_type( ) AND "Field is Dictionary Data Type
-           lo_element_def->get_ddic_field( )-rollname IS NOT INITIAL.
-
-          DATA(lv_field_data_element) = lo_element_def->get_ddic_field( )-rollname.
-
-          SELECT SINGLE FROM  dd04t
-                 FIELDS coalesce( scrtext_l, scrtext_m, scrtext_s, reptext )
-                 WHERE rollname   EQ @lv_field_data_element AND
-                       ddlanguage EQ @syst-langu
-                 INTO  @DATA(lv_cell_value).
-
+      LOOP AT lt_fieldcatalog ASSIGNING FIELD-SYMBOL(<fs_line>).
+        <fs_line>-fix_column = abap_true.
+        IF <fs_line>-fieldname EQ 'TEXT'.
+          <fs_line>-coltext = 'Text String'.
         ENDIF.
-
-        first_xlsx_sheet->set_cell_content( iv_row    = 1
-                                            iv_column = lv_column
-                                            iv_value  = COND #( WHEN lv_cell_value IS INITIAL THEN <fs_components>-name
-                                                                ELSE lv_cell_value ) ).
-        lv_column += 1.
-
-        CLEAR:lv_cell_value,lo_element_def,lv_field_data_element.
-
       ENDLOOP.
 
     ENDIF.
 
-    TRY.
-        "EXCEL ROWS
-        CLEAR lv_column.
-        LOOP AT me->lt_texts ASSIGNING FIELD-SYMBOL(<fs_table>).
+    "Get XSTRING
+    cl_salv_bs_tt_util=>if_salv_bs_tt_util~transform( EXPORTING xml_type      = if_salv_bs_xml=>c_type_xlsx
+                                                                xml_version   = cl_salv_bs_a_xml_base=>get_version( )
+                                                                r_result_data = cl_salv_ex_util=>factory_result_data_table( r_data        = REF #( me->lt_texts )
+                                                                                                                           t_fieldcatalog = lt_fieldcatalog )
+                                                                xml_flavour   = if_salv_bs_c_tt=>c_tt_xml_flavour_export
+                                                                gui_type      = if_salv_bs_xml=>c_gui_type_gui
+                                                      IMPORTING xml           = DATA(lv_xstring) ).
 
-          lv_column = 1.
-          LOOP AT lt_components ASSIGNING <fs_components>.
-            ASSIGN COMPONENT <fs_components>-name OF STRUCTURE <fs_table> TO FIELD-SYMBOL(<columnvalue>).
-            IF <columnvalue> IS ASSIGNED.
-              first_xlsx_sheet->set_cell_content( iv_row    = lv_row
-                                                  iv_column = lv_column
-                                                  iv_value  = <columnvalue> ).
-            ENDIF.
-            lv_column += 1.
-          ENDLOOP.
+    CHECK lv_xstring IS NOT INITIAL.
 
-          lv_row += 1.
+    "XString to SOLIX
+    cl_scp_change_db=>xstr_to_xtab( EXPORTING im_xstring = lv_xstring
+                                    IMPORTING ex_xtab    = DATA(lt_binary_content)
+                                              ex_size    = DATA(lv_bin_size) ).
 
-        ENDLOOP.
+    CHECK lt_binary_content IS NOT INITIAL.
 
-        cl_scp_change_db=>xstr_to_xtab( EXPORTING im_xstring = xlsx_document->save( )
-                                        IMPORTING ex_xtab    = DATA(filecontenttab)
-                                                  ex_size    = DATA(lv_bin_size) ).
+    cl_gui_frontend_services=>gui_download(
+          EXPORTING
+            bin_filesize              = lv_bin_size
+            filename                  = |{ im_filename }|
+            filetype                  = 'BIN'
+            confirm_overwrite         = abap_true
+          IMPORTING
+            filelength                = DATA(lv_bytestransferred)
+          CHANGING
+            data_tab                  = lt_binary_content
+          EXCEPTIONS
+            file_write_error          = 1
+            no_batch                  = 2
+            gui_refuse_filetransfer   = 3
+            invalid_type              = 4
+            no_authority              = 5
+            unknown_error             = 6
+            header_not_allowed        = 7
+            separator_not_allowed     = 8
+            filesize_not_allowed      = 9
+            header_too_long           = 10
+            dp_error_create           = 11
+            dp_error_send             = 12
+            dp_error_write            = 13
+            unknown_dp_error          = 14
+            access_denied             = 15
+            dp_out_of_memory          = 16
+            disk_full                 = 17
+            dp_timeout                = 18
+            file_not_found            = 19
+            dataprovider_exception    = 20
+            control_flush_error       = 21
+            not_supported_by_gui      = 22
+            error_no_gui              = 23
+            OTHERS                    = 24 ).
 
-        cl_gui_frontend_services=>gui_download(
-              EXPORTING
-                bin_filesize              = lv_bin_size
-                filename                  = |{ im_filename }|
-                filetype                  = 'BIN'
-                confirm_overwrite         = abap_true
-              IMPORTING
-                filelength                = DATA(lv_bytestransferred)
-              CHANGING
-                data_tab                  = filecontenttab
-              EXCEPTIONS
-                file_write_error          = 1
-                no_batch                  = 2
-                gui_refuse_filetransfer   = 3
-                invalid_type              = 4
-                no_authority              = 5
-                unknown_error             = 6
-                header_not_allowed        = 7
-                separator_not_allowed     = 8
-                filesize_not_allowed      = 9
-                header_too_long           = 10
-                dp_error_create           = 11
-                dp_error_send             = 12
-                dp_error_write            = 13
-                unknown_dp_error          = 14
-                access_denied             = 15
-                dp_out_of_memory          = 16
-                disk_full                 = 17
-                dp_timeout                = 18
-                file_not_found            = 19
-                dataprovider_exception    = 20
-                control_flush_error       = 21
-                not_supported_by_gui      = 22
-                error_no_gui              = 23
-                OTHERS                    = 24 ).
-
-        IF syst-subrc IS NOT INITIAL.
-          RAISE EXCEPTION TYPE lcx_texts EXPORTING text = 'Error Downloading Texts'.
-        ENDIF.
-
-      CATCH cx_openxml_format cx_openxml_not_found cx_openxml_not_allowed  INTO lo_exception.
-        RAISE EXCEPTION TYPE lcx_texts EXPORTING text = lo_exception->get_text( ).
-    ENDTRY.
-
+    IF syst-subrc IS NOT INITIAL.
+      RAISE EXCEPTION TYPE lcx_texts EXPORTING text = 'Error Downloading Texts'.
+    ENDIF.
 
   ENDMETHOD.
 
