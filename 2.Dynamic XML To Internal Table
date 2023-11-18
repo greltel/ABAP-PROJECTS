@@ -2,7 +2,7 @@
 *   Program name: Dynamic XML to Table Convertion
 *   Description : Render any XML File to Table
 *
-*   Created   by: GDRAKOS DVALOUXIS
+*   Created   by: GDRAKOS
 *
 ************************************************************************
 REPORT z_xml_to_internal_table.
@@ -43,7 +43,8 @@ CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
     METHODS:
 
-      constructor IMPORTING im_filepath TYPE file_table-filename RAISING lcx_xml,
+      constructor IMPORTING im_filepath TYPE file_table-filename
+                  RAISING   lcx_xml,
 
       get_structured_table_from_xml IMPORTING im_attribute_node TYPE cname OPTIONAL
                                     EXPORTING ex_table          TYPE REF TO data
@@ -59,8 +60,7 @@ CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
     CLASS-DATA:lv_xml_string  TYPE string.
 
-    DATA: lv_filepath    TYPE file_table-filename,
-          lv_xml_xstring TYPE xstring,
+    DATA: lv_xml_xstring TYPE xstring,
           lt_xml         TYPE hrpayfr_t_smum_xmltb.
 
     CLASS-METHODS:
@@ -71,7 +71,8 @@ CLASS lcl_xml DEFINITION CREATE PUBLIC.
 
     METHODS:
 
-      read_xml_to_string_xstring RAISING lcx_xml,
+      read_xml_to_string_xstring IMPORTING im_filepath TYPE file_table-filename
+                                 RAISING   lcx_xml,
 
       read_xml_to_table RAISING lcx_xml,
 
@@ -90,8 +91,8 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
 
-PARAMETERS: p_file TYPE file_table-filename,
-            p_attr TYPE cname.
+  PARAMETERS: p_file TYPE file_table-filename,
+              p_attr TYPE cname.
 
 SELECTION-SCREEN END OF BLOCK b1.
 *&---------------------------------------------------------------------*
@@ -131,16 +132,12 @@ START-OF-SELECTION.
 END-OF-SELECTION.
 
 *&---------------------------------------------------------------------*
-*& SUBROUTINE CREATION
-*&---------------------------------------------------------------------*
-
-*&---------------------------------------------------------------------*
 *& Form SCREEN INITIALIZATION
 *&---------------------------------------------------------------------*
 FORM screen_initialization.
 
   title1                = 'XML Selection Criteria'.
-  %_p_file_%_app_%-text = icon_xml_doc && 'XML Filepath'.
+  %_p_file_%_app_%-text = icon_xml_doc      && 'XML Filepath'.
   %_p_attr_%_app_%-text = icon_io_attribute && 'Attribute Node'.
 
 ENDFORM.
@@ -160,11 +157,7 @@ FORM screen_pai.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& CLASS IMPLEMENTATIONS
-*&---------------------------------------------------------------------*
-
-*&---------------------------------------------------------------------*
-*& Class LCL_XML
+*& Class LCL_XML Implementation
 *&---------------------------------------------------------------------*
 CLASS lcl_xml IMPLEMENTATION.
 
@@ -194,46 +187,36 @@ CLASS lcl_xml IMPLEMENTATION.
 
   METHOD constructor.
 
-    lv_filepath = im_filepath.
-
-    me->read_xml_to_string_xstring( ).
+    me->read_xml_to_string_xstring( im_filepath ).
     me->read_xml_to_table( ).
 
   ENDMETHOD.
 
   METHOD read_xml_to_string_xstring.
 
-    IF lv_xml_string IS INITIAL.
+    TRY.
 
-      TRY.
+        DATA(lo_xml) = NEW cl_xml_document( ).
 
-          DATA(lo_xml) = NEW cl_xml_document( ).
+        IF lo_xml->import_from_file( CONV #( im_filepath ) ) IS INITIAL.
 
-          IF lo_xml->import_from_file( CONV #( lv_filepath ) ) IS INITIAL.
+          lo_xml->render_2_string( EXPORTING pretty_print = abap_true
+                                   IMPORTING retcode      = DATA(lv_rc) ##NEEDED
+                                             size         = DATA(lv_size) ##NEEDED
+                                             stream       = me->lv_xml_string ).
 
-            lo_xml->render_2_string( EXPORTING
-                                       pretty_print = abap_true
-                                    IMPORTING
-                                       retcode = DATA(lv_rc) ##NEEDED
-                                       size    = DATA(lv_size) ##NEEDED
-                                       stream  = lv_xml_string ).
+          lo_xml->render_2_xstring( EXPORTING pretty_print = abap_true
+                                    IMPORTING retcode      = lv_rc ##NEEDED
+                                              size         = lv_size ##NEEDED
+                                              stream       = me->lv_xml_xstring ).
 
-            lo_xml->render_2_xstring( EXPORTING
-                                        pretty_print = abap_true
-                                     IMPORTING
-                                        retcode = lv_rc ##NEEDED
-                                        size    = lv_size ##NEEDED
-                                        stream  = lv_xml_xstring ).
+        ELSE.
+          RAISE EXCEPTION TYPE lcx_xml EXPORTING text = 'Error Uploading the XML File'.
+        ENDIF.
 
-          ELSE.
-            RAISE EXCEPTION TYPE lcx_xml EXPORTING text = 'Error Uploading the XML File'.
-          ENDIF.
-
-        CATCH cx_root INTO DATA(lo_exception).
-          RAISE EXCEPTION TYPE lcx_xml EXPORTING text = lo_exception->get_text( ).
-      ENDTRY.
-
-    ENDIF.
+      CATCH cx_root INTO DATA(lo_exception).
+        RAISE EXCEPTION TYPE lcx_xml EXPORTING text = lo_exception->get_text( ).
+    ENDTRY.
 
   ENDMETHOD.
 
@@ -245,7 +228,7 @@ CLASS lcl_xml IMPLEMENTATION.
       EXPORTING
         xml_input     = me->lv_xml_xstring
       TABLES
-        xml_table     = lt_xml
+        xml_table     = me->lt_xml
         return        = lt_return
       EXCEPTIONS
         error_message = 1
@@ -267,12 +250,11 @@ CLASS lcl_xml IMPLEMENTATION.
     me->get_dynamic_table_from_xml( EXPORTING im_attribute_node = im_attribute_node
                                     IMPORTING ex_table          = DATA(lr_table) ).
 
+    ex_table = lr_table.
     ASSIGN lr_table->* TO FIELD-SYMBOL(<fs_itab>).
 
     me->populate_table_from_xml( EXPORTING im_attribute_node = im_attribute_node
                                  CHANGING  ex_table          = <fs_itab> ).
-
-    ex_table = lr_table.
 
   ENDMETHOD.
 
@@ -281,7 +263,6 @@ CLASS lcl_xml IMPLEMENTATION.
     DATA: lv_line_counter TYPE syst-tabix,
           lt_components   TYPE  cl_abap_structdescr=>component_table.
 
-    "First get the Components of Internal Table
     LOOP AT me->lt_xml ASSIGNING FIELD-SYMBOL(<fs_xml_line>).
 
       DATA(lv_tabix) = syst-tabix.
@@ -327,7 +308,6 @@ CLASS lcl_xml IMPLEMENTATION.
       RAISE EXCEPTION TYPE lcx_xml EXPORTING text = 'Error getting the Components of Internal Table'.
     ELSE.
 
-      "Create Dynamic Internal Table and Structure
       TRY.
 
           DATA(table_type) = cl_abap_tabledescr=>create( p_line_type  = cl_abap_structdescr=>create( lt_components )
@@ -346,14 +326,14 @@ CLASS lcl_xml IMPLEMENTATION.
 
   METHOD populate_table_from_xml.
 
-    DATA: lv_data_reference TYPE REF TO data,
+    DATA: lr_data_reference TYPE REF TO data,
           lv_line_counter   TYPE i.
 
-    FIELD-SYMBOLS: <fs_wa>    TYPE any,
+    FIELD-SYMBOLS: <fs_line>  TYPE any,
                    <fs_value> TYPE any.
 
-    CREATE DATA lv_data_reference LIKE LINE OF ex_table.
-    ASSIGN lv_data_reference->* TO <fs_wa>.
+    CREATE DATA lr_data_reference LIKE LINE OF ex_table.
+    ASSIGN lr_data_reference->* TO <fs_line>.
 
     "Populate the Table with Values from XML File
     LOOP AT me->lt_xml ASSIGNING FIELD-SYMBOL(<fs_xml_line>).
@@ -371,7 +351,7 @@ CLASS lcl_xml IMPLEMENTATION.
              ls_xml_table-cname NE im_attribute_node AND
              ls_xml_table-type  EQ c_xml_node_type-value_node .
 
-            ASSIGN COMPONENT lv_line_counter OF STRUCTURE <fs_wa> TO <fs_value>.
+            ASSIGN COMPONENT lv_line_counter OF STRUCTURE <fs_line> TO <fs_value>.
 
             IF <fs_value> IS ASSIGNED AND syst-subrc IS INITIAL.
               <fs_value> = ls_xml_table-cvalue.
@@ -380,12 +360,12 @@ CLASS lcl_xml IMPLEMENTATION.
 
           ELSE.
 
-            IF <fs_wa> IS ASSIGNED AND  <fs_wa> IS NOT INITIAL .
-              INSERT <fs_wa> INTO TABLE ex_table.
+            IF <fs_line> IS ASSIGNED AND <fs_line> IS NOT INITIAL .
+              INSERT <fs_line> INTO TABLE ex_table.
             ENDIF.
 
-            IF <fs_wa> IS ASSIGNED.
-              CLEAR:<fs_wa>.
+            IF <fs_line> IS ASSIGNED.
+              CLEAR:<fs_line>.
             ENDIF.
 
             EXIT.
@@ -405,7 +385,7 @@ CLASS lcl_xml IMPLEMENTATION.
 
             IF syst-subrc IS INITIAL AND ls_xml_table-type EQ c_xml_node_type-value_node.
 
-              ASSIGN COMPONENT lv_line_counter OF STRUCTURE <fs_wa> TO <fs_value>.
+              ASSIGN COMPONENT lv_line_counter OF STRUCTURE <fs_line> TO <fs_value>.
 
               IF <fs_value> IS ASSIGNED AND syst-subrc IS INITIAL.
                 <fs_value> = ls_xml_table-cvalue.
@@ -415,12 +395,12 @@ CLASS lcl_xml IMPLEMENTATION.
 
             ELSE.
 
-              IF <fs_wa> IS ASSIGNED AND  <fs_wa> IS NOT INITIAL .
-                INSERT <fs_wa> INTO TABLE ex_table.
+              IF <fs_line> IS ASSIGNED AND <fs_line> IS NOT INITIAL .
+                INSERT <fs_line> INTO TABLE ex_table.
               ENDIF.
 
-              IF <fs_wa> IS ASSIGNED.
-                CLEAR:<fs_wa>.
+              IF <fs_line> IS ASSIGNED.
+                CLEAR:<fs_line>.
               ENDIF.
 
               EXIT.
@@ -452,7 +432,6 @@ CLASS lcl_xml IMPLEMENTATION.
   METHOD display_table.
 
     ASSIGN im_table->* TO FIELD-SYMBOL(<fs_itab>).
-
     CHECK <fs_itab> IS ASSIGNED.
 
     TRY.
@@ -463,10 +442,8 @@ CLASS lcl_xml IMPLEMENTATION.
         RAISE EXCEPTION TYPE lcx_xml EXPORTING text = lo_exception->get_text( ).
     ENDTRY.
 
-    "Columns Optimize
     lo_alv->get_columns( )->set_optimize( if_salv_c_bool_sap=>true ).
 
-    "Build Field Catalog Dynamically in Case of Empty Label
     LOOP AT lo_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<fs_cols>).
 
       IF <fs_cols>-r_column->get_medium_text( ) IS INITIAL.
@@ -475,25 +452,16 @@ CLASS lcl_xml IMPLEMENTATION.
 
     ENDLOOP.
 
-    "Stripped Display
     lo_alv->get_display_settings( )->set_striped_pattern( if_salv_c_bool_sap=>true ).
-
-    "Full Toolbar Options
     lo_alv->get_functions( )->set_all( ).
-
-    "Enable Multiple Selection in the ALV Layout and Enable Left Column for Selection
     lo_alv->get_selections( )->set_selection_mode( if_salv_c_selection_mode=>row_column ).
-
-    "Layout Settings
     lo_alv->get_layout(:
                       )->set_key( value = VALUE salv_s_layout_key( report = syst-repid ) ),
                       )->set_default( abap_true ),
                       )->set_save_restriction( if_salv_c_layout=>restrict_none ).
 
-    "Event Handling
     SET HANDLER: lcl_xml=>on_user_command FOR lo_alv->get_event( ) ACTIVATION abap_true.
 
-    "ADD Custom Button
     TRY.
         lo_alv->get_functions(:
                                    )->add_function( name     = 'XML'
