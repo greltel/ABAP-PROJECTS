@@ -7,7 +7,6 @@
 ************************************************************************
 REPORT z_salv_alv  NO STANDARD PAGE HEADING LINE-COUNT 255.
 
-CONSTANTS:gc_report_heading TYPE syst-title VALUE 'Dynamic SALV Report'.
 *&---------------------------------------------------------------------*
 *& DICTIONARY TABLES-TYPE POOLS
 *&---------------------------------------------------------------------*
@@ -24,6 +23,11 @@ CLASS: lcl_main_salv       DEFINITION DEFERRED,
        lcx_exception       DEFINITION DEFERRED.
 
 *&---------------------------------------------------------------------*
+*& GLOBAL CONSTANTS
+*&---------------------------------------------------------------------*
+CONSTANTS:gc_report_heading TYPE syst-title VALUE 'Dynamic SALV Report'.
+
+*&---------------------------------------------------------------------*
 *& GLOBAL DATA DECLARATION
 *&---------------------------------------------------------------------*
 FIELD-SYMBOLS: <fs_table> TYPE STANDARD TABLE.
@@ -31,9 +35,11 @@ FIELD-SYMBOLS: <fs_table> TYPE STANDARD TABLE.
 TYPES:BEGIN OF ty_color,
         color       TYPE lvc_col,
         color_descr TYPE as4text,
-      END OF ty_color.
+      END OF ty_color,
 
-DATA: t_color TYPE STANDARD TABLE OF ty_color WITH DEFAULT KEY.
+      tt_color TYPE STANDARD TABLE OF ty_color WITH EMPTY KEY.
+
+DATA t_color TYPE tt_color.
 
 *----------------------------------------------------------------------*
 *       CLASS LCX_EXCEPTION
@@ -78,7 +84,6 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
         database,
       END OF ENUM en_data_source.
 
-    "Public Methods
     METHODS:
 
       constructor IMPORTING im_version                TYPE en_alv_version
@@ -107,7 +112,6 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
       process_data RAISING lcx_exception,
 
       display_data RAISING lcx_exception.
-
 
   PROTECTED SECTION.
 
@@ -157,11 +161,13 @@ CLASS lcl_general_util DEFINITION CREATE PUBLIC.
 
   PUBLIC SECTION.
 
-    CLASS-METHODS: dynamic_where_clause IMPORTING im_field                TYPE char5
-                                                  im_comp                 TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal
-                                                  im_val                  TYPE string
-                                                  im_table_name           TYPE tabname
-                                        RETURNING VALUE(re_select_clause) TYPE hrtb_cond,
+    CLASS-METHODS:
+
+      dynamic_where_clause IMPORTING im_field                TYPE char5
+                                     im_comp                 TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal
+                                     im_val                  TYPE string
+                                     im_table_name           TYPE tabname
+                           RETURNING VALUE(re_select_clause) TYPE hrtb_cond,
 
       open_dialog_excel  RETURNING VALUE(re_filepath)  TYPE file_table-filename,
 
@@ -184,9 +190,10 @@ CLASS lcl_general_util DEFINITION CREATE PUBLIC.
 
   PRIVATE SECTION.
 
-    CLASS-METHODS: convert_to_internal_alpha IMPORTING im_external        TYPE any
-                                             RETURNING VALUE(re_internal) TYPE string,
+    CLASS-METHODS:
 
+      convert_to_internal_alpha IMPORTING im_external        TYPE any
+                                RETURNING VALUE(re_internal) TYPE string,
 
       date_external_to_internal IMPORTING im_date                 TYPE string
                                 RETURNING VALUE(re_date_internal) TYPE tumls_date.
@@ -200,9 +207,11 @@ CLASS lcl_salv_edit DEFINITION INHERITING FROM cl_salv_controller CREATE PRIVATE
 
   PUBLIC SECTION.
 
-    CLASS-METHODS: get_control_rtti IMPORTING i_salv         TYPE REF TO cl_salv_model_base
-                                    EXPORTING e_adapter_type TYPE salv_de_adapter_type
-                                              e_control_rtti TYPE REF TO cl_abap_typedescr,
+    CLASS-METHODS:
+
+      get_control_rtti IMPORTING i_salv         TYPE REF TO cl_salv_model_base
+                       EXPORTING e_adapter_type TYPE salv_de_adapter_type
+                                 e_control_rtti TYPE REF TO cl_abap_typedescr,
 
       get_control      IMPORTING i_salv           TYPE REF TO cl_salv_model_base
                        RETURNING VALUE(r_control) TYPE REF TO object,
@@ -245,7 +254,8 @@ CLASS lcl_event_handler DEFINITION FINAL CREATE PUBLIC.
     CLASS-METHODS: on_function_selected FOR EVENT function_selected OF cl_gui_toolbar IMPORTING fcode sender.
 
     "GUI GRID EVENTS
-    METHODS: event_after_refresh FOR EVENT after_refresh OF cl_gui_alv_grid IMPORTING sender,
+    METHODS:
+      event_after_refresh FOR EVENT after_refresh OF cl_gui_alv_grid IMPORTING sender,
       on_toolbar      FOR EVENT toolbar      OF cl_gui_alv_grid IMPORTING e_object e_interactive sender.
 
   PRIVATE SECTION.
@@ -260,7 +270,8 @@ CLASS lcl_event_handler DEFINITION FINAL CREATE PUBLIC.
                 lv_show_hide     TYPE abap_bool VALUE abap_false,
                 gv_editable      TYPE abap_bool VALUE abap_false.
 
-    CLASS-METHODS:show_hide_empty_columns,
+    CLASS-METHODS:
+      show_hide_empty_columns,
       display_documentation,
       display_details_of_selection.
 
@@ -271,165 +282,165 @@ ENDCLASS.                    "lcl_event_handler DEFINITION
 *&---------------------------------------------------------------------*
 SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME TITLE title0.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_db FOR FIELD db.
-PARAMETERS: db RADIOBUTTON GROUP rb0 DEFAULT 'X' USER-COMMAND dummy.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_db FOR FIELD db.
+    PARAMETERS: db RADIOBUTTON GROUP rb0 DEFAULT 'X' USER-COMMAND dummy.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_file FOR FIELD file.
-PARAMETERS:file RADIOBUTTON GROUP rb0.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_file FOR FIELD file.
+    PARAMETERS:file RADIOBUTTON GROUP rb0.
+  SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b0.
 
 SELECTION-SCREEN BEGIN OF BLOCK b05 WITH FRAME TITLE title05.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_excel FOR FIELD p_excel MODIF ID id3.
-PARAMETERS: p_excel TYPE file_table-filename MODIF ID id3.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_excel FOR FIELD p_excel MODIF ID id3.
+    PARAMETERS: p_excel TYPE file_table-filename MODIF ID id3.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_sheet FOR FIELD p_sheet MODIF ID id3.
-PARAMETERS: p_sheet TYPE char20 MODIF ID id3 LOWER CASE.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_sheet FOR FIELD p_sheet MODIF ID id3.
+    PARAMETERS: p_sheet TYPE char20 MODIF ID id3 LOWER CASE.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_head FOR FIELD p_head MODIF ID id3.
-PARAMETERS: p_head AS CHECKBOX DEFAULT  '' MODIF ID id3.
-SELECTION-SCREEN COMMENT 27(42) t_hdesc MODIF ID id3.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_head FOR FIELD p_head MODIF ID id3.
+    PARAMETERS: p_head AS CHECKBOX DEFAULT  '' MODIF ID id3.
+    SELECTION-SCREEN COMMENT 27(42) t_hdesc MODIF ID id3.
+  SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b05.
 
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_table FOR FIELD p_table MODIF ID id4.
-PARAMETERS: p_table TYPE tabname OBLIGATORY DEFAULT 'BSEG' MATCHCODE OBJECT dd_dbtb_16 MODIF ID id4.
-SELECTION-SCREEN COMMENT 57(55) t_descr MODIF ID id4.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_table FOR FIELD p_table MODIF ID id4.
+    PARAMETERS: p_table TYPE tabname OBLIGATORY DEFAULT 'BSEG' MATCHCODE OBJECT dd_dbtb_16 MODIF ID id4.
+    SELECTION-SCREEN COMMENT 57(55) t_descr MODIF ID id4.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-PARAMETERS: p_editf TYPE lvc_fname NO-DISPLAY.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    PARAMETERS: p_editf TYPE lvc_fname NO-DISPLAY.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_hotsp FOR FIELD p_hotsp MODIF ID id4.
-PARAMETERS: p_hotsp TYPE lvc_fname MODIF ID id4.
-SELECTION-SCREEN COMMENT 57(55) h_descr MODIF ID id4.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_hotsp FOR FIELD p_hotsp MODIF ID id4.
+    PARAMETERS: p_hotsp TYPE lvc_fname MODIF ID id4.
+    SELECTION-SCREEN COMMENT 57(55) h_descr MODIF ID id4.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_colh FOR FIELD p_colh MODIF ID id4.
-PARAMETERS: p_colh TYPE lvc_col DEFAULT 6 MODIF ID id4.
-SELECTION-SCREEN COMMENT 38(50) t_desch MODIF ID id4.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_colh FOR FIELD p_colh MODIF ID id4.
+    PARAMETERS: p_colh TYPE lvc_col DEFAULT 6 MODIF ID id4.
+    SELECTION-SCREEN COMMENT 38(50) t_desch MODIF ID id4.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_coll FOR FIELD p_coll.
-PARAMETERS: p_coll TYPE lvc_col DEFAULT space.
-SELECTION-SCREEN COMMENT 38(50) t_descl.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_coll FOR FIELD p_coll.
+    PARAMETERS: p_coll TYPE lvc_col DEFAULT space.
+    SELECTION-SCREEN COMMENT 38(50) t_descl.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_layout FOR FIELD p_layout MODIF ID id4.
-PARAMETERS: p_layout TYPE disvariant-variant VISIBLE LENGTH 11 MODIF ID id4.
-SELECTION-SCREEN COMMENT 38(50) t_ldescr MODIF ID id4.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_layout FOR FIELD p_layout MODIF ID id4.
+    PARAMETERS: p_layout TYPE disvariant-variant VISIBLE LENGTH 11 MODIF ID id4.
+    SELECTION-SCREEN COMMENT 38(50) t_ldescr MODIF ID id4.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_hits FOR FIELD p_hits MODIF ID id4.
-PARAMETERS: p_hits TYPE syst_tabix DEFAULT 10 MODIF ID id4.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_hits FOR FIELD p_hits MODIF ID id4.
+    PARAMETERS: p_hits TYPE syst_tabix DEFAULT 10 MODIF ID id4.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_names FOR FIELD p_names MODIF ID id4.
-PARAMETERS: p_names AS CHECKBOX DEFAULT space MODIF ID id4.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_names FOR FIELD p_names MODIF ID id4.
+    PARAMETERS: p_names AS CHECKBOX DEFAULT space MODIF ID id4.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_check FOR FIELD p_check.
-PARAMETERS: p_check AS CHECKBOX DEFAULT space.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_check FOR FIELD p_check.
+    PARAMETERS: p_check AS CHECKBOX DEFAULT space.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_icon FOR FIELD p_icon.
-PARAMETERS: p_icon AS CHECKBOX DEFAULT space.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_icon FOR FIELD p_icon.
+    PARAMETERS: p_icon AS CHECKBOX DEFAULT space.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_r1 FOR FIELD r1.
-PARAMETERS: r1 RADIOBUTTON GROUP rb1 DEFAULT 'X' USER-COMMAND dummy.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_r1 FOR FIELD r1.
+    PARAMETERS: r1 RADIOBUTTON GROUP rb1 DEFAULT 'X' USER-COMMAND dummy.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_r2 FOR FIELD r2.
-PARAMETERS: r2 RADIOBUTTON GROUP rb1.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_r2 FOR FIELD r2.
+    PARAMETERS: r2 RADIOBUTTON GROUP rb1.
+  SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b1.
 
 SELECTION-SCREEN BEGIN OF BLOCK b4 WITH FRAME TITLE title4.
 
-SELECTION-SCREEN BEGIN OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
 
-PARAMETERS: p_fiel TYPE char5 MODIF ID id4,
-            p_comp TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal MODIF ID id4,
-            p_val  TYPE string MODIF ID id4.
+    PARAMETERS: p_fiel TYPE char5 MODIF ID id4,
+                p_comp TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal MODIF ID id4,
+                p_val  TYPE string MODIF ID id4.
 
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b4.
 
 SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE title2.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_stand FOR FIELD p_stand MODIF ID id1.
-PARAMETERS: p_stand RADIOBUTTON GROUP rb2 DEFAULT 'X' MODIF ID id1 .
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_stand FOR FIELD p_stand MODIF ID id1.
+    PARAMETERS: p_stand RADIOBUTTON GROUP rb2 DEFAULT 'X' MODIF ID id1 .
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_doc FOR FIELD p_doc MODIF ID id1.
-PARAMETERS: p_doc RADIOBUTTON GROUP rb2  MODIF ID id1 .
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_doc FOR FIELD p_doc MODIF ID id1.
+    PARAMETERS: p_doc RADIOBUTTON GROUP rb2  MODIF ID id1 .
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_split FOR FIELD p_split MODIF ID id1.
-PARAMETERS: p_split RADIOBUTTON GROUP rb2 MODIF ID id1 .
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_split FOR FIELD p_split MODIF ID id1.
+    PARAMETERS: p_split RADIOBUTTON GROUP rb2 MODIF ID id1 .
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_dial FOR FIELD p_dial MODIF ID id1.
-PARAMETERS: p_dial RADIOBUTTON GROUP rb2 MODIF ID id1 .
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_dial FOR FIELD p_dial MODIF ID id1.
+    PARAMETERS: p_dial RADIOBUTTON GROUP rb2 MODIF ID id1 .
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_cont FOR FIELD p_cont MODIF ID id1.
-PARAMETERS: p_cont RADIOBUTTON GROUP rb2 MODIF ID id1 .
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_cont FOR FIELD p_cont MODIF ID id1.
+    PARAMETERS: p_cont RADIOBUTTON GROUP rb2 MODIF ID id1 .
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN SKIP 1.
+  SELECTION-SCREEN SKIP 1.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_event FOR FIELD p_event MODIF ID id1.
-PARAMETERS: p_event AS CHECKBOX MODIF ID id1 .
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_event FOR FIELD p_event MODIF ID id1.
+    PARAMETERS: p_event AS CHECKBOX MODIF ID id1 .
+  SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b2.
 
 SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE title3.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_popup FOR FIELD p_popup MODIF ID id2.
-PARAMETERS: p_popup AS CHECKBOX DEFAULT space MODIF ID id2.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_popup FOR FIELD p_popup MODIF ID id2.
+    PARAMETERS: p_popup AS CHECKBOX DEFAULT space MODIF ID id2.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_status FOR FIELD p_status MODIF ID id2.
-PARAMETERS: p_status TYPE rsmpe-status MODIF ID id2.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_status FOR FIELD p_status MODIF ID id2.
+    PARAMETERS: p_status TYPE rsmpe-status MODIF ID id2.
+  SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b3.
 
@@ -505,7 +516,7 @@ START-OF-SELECTION.
                                              im_line_color              = p_coll
                                              im_handle_gui_grid_events  = p_event ).
 
-      go_lcl_main->get_data( im_data_source     = COND #( WHEN db EQ abap_true THEN lcl_main_salv=>database
+      go_lcl_main->get_data( im_data_source     = COND #( WHEN db   EQ abap_true THEN lcl_main_salv=>database
                                                           WHEN file EQ abap_true THEN lcl_main_salv=>excel
                                                           ELSE THROW lcx_exception( text = 'Invalid Data Source Selection' )  )
                              im_filepath        = p_excel
@@ -523,7 +534,7 @@ START-OF-SELECTION.
       go_lcl_main->display_data( ).
 
     CATCH lcx_exception INTO DATA(lo_exception).
-      MESSAGE lo_exception->get_text( ) TYPE 'I' DISPLAY LIKE 'E'.
+      MESSAGE lo_exception->get_text( ) TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
   ENDTRY.
 
 END-OF-SELECTION.
@@ -662,7 +673,7 @@ FORM modify_screen.
 
     DATA(lt_layout) = cl_salv_layout_service=>get_layouts( EXPORTING s_key =  VALUE salv_s_layout_key( report = sy-repid ) ).
     TRY.
-        t_ldescr  = lt_layout[ layout =  p_layout ]-text.
+        t_ldescr  = lt_layout[ layout = p_layout ]-text.
       CATCH cx_sy_itab_line_not_found.
     ENDTRY.
 
@@ -769,9 +780,9 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     IF im_data_source EQ lcl_main_salv=>excel AND im_filepath IS NOT INITIAL.
 
-      lv_data_source = lcl_main_salv=>excel.
+      me->lv_data_source = lcl_main_salv=>excel.
 
-      CALL METHOD lcl_general_util=>upload_excel(
+      lcl_general_util=>upload_excel(
         EXPORTING
           im_filepath   = im_filepath
           im_sheet_name = im_sheet_name
@@ -1662,7 +1673,7 @@ CLASS lcl_general_util IMPLEMENTATION.
 
     DATA: lt_records TYPE solix_tab.
 
-    CALL METHOD cl_gui_frontend_services=>gui_upload
+    cl_gui_frontend_services=>gui_upload(
       EXPORTING
         filename                = CONV #( im_filepath )
         filetype                = 'BIN'
@@ -1690,12 +1701,11 @@ CLASS lcl_general_util IMPLEMENTATION.
         dp_timeout              = 16
         not_supported_by_gui    = 17
         error_no_gui            = 18
-        OTHERS                  = 19.
+        OTHERS                  = 19 ).
 
-    IF sy-subrc NE 0.
+    IF syst-subrc IS NOT INITIAL.
       RAISE EXCEPTION TYPE lcx_exception EXPORTING text = | Error while Uploading Excel File |.
     ENDIF.
-
 
     CALL FUNCTION 'SCMS_BINARY_TO_XSTRING'
       EXPORTING
@@ -1708,7 +1718,7 @@ CLASS lcl_general_util IMPLEMENTATION.
         failed       = 1
         OTHERS       = 2.
 
-    IF sy-subrc NE 0.
+    IF syst-subrc IS NOT INITIAL.
       RAISE EXCEPTION TYPE lcx_exception EXPORTING text = | Error while Uploading Excel File |.
     ENDIF.
 
@@ -1723,14 +1733,9 @@ CLASS lcl_general_util IMPLEMENTATION.
 
     lo_excel_ref->if_fdt_doc_spreadsheet~get_worksheet_names( IMPORTING worksheet_names = DATA(t_worksheets) ).
 
-    IF im_sheet_name IS NOT INITIAL AND line_exists( t_worksheets[ table_line = im_sheet_name  ]  ) .
-      DATA(sheet) = VALUE #( t_worksheets[ table_line = im_sheet_name  ] DEFAULT space ).
-    ELSE.
-      sheet = VALUE #( t_worksheets[ 1 ] DEFAULT space ).
-    ENDIF.
-
-    ex_table = lo_excel_ref->if_fdt_doc_spreadsheet~get_itab_from_worksheet( sheet ).
-
+    ex_table = lo_excel_ref->if_fdt_doc_spreadsheet~get_itab_from_worksheet( COND #(  WHEN im_sheet_name IS NOT INITIAL AND line_exists( t_worksheets[ table_line = im_sheet_name  ]  )
+                                                                                      THEN VALUE #( t_worksheets[ table_line = im_sheet_name  ] OPTIONAL )
+                                                                                      ELSE VALUE #( t_worksheets[ 1 ] OPTIONAL )  ) ).
 
   ENDMETHOD.
 
@@ -1852,7 +1857,6 @@ CLASS lcl_general_util IMPLEMENTATION.
       INSERT <fs_wa> INTO TABLE ex_table .
 
     ENDLOOP.
-
 
   ENDMETHOD.
 
