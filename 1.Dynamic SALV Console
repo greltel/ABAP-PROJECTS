@@ -17,7 +17,7 @@ TABLES:sscrfields.
 *& LOCAL CLASSES
 *&---------------------------------------------------------------------*
 CLASS: lcl_main_salv       DEFINITION DEFERRED,
-       lcl_general_util    DEFINITION DEFERRED,
+       lcl_utilities    DEFINITION DEFERRED,
        lcl_event_handler   DEFINITION DEFERRED,
        lcl_salv_edit       DEFINITION DEFERRED,
        lcx_exception       DEFINITION DEFERRED.
@@ -61,7 +61,7 @@ ENDCLASS.
 *----------------------------------------------------------------------*
 *       CLASS LCL_MAIN_SALV
 *----------------------------------------------------------------------*
-CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl_general_util lcl_salv_edit.
+CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl_utilities lcl_salv_edit.
 
   PUBLIC SECTION.
 
@@ -138,24 +138,24 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
           lo_salv_alv     TYPE REF TO cl_salv_table.
 
     METHODS:
-      create_alv RAISING lcx_exception,
-      field_catalog,
-      column_properties,
-      display_settings_header,
-      header_creation,
-      header_creation_fiori,
-      footer_creation,
-      toolbar_status,
-      handle_gui_grid_events,
-      event_handling,
-      display_alv.
+      create_alv              RAISING lcx_exception,
+      field_catalog           RAISING lcx_exception,
+      column_properties       RAISING lcx_exception,
+      display_settings_header RAISING lcx_exception,
+      header_creation         RAISING lcx_exception,
+      header_creation_fiori   RAISING lcx_exception,
+      footer_creation         RAISING lcx_exception,
+      toolbar_status          RAISING lcx_exception,
+      handle_gui_grid_events  RAISING lcx_exception,
+      event_handling          RAISING lcx_exception,
+      display_alv             RAISING lcx_exception.
 
 ENDCLASS.
 
 *----------------------------------------------------------------------*
-*       CLASS LCL_GENERAL_UTIL DEFINITION
+*       CLASS lcl_utilities DEFINITION
 *----------------------------------------------------------------------*
-CLASS lcl_general_util DEFINITION CREATE PUBLIC.
+CLASS lcl_utilities DEFINITION CREATE PUBLIC.
 
   PUBLIC SECTION.
 
@@ -281,165 +281,165 @@ ENDCLASS.                    "lcl_event_handler DEFINITION
 *&---------------------------------------------------------------------*
 SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME TITLE title0.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_db FOR FIELD db.
-PARAMETERS: db RADIOBUTTON GROUP rb0 DEFAULT 'X' USER-COMMAND dummy.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_db FOR FIELD db.
+    PARAMETERS: db RADIOBUTTON GROUP rb0 DEFAULT 'X' USER-COMMAND dummy.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_file FOR FIELD file.
-PARAMETERS:file RADIOBUTTON GROUP rb0.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_file FOR FIELD file.
+    PARAMETERS:file RADIOBUTTON GROUP rb0.
+  SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b0.
 
 SELECTION-SCREEN BEGIN OF BLOCK b05 WITH FRAME TITLE title05.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_excel FOR FIELD p_excel MODIF ID id3.
-PARAMETERS: p_excel TYPE file_table-filename MODIF ID id3.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_excel FOR FIELD p_excel MODIF ID id3.
+    PARAMETERS: p_excel TYPE file_table-filename MODIF ID id3.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_sheet FOR FIELD p_sheet MODIF ID id3.
-PARAMETERS: p_sheet TYPE char20 MODIF ID id3 LOWER CASE.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_sheet FOR FIELD p_sheet MODIF ID id3.
+    PARAMETERS: p_sheet TYPE char20 MODIF ID id3 LOWER CASE.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_head FOR FIELD p_head MODIF ID id3.
-PARAMETERS: p_head AS CHECKBOX DEFAULT  '' MODIF ID id3.
-SELECTION-SCREEN COMMENT 27(42) t_hdesc MODIF ID id3.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_head FOR FIELD p_head MODIF ID id3.
+    PARAMETERS: p_head AS CHECKBOX DEFAULT  '' MODIF ID id3.
+    SELECTION-SCREEN COMMENT 27(42) t_hdesc MODIF ID id3.
+  SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b05.
 
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_table FOR FIELD p_table MODIF ID id4.
-PARAMETERS: p_table TYPE tabname OBLIGATORY DEFAULT 'BSEG' MATCHCODE OBJECT dd_dbtb_16 MODIF ID id4.
-SELECTION-SCREEN COMMENT 57(55) t_descr MODIF ID id4.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_table FOR FIELD p_table MODIF ID id4.
+    PARAMETERS: p_table TYPE tabname OBLIGATORY DEFAULT 'BSEG' MATCHCODE OBJECT dd_dbtb_16 MODIF ID id4.
+    SELECTION-SCREEN COMMENT 57(55) t_descr MODIF ID id4.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-PARAMETERS: p_editf TYPE lvc_fname NO-DISPLAY.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    PARAMETERS: p_editf TYPE lvc_fname NO-DISPLAY.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_hotsp FOR FIELD p_hotsp MODIF ID id4.
-PARAMETERS: p_hotsp TYPE lvc_fname MODIF ID id4.
-SELECTION-SCREEN COMMENT 57(55) h_descr MODIF ID id4.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_hotsp FOR FIELD p_hotsp MODIF ID id4.
+    PARAMETERS: p_hotsp TYPE lvc_fname MODIF ID id4.
+    SELECTION-SCREEN COMMENT 57(55) h_descr MODIF ID id4.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_colh FOR FIELD p_colh MODIF ID id4.
-PARAMETERS: p_colh TYPE lvc_col DEFAULT 6 MODIF ID id4.
-SELECTION-SCREEN COMMENT 38(50) t_desch MODIF ID id4.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_colh FOR FIELD p_colh MODIF ID id4.
+    PARAMETERS: p_colh TYPE lvc_col DEFAULT 6 MODIF ID id4.
+    SELECTION-SCREEN COMMENT 38(50) t_desch MODIF ID id4.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_coll FOR FIELD p_coll.
-PARAMETERS: p_coll TYPE lvc_col DEFAULT space.
-SELECTION-SCREEN COMMENT 38(50) t_descl.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_coll FOR FIELD p_coll.
+    PARAMETERS: p_coll TYPE lvc_col DEFAULT space.
+    SELECTION-SCREEN COMMENT 38(50) t_descl.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_layout FOR FIELD p_layout MODIF ID id4.
-PARAMETERS: p_layout TYPE disvariant-variant VISIBLE LENGTH 11 MODIF ID id4.
-SELECTION-SCREEN COMMENT 38(50) t_ldescr MODIF ID id4.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_layout FOR FIELD p_layout MODIF ID id4.
+    PARAMETERS: p_layout TYPE disvariant-variant VISIBLE LENGTH 11 MODIF ID id4.
+    SELECTION-SCREEN COMMENT 38(50) t_ldescr MODIF ID id4.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(22) t_hits FOR FIELD p_hits MODIF ID id4.
-PARAMETERS: p_hits TYPE syst_tabix DEFAULT 10 MODIF ID id4.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(22) t_hits FOR FIELD p_hits MODIF ID id4.
+    PARAMETERS: p_hits TYPE syst_tabix DEFAULT 10 MODIF ID id4.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_names FOR FIELD p_names MODIF ID id4.
-PARAMETERS: p_names AS CHECKBOX DEFAULT space MODIF ID id4.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_names FOR FIELD p_names MODIF ID id4.
+    PARAMETERS: p_names AS CHECKBOX DEFAULT space MODIF ID id4.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_check FOR FIELD p_check.
-PARAMETERS: p_check AS CHECKBOX DEFAULT space.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_check FOR FIELD p_check.
+    PARAMETERS: p_check AS CHECKBOX DEFAULT space.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_icon FOR FIELD p_icon.
-PARAMETERS: p_icon AS CHECKBOX DEFAULT space.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_icon FOR FIELD p_icon.
+    PARAMETERS: p_icon AS CHECKBOX DEFAULT space.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_r1 FOR FIELD r1.
-PARAMETERS: r1 RADIOBUTTON GROUP rb1 DEFAULT 'X' USER-COMMAND dummy.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_r1 FOR FIELD r1.
+    PARAMETERS: r1 RADIOBUTTON GROUP rb1 DEFAULT 'X' USER-COMMAND dummy.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_r2 FOR FIELD r2.
-PARAMETERS: r2 RADIOBUTTON GROUP rb1.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_r2 FOR FIELD r2.
+    PARAMETERS: r2 RADIOBUTTON GROUP rb1.
+  SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b1.
 
 SELECTION-SCREEN BEGIN OF BLOCK b4 WITH FRAME TITLE title4.
 
-SELECTION-SCREEN BEGIN OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
 
-PARAMETERS: p_fiel TYPE char5 MODIF ID id4,
-            p_comp TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal MODIF ID id4,
-            p_val  TYPE string MODIF ID id4.
+    PARAMETERS: p_fiel TYPE char5 MODIF ID id4,
+                p_comp TYPE ddoption DEFAULT if_fsbp_const_range=>option_equal MODIF ID id4,
+                p_val  TYPE string MODIF ID id4.
 
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b4.
 
 SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE title2.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_stand FOR FIELD p_stand MODIF ID id1.
-PARAMETERS: p_stand RADIOBUTTON GROUP rb2 DEFAULT 'X' MODIF ID id1 .
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_stand FOR FIELD p_stand MODIF ID id1.
+    PARAMETERS: p_stand RADIOBUTTON GROUP rb2 DEFAULT 'X' MODIF ID id1 .
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_doc FOR FIELD p_doc MODIF ID id1.
-PARAMETERS: p_doc RADIOBUTTON GROUP rb2  MODIF ID id1 .
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_doc FOR FIELD p_doc MODIF ID id1.
+    PARAMETERS: p_doc RADIOBUTTON GROUP rb2  MODIF ID id1 .
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_split FOR FIELD p_split MODIF ID id1.
-PARAMETERS: p_split RADIOBUTTON GROUP rb2 MODIF ID id1 .
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_split FOR FIELD p_split MODIF ID id1.
+    PARAMETERS: p_split RADIOBUTTON GROUP rb2 MODIF ID id1 .
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_dial FOR FIELD p_dial MODIF ID id1.
-PARAMETERS: p_dial RADIOBUTTON GROUP rb2 MODIF ID id1 .
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_dial FOR FIELD p_dial MODIF ID id1.
+    PARAMETERS: p_dial RADIOBUTTON GROUP rb2 MODIF ID id1 .
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_cont FOR FIELD p_cont MODIF ID id1.
-PARAMETERS: p_cont RADIOBUTTON GROUP rb2 MODIF ID id1 .
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_cont FOR FIELD p_cont MODIF ID id1.
+    PARAMETERS: p_cont RADIOBUTTON GROUP rb2 MODIF ID id1 .
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN SKIP 1.
+  SELECTION-SCREEN SKIP 1.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_event FOR FIELD p_event MODIF ID id1.
-PARAMETERS: p_event AS CHECKBOX MODIF ID id1 .
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_event FOR FIELD p_event MODIF ID id1.
+    PARAMETERS: p_event AS CHECKBOX MODIF ID id1 .
+  SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b2.
 
 SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE title3.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_popup FOR FIELD p_popup MODIF ID id2.
-PARAMETERS: p_popup AS CHECKBOX DEFAULT space MODIF ID id2.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_popup FOR FIELD p_popup MODIF ID id2.
+    PARAMETERS: p_popup AS CHECKBOX DEFAULT space MODIF ID id2.
+  SELECTION-SCREEN END OF LINE.
 
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_status FOR FIELD p_status MODIF ID id2.
-PARAMETERS: p_status TYPE rsmpe-status MODIF ID id2.
-SELECTION-SCREEN END OF LINE.
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(26) t_status FOR FIELD p_status MODIF ID id2.
+    PARAMETERS: p_status TYPE rsmpe-status MODIF ID id2.
+  SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b3.
 
@@ -456,20 +456,10 @@ AT SELECTION-SCREEN OUTPUT.
   PERFORM modify_screen.
 
 *&---------------------------------------------------------------------*
-*& AT SELECTION SCREEN VALIDATIONS
-*&---------------------------------------------------------------------*
-*AT SELECTION-SCREEN ON.
-
-*&---------------------------------------------------------------------*
-*& AT SELECTION SCREEN ON HELP REQUESTS (F1)
-*&---------------------------------------------------------------------*
-*AT SELECTION-SCREEN ON HELP-REQUEST FOR
-
-*&---------------------------------------------------------------------*
 *& AT SELECTION SCREEN ON VALUE REQUESTS (F4)
 *&---------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_layout.
-  lcl_general_util=>f4_salv( CHANGING cv_layout = p_layout ).
+  lcl_utilities=>f4_salv( CHANGING cv_layout = p_layout ).
 
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_hotsp.
   PERFORM fields_f4.
@@ -484,7 +474,7 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_colh.
   PERFORM color_f4.
 
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_excel.
-  p_excel = lcl_general_util=>open_dialog_excel( ).
+  p_excel = lcl_utilities=>open_dialog_excel( ).
 
 *&---------------------------------------------------------------------*
 *& AT SELECTION SCREEN Actions
@@ -537,6 +527,10 @@ START-OF-SELECTION.
   ENDTRY.
 
 END-OF-SELECTION.
+*&---------------------------------------------------------------------*
+*& END OF EXECUTABLE CODE
+*&---------------------------------------------------------------------*
+
 *&---------------------------------------------------------------------*
 *& SUBROUTINE CREATION
 *&---------------------------------------------------------------------*
@@ -627,7 +621,7 @@ FORM modify_screen.
 
   IF p_hotsp IS NOT INITIAL AND p_table IS NOT INITIAL.
 
-    DATA(lv_field_exists) = lcl_general_util=>check_field_exists_in_table( EXPORTING im_field = CONV #( p_hotsp ) im_table = p_table ).
+    DATA(lv_field_exists) = lcl_utilities=>check_field_exists_in_table( EXPORTING im_field = CONV #( p_hotsp ) im_table = p_table ).
 
     IF lv_field_exists EQ abap_true.
 
@@ -635,8 +629,8 @@ FORM modify_screen.
 
       SELECT SINGLE FROM dd04t
         FIELDS ddtext
-        WHERE rollname EQ @lv_data_element AND
-              ddlanguage EQ @syst-langu
+        WHERE rollname   EQ @lv_data_element
+          AND ddlanguage EQ @syst-langu
         INTO @h_descr.
 
     ELSE.
@@ -786,7 +780,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
       me->lv_data_source = lcl_main_salv=>excel.
 
-      lcl_general_util=>upload_excel(
+      lcl_utilities=>upload_excel(
         EXPORTING
           im_filepath   = im_filepath
           im_sheet_name = im_sheet_name
@@ -848,7 +842,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
       ASSIGN lo_data_table->* TO <fs_table>.
 
       "MAP VALUE TABLE TO STRUCTURED TABLE
-      lcl_general_util=>get_structured_table_from_gen(
+      lcl_utilities=>get_structured_table_from_gen(
         EXPORTING
           im_map_by_structure = COND #( WHEN im_head EQ abap_true  THEN abap_false
                                         WHEN im_head EQ abap_false THEN abap_true )
@@ -902,7 +896,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
       "Build Dynamic Where Clause
       IF ( im_field IS NOT INITIAL ) AND ( im_comp IS NOT INITIAL ) AND ( im_val IS NOT INITIAL ) .
-        DATA(lt_select_clause) = lcl_general_util=>dynamic_where_clause( EXPORTING im_comp = im_comp im_field = im_field im_val = im_val im_table_name = im_table ).
+        DATA(lt_select_clause) = lcl_utilities=>dynamic_where_clause( EXPORTING im_comp = im_comp im_field = im_field im_val = im_val im_table_name = im_table ).
       ENDIF.
 
       IF <fs_table> IS ASSIGNED.
@@ -1669,9 +1663,9 @@ CLASS lcl_main_salv IMPLEMENTATION.
 ENDCLASS.
 
 *----------------------------------------------------------------------*
-*       CLASS lcl_general_util IMPLEMENTATION
+*       CLASS lcl_utilities IMPLEMENTATION
 *----------------------------------------------------------------------*
-CLASS lcl_general_util IMPLEMENTATION.
+CLASS lcl_utilities IMPLEMENTATION.
 
   METHOD upload_excel.
 
@@ -1840,7 +1834,7 @@ CLASS lcl_general_util IMPLEMENTATION.
         DATA(lr_elem) =  cl_abap_elemdescr=>describe_by_data( <fs_any_tab> ).
         IF lr_elem->type_kind EQ lr_elem->typekind_date."CONVERT DATE TO INTERNAL FORMAT
 
-          <fs_any_tab> = lcl_general_util=>date_external_to_internal( CONV #( <fs_any> ) ) .
+          <fs_any_tab> = lcl_utilities=>date_external_to_internal( CONV #( <fs_any> ) ) .
 
         ELSEIF lr_elem->type_kind EQ lr_elem->typekind_packed AND <fs_any>  CP '*E*'."CONVERT PACKED TO CHARACTER.E IS THE LAST NUMBER OF DECIMALS
 
@@ -1989,13 +1983,12 @@ CLASS lcl_general_util IMPLEMENTATION.
 
   ENDMETHOD.
 
-
   METHOD dynamic_where_clause.
 
     IF im_field IS NOT INITIAL AND im_comp IS NOT INITIAL AND im_val IS NOT INITIAL.
 
       "CHECK FIELD EXISTS IN CURRENT TABLE
-      DATA(lv_field_exists) = lcl_general_util=>check_field_exists_in_table( EXPORTING im_field = im_field im_table = im_table_name ).
+      DATA(lv_field_exists) = lcl_utilities=>check_field_exists_in_table( EXPORTING im_field = im_field im_table = im_table_name ).
       CHECK lv_field_exists EQ abap_true.
 
       "Create Variable based on field Type
@@ -2005,7 +1998,7 @@ CLASS lcl_general_util IMPLEMENTATION.
       DATA(lv_data_type) =  cl_abap_typedescr=>describe_by_name( type )->type_kind.
 
       IF lv_data_type EQ 'D'."DATE
-        DATA(lv_internal) = lcl_general_util=>date_external_to_internal( EXPORTING im_date = im_val ).
+        DATA(lv_internal) = lcl_utilities=>date_external_to_internal( im_val ).
       ELSE."OTHER DATA TYPE
 
         CREATE DATA dref TYPE (type).
@@ -2013,7 +2006,7 @@ CLASS lcl_general_util IMPLEMENTATION.
 
         IF <fs_val> IS ASSIGNED.
           <fs_val> = im_val.
-          lv_internal = lcl_general_util=>convert_to_internal_alpha( EXPORTING im_external = <fs_val> ).
+          lv_internal = lcl_utilities=>convert_to_internal_alpha( <fs_val> ).
         ELSE.
           lv_internal = im_val.
         ENDIF.
@@ -2060,13 +2053,9 @@ CLASS lcl_general_util IMPLEMENTATION.
         error_no_gui            = 3
         OTHERS                  = 4 ).
 
-    CHECK syst-subrc IS INITIAL.
+    CHECK syst-subrc IS INITIAL AND lt_file_table IS NOT INITIAL.
 
-    TRY.
-        re_filepath =  lt_file_table[ 1 ]-filename.
-      CATCH cx_sy_itab_line_not_found.
-        CLEAR:re_filepath.
-    ENDTRY.
+    re_filepath =  VALUE #( lt_file_table[ 1 ]-filename OPTIONAL ).
 
   ENDMETHOD.
 
