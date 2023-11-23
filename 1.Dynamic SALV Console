@@ -807,7 +807,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
         ASSIGN COMPONENT syst-index OF STRUCTURE <fs_tab>[ 1 ] TO FIELD-SYMBOL(<fs>).
         IF <fs> IS NOT INITIAL AND
-           syst-subrc EQ 0.
+           syst-subrc IS INITIAL.
 
           IF im_head EQ abap_true.
             CONDENSE <fs> NO-GAPS.
@@ -1776,7 +1776,7 @@ CLASS lcl_utilities IMPLEMENTATION.
           DO.
             ADD 1 TO v_column.
             ASSIGN COMPONENT v_column OF STRUCTURE <s_tab> TO FIELD-SYMBOL(<fs_any>).
-            IF syst-subrc EQ 0.
+            IF syst-subrc IS INITIAL.
               APPEND VALUE #( component =  <fs_any> column = v_column ) TO t_column.
             ELSE.
               EXIT.
@@ -1867,7 +1867,7 @@ CLASS lcl_utilities IMPLEMENTATION.
     cv_layout = cl_salv_layout_service=>f4_layouts( s_key    = VALUE salv_s_layout_key( report = syst-repid )
                                                     restrict = if_salv_c_layout=>restrict_none  )-layout.
 
-  ENDMETHOD.                    "f4_salv
+  ENDMETHOD.
 
 
   METHOD date_external_to_internal.
@@ -1879,7 +1879,7 @@ CLASS lcl_utilities IMPLEMENTATION.
 
     "date format YYYY/MM/DD
     FIND REGEX '^\d{4}[/|-|.|-]\d{1,2}[/|-|.|-]\d{1,2}$' IN lv_convert_date.
-    IF syst-subrc = 0.
+    IF syst-subrc IS INITIAL.
       CALL FUNCTION '/SAPDMC/LSM_DATE_CONVERT'
         EXPORTING
           date_in             = lv_convert_date
@@ -1899,7 +1899,7 @@ CLASS lcl_utilities IMPLEMENTATION.
 
       " date format DD/MM/YYYY
       FIND REGEX '^\d{1,2}[/|-|.|-]\d{1,2}[/|-|.|-]\d{4}$' IN lv_convert_date.
-      IF syst-subrc = 0.
+      IF syst-subrc IS INITIAL.
         CALL FUNCTION '/SAPDMC/LSM_DATE_CONVERT'
           EXPORTING
             date_in             = lv_convert_date
@@ -1927,8 +1927,8 @@ CLASS lcl_utilities IMPLEMENTATION.
     SELECT SINGLE @abap_true
       FROM dd03l
       INTO @re_exists
-      WHERE tabname EQ   @im_table AND
-            fieldname EQ @im_field.
+      WHERE tabname   EQ @im_table
+        AND fieldname EQ @im_field.
 
   ENDMETHOD.
 
@@ -2154,7 +2154,7 @@ CLASS lcl_salv_edit IMPLEMENTATION.
     IF i_fieldname IS SUPPLIED AND i_fieldname IS NOT INITIAL.
       lo_grid->get_frontend_fieldcatalog( IMPORTING et_fieldcatalog = DATA(lt_fieldcat) ).
       READ TABLE lt_fieldcat ASSIGNING FIELD-SYMBOL(<fs_fieldcat>) WITH KEY fieldname = i_fieldname.
-      CHECK syst-subrc EQ 0.
+      CHECK syst-subrc IS INITIAL.
       <fs_fieldcat>-edit = i_editable.
       lo_grid->set_frontend_fieldcatalog( lt_fieldcat ).
     ELSE.
@@ -2266,7 +2266,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
 
     "setting editable field
     ASSIGN fcat[ fieldname = p_editf ] TO FIELD-SYMBOL(<fcat>).
-    IF syst-subrc EQ 0.
+    IF syst-subrc IS INITIAL.
       <fcat>-edit = abap_true.
     ENDIF.
 
