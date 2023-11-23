@@ -42,7 +42,7 @@ Use the Static Class Method to Retrieve Unique and Multiple values of Any Table.
 
 ## Project 4: Dynamic Texts Export
 
-Download any Texts of SAP System into Excel File directly.
+Download any Text Object of SAP System into Excel File directly.
 
 ## Project 5: MM Document Flow
 
