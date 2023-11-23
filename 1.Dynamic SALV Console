@@ -17,9 +17,10 @@ TABLES:sscrfields.
 *& LOCAL CLASSES
 *&---------------------------------------------------------------------*
 CLASS: lcl_main_salv       DEFINITION DEFERRED,
-       lcl_utilities    DEFINITION DEFERRED,
+       lcl_utilities       DEFINITION DEFERRED,
        lcl_event_handler   DEFINITION DEFERRED,
        lcl_salv_edit       DEFINITION DEFERRED,
+       lcl_sel_screen      DEFINITION DEFERRED,
        lcx_exception       DEFINITION DEFERRED.
 
 *&---------------------------------------------------------------------*
@@ -58,6 +59,17 @@ CLASS lcx_exception DEFINITION INHERITING FROM cx_static_check.
 
 ENDCLASS.
 
+*----------------------------------------------------------------------*
+*       CLASS LCL_SEL_SCREEN
+*----------------------------------------------------------------------*
+CLASS lcl_sel_screen DEFINITION CREATE PRIVATE FINAL.
+
+  PUBLIC SECTION.
+
+
+
+
+ENDCLASS.
 *----------------------------------------------------------------------*
 *       CLASS LCL_MAIN_SALV
 *----------------------------------------------------------------------*
@@ -1975,7 +1987,7 @@ CLASS lcl_utilities IMPLEMENTATION.
         error_message = 1
         OTHERS        = 2.
 
-    IF syst-subrc NE 0.
+    IF syst-subrc IS NOT INITIAL.
       re_internal = im_external.
     ELSE.
       re_internal = <fs_t>.
