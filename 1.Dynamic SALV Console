@@ -33,15 +33,6 @@ CONSTANTS:gc_report_heading TYPE syst-title VALUE 'Dynamic SALV Report'.
 *&---------------------------------------------------------------------*
 FIELD-SYMBOLS: <fs_table> TYPE STANDARD TABLE.
 
-TYPES:BEGIN OF ty_color,
-        color       TYPE lvc_col,
-        color_descr TYPE as4text,
-      END OF ty_color,
-
-      tt_color TYPE STANDARD TABLE OF ty_color WITH EMPTY KEY.
-
-DATA t_color TYPE tt_color.
-
 *&----------------------------------------------------------------------*
 *&CLASS LCX_EXCEPTION DEFINITION
 *&----------------------------------------------------------------------*
@@ -81,6 +72,15 @@ CLASS lcl_sel_screen DEFINITION CREATE PRIVATE FINAL.
       screen_initialization.
 
   PRIVATE SECTION.
+
+    TYPES:BEGIN OF ty_color,
+            color       TYPE lvc_col,
+            color_descr TYPE as4text,
+          END OF ty_color,
+
+          tt_color TYPE STANDARD TABLE OF ty_color WITH EMPTY KEY.
+
+    DATA t_color TYPE tt_color.
 
     CLASS-DATA:lo_instance TYPE REF TO lcl_sel_screen.
 
@@ -159,10 +159,9 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
           lv_version                TYPE en_alv_version,
           lv_handle_gui_grid_events TYPE flag,
           lv_data_source            TYPE en_data_source,
-          lv_container              TYPE en_alv_container.
-
-    DATA: t_filter_selopt TYPE salv_t_selopt_ref,
-          lo_salv_alv     TYPE REF TO cl_salv_table.
+          lv_container              TYPE en_alv_container,
+          t_filter_selopt           TYPE salv_t_selopt_ref,
+          lo_salv_alv               TYPE REF TO cl_salv_table.
 
     METHODS:
       create_alv              RAISING lcx_exception,
@@ -1105,34 +1104,34 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD column_properties.
 
-* Center Columns
+    "Center Columns
     LOOP AT lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<c>).
       <c>-r_column->set_alignment( if_salv_c_alignment=>centered  ).
     ENDLOOP.
 
-* Optimize Columns Width
+    "Optimize Columns Width
     lo_salv_alv->get_columns( )->set_optimize( if_salv_c_bool_sap=>true ).
 
-* Hide Zeros from Specific Column
+    "Hide Zeros from Specific Column
     TRY.
         lo_salv_alv->get_columns( )->get_column('CHANGE')->set_zero( space ).
       CATCH cx_salv_not_found.                          "#EC NO_HANDLER
     ENDTRY.
 
-*   Set Edit Mask(Conversion Exit) for a field
+    "Set Edit Mask(Conversion Exit) for a field
     TRY.
         "Use and Conversion Exit Function Module or Create your Own
         lo_salv_alv->get_columns( )->get_column('CHANGE')->set_edit_mask( '==OUTPUT_CONVERSION' ).
       CATCH cx_salv_not_found.                          "#EC NO_HANDLER
     ENDTRY.
 
-*   Set the Cell Type
+    "Set the Cell Type
     TRY.
         lo_salv_alv->get_columns( )->set_cell_type_column( lc_cell_style ).
       CATCH cx_salv_data_error.                         "#EC NO_HANDLER
     ENDTRY.
 
-*COLOR LINE
+    "COLOR LINE
     TRY.
         "Instructions: Include in your alv table color TYPE lvc_t_scol. Then populate the specific table for
         "every row that you want to color.Populate the line of the table by looping and add this code
@@ -1141,13 +1140,13 @@ CLASS lcl_main_salv IMPLEMENTATION.
       CATCH cx_salv_data_error cx_salv_invalid_input.   "#EC NO_HANDLER
     ENDTRY.
 
-*COLOR COLUMN
+    "COLOR COLUMN
     TRY.
         CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lv_hotspot_field ) )->set_color( VALUE lvc_s_colo( col = lv_hotspot_color int = 1 inv = 1 ) ).
       CATCH cx_salv_not_found.                          "#EC NO_HANDLER
     ENDTRY.
 
-* Add Icon To Column ICON
+    "Add Icon To Column ICON
     TRY.
         CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lc_icon_column ):
           )->set_icon( if_salv_c_bool_sap=>true ),
@@ -1158,7 +1157,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
       CATCH cx_salv_not_found.                          "#EC NO_HANDLER
     ENDTRY.
 
-* Add Checkbox Column
+    "Add Checkbox Column
     TRY.
         CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( lc_checkbox  ):
          )->set_cell_type( if_salv_c_cell_type=>checkbox_hotspot ),
@@ -1169,7 +1168,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
       CATCH cx_salv_not_found.                          "#EC NO_HANDLER
     ENDTRY.
 
-* Add Tooltips to Icons
+    "Add Tooltips to Icons
     TRY.
         lo_salv_alv->get_functional_settings( )->get_tooltips( )->add_tooltip( type = cl_salv_tooltip=>c_type_icon
                                                                                value = |{ icon_green_light }|
@@ -1177,19 +1176,19 @@ CLASS lcl_main_salv IMPLEMENTATION.
       CATCH cx_salv_existing.                           "#EC NO_HANDLER
     ENDTRY.
 
-*Add Tooltips to Fields
+    "Add Tooltips to Fields
     TRY.
         lo_salv_alv->get_columns( )->get_column('CHANGE')->set_tooltip( 'Tooltip Text' ).
       CATCH cx_salv_not_found.                          "#EC NO_HANDLER
     ENDTRY.
 
-* Hide Specified Column
+    "Hide Specified Column
     TRY.
         lo_salv_alv->get_columns( )->get_column( 'CHANGE' )->set_visible( abap_false ).
       CATCH cx_salv_not_found.                          "#EC NO_HANDLER
     ENDTRY.
 
-* display and fix column as key column
+    "Display and fix column as key column
     TRY.
         "Define Column as Key Column
         CAST cl_salv_column_table( lo_salv_alv->get_columns( )->get_column( 'CHANGE' ) )->set_key( abap_true ).
@@ -1324,7 +1323,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD header_creation.
 
-    IF lv_version EQ lcl_main_salv=>gui." ALV Header for Container
+    IF lv_version EQ lcl_main_salv=>gui."ALV Header for Container
 
       lo_salv_alv->get_display_settings( :
           )->set_list_header_size( cl_salv_display_settings=>c_header_size_medium ),
@@ -1397,25 +1396,25 @@ CLASS lcl_main_salv IMPLEMENTATION.
       TRY.
 
           lo_salv_alv->get_functions(:
-                               )->add_function( name = 'DETAILS'"Custom Button Details
-                                                icon = |{ icon_overview }|
-                                                text = 'Details'
-                                                tooltip = 'Detail View'
+                               )->add_function( name     = 'DETAILS'"Custom Button Details
+                                                icon     = |{ icon_overview }|
+                                                text     = 'Details'
+                                                tooltip  = 'Detail View'
                                                 position = if_salv_c_function_position=>right_of_salv_functions ),
-                               )->add_function( name = 'EDIT'"Custom Button Edit
-                                                icon = |{ icon_operation }|
-                                                text = 'Edit'
-                                                tooltip = 'Edit ALV Fields'
+                               )->add_function( name     = 'EDIT'"Custom Button Edit
+                                                icon     = |{ icon_operation }|
+                                                text     = 'Edit'
+                                                tooltip  = 'Edit ALV Fields'
                                                 position = if_salv_c_function_position=>right_of_salv_functions ),
-                               )->add_function( name = 'COLUMNS'"Custom Button Columns
-                                                icon = |{ icon_businav_sysorgi }|
-                                                text = ''
-                                                tooltip = 'Show/Hide Empty Columns'
+                               )->add_function( name     = 'COLUMNS'"Custom Button Columns
+                                                icon     = |{ icon_businav_sysorgi }|
+                                                text     = ''
+                                                tooltip  = 'Show/Hide Empty Columns'
                                                 position = if_salv_c_function_position=>right_of_salv_functions ),
-                               )->add_function( name = 'DOCU' "Custom Button Documentation
-                                                icon = |{ icon_message_information_small }|
-                                                text = ''
-                                                tooltip = 'End User Documentation'
+                               )->add_function( name     = 'DOCU' "Custom Button Documentation
+                                                icon     = |{ icon_message_information_small }|
+                                                text     = ''
+                                                tooltip  = 'End User Documentation'
                                                 position = if_salv_c_function_position=>right_of_salv_functions ).
 
 
@@ -1443,7 +1442,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD event_handling.
 
-*Handler for Double Click Event and User Command(Button) and Hotspot Handling
+    "Handler for Double Click Event and User Command(Button) and Hotspot Handling
     SET HANDLER: lcl_event_handler=>handle_double_click    FOR lo_salv_alv->get_event( ),
                  lcl_event_handler=>on_user_command        FOR lo_salv_alv->get_event( ),
                  lcl_event_handler=>handle_hotspot         FOR lo_salv_alv->get_event( ),
@@ -1451,7 +1450,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
                  lcl_event_handler=>on_top_of_page         FOR lo_salv_alv->get_event( ),
                  lcl_event_handler=>on_after_salv_function FOR lo_salv_alv->get_event( ).
 
-*Set Desired Field Hotspot Enabled
+    "Set Desired Field Hotspot Enabled
     lcl_event_handler=>set_hotspot( EXPORTING im_alv = lo_salv_alv im_field = lv_hotspot_field ).
 
   ENDMETHOD.
@@ -1462,7 +1461,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     "----------------------------Force Container Generation------------------------*
     IF lv_version EQ lcl_main_salv=>gui.
-      WRITE: space.
+      WRITE:/ space.
     ENDIF.
 
   ENDMETHOD.
@@ -2444,13 +2443,13 @@ CLASS lcl_sel_screen IMPLEMENTATION.
 
   METHOD screen_initialization.
 
-    t_color = VALUE #( ( color = 1  color_descr = 'Blue'       )
-                     ( color = 2  color_descr = 'Light Grey' )
-                     ( color = 3  color_descr = 'Yellow'     )
-                     ( color = 4  color_descr = 'Light Blue' )
-                     ( color = 5  color_descr = 'Green'      )
-                     ( color = 6  color_descr = 'Red'        )
-                     ( color = 7  color_descr = 'Orange'     ) ).
+    me->t_color = VALUE #( ( color = 1  color_descr = 'Blue'       )
+                           ( color = 2  color_descr = 'Light Grey' )
+                           ( color = 3  color_descr = 'Yellow'     )
+                           ( color = 4  color_descr = 'Light Blue' )
+                           ( color = 5  color_descr = 'Green'      )
+                           ( color = 6  color_descr = 'Red'        )
+                           ( color = 7  color_descr = 'Orange'     ) ).
 
     title0    = 'Table Selection'.
     title05   = 'Excel Options'.
@@ -2546,7 +2545,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
     IF p_coll IS NOT INITIAL.
 
       TRY.
-          t_descl = t_color[ color = p_coll ]-color_descr.
+          t_descl = me->t_color[ color = p_coll ]-color_descr.
         CATCH cx_sy_itab_line_not_found.
       ENDTRY.
 
@@ -2557,7 +2556,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
     IF p_colh IS NOT INITIAL.
 
       TRY.
-          t_desch = t_color[ color = p_colh ]-color_descr.
+          t_desch = me->t_color[ color = p_colh ]-color_descr.
         CATCH cx_sy_itab_line_not_found.
       ENDTRY.
     ELSE.
@@ -2589,7 +2588,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
         window_title  = 'Table Fields'
         value_org     = 'S'
       TABLES
-        value_tab     = t_color
+        value_tab     = me->t_color
       EXCEPTIONS
         error_message = 1
         OTHERS        = 2.
