@@ -2585,7 +2585,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
         retfield      = 'COLOR'
         dynpprog      = syst-repid
         dynpnr        = syst-dynnr
-        dynprofield   = to_upper( im_fieldname )
+        dynprofield   = im_fieldname
         window_title  = 'Table Fields'
         value_org     = 'S'
       TABLES
@@ -2623,7 +2623,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
         retfield      = 'FIELD'
         dynpprog      = syst-repid
         dynpnr        = syst-dynnr
-        dynprofield   = to_upper( im_fieldname )
+        dynprofield   = im_fieldname
         window_title  = 'Table Fields'
         value_org     = 'S'
       TABLES
