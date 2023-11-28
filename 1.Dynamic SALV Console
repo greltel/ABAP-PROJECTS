@@ -70,6 +70,20 @@ CLASS lcl_sel_screen DEFINITION CREATE PRIVATE FINAL.
 
   PUBLIC SECTION.
 
+    CLASS-METHODS:
+      get_instance RETURNING VALUE(re_instance) TYPE REF TO lcl_sel_screen.
+
+    METHODS:
+      screen_pbo,
+      screen_pai,
+      screen_initialization.
+
+  PRIVATE SECTION.
+
+    CLASS-DATA:lo_instance TYPE REF TO lcl_sel_screen.
+
+    DATA:lt_status_list TYPE vrm_values.
+
 
 
 
@@ -463,13 +477,13 @@ SELECTION-SCREEN END OF BLOCK b3.
 *& INITIALIZATION OF SELECTION SCREEN ELEMENTS
 *&---------------------------------------------------------------------*
 INITIALIZATION.
-  PERFORM screen_initialization.
+  lcl_sel_screen=>get_instance( )->screen_initialization( ).
 
 *&---------------------------------------------------------------------*
-*& AT SELECTION SCREEN MODIFICATION
+*& AT SELECTION SCREEN MODIFICATION (PBO)
 *&---------------------------------------------------------------------*
 AT SELECTION-SCREEN OUTPUT.
-  PERFORM modify_screen.
+  lcl_sel_screen=>get_instance( )->screen_pbo( ).
 
 *&---------------------------------------------------------------------*
 *& AT SELECTION SCREEN ON VALUE REQUESTS (F4)
@@ -493,10 +507,10 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_excel.
   p_excel = lcl_utilities=>open_dialog_excel( ).
 
 *&---------------------------------------------------------------------*
-*& AT SELECTION SCREEN Actions
+*& AT SELECTION SCREEN Actions(PAI)
 *&---------------------------------------------------------------------*
 AT SELECTION-SCREEN.
-  PERFORM screen_actions.
+  lcl_sel_screen=>get_instance( )->screen_pai( ).
 
 *&---------------------------------------------------------------------*
 *& EXECUTABLE CODE
@@ -2635,6 +2649,167 @@ CLASS lcl_event_handler IMPLEMENTATION.
   ENDMETHOD.  "HANDLE_HOTSPOT
 
 ENDCLASS."lcl_event_handler IMPLEMENTATION
+*----------------------------------------------------------------------*
+* CLASS lcl_sel_screen IMPLEMENTATION
+*----------------------------------------------------------------------*
+CLASS lcl_sel_screen IMPLEMENTATION.
+
+  METHOD 	get_instance.
+
+    IF lo_instance IS NOT BOUND.
+      lo_instance = NEW #( ).
+    ENDIF.
+
+    re_instance = lo_instance.
+
+  ENDMETHOD.
+
+  METHOD screen_initialization.
+
+    t_color = VALUE #( ( color = 1  color_descr = 'Blue'       )
+                     ( color = 2  color_descr = 'Light Grey' )
+                     ( color = 3  color_descr = 'Yellow'     )
+                     ( color = 4  color_descr = 'Light Blue' )
+                     ( color = 5  color_descr = 'Green'      )
+                     ( color = 6  color_descr = 'Red'        )
+                     ( color = 7  color_descr = 'Orange'     ) ).
+
+    title0    = 'Table Selection'.
+    title05   = 'Excel Options'.
+    title1    = 'ALV General Options'.
+    title2    = 'GUI Version Options'.
+    title3    = 'Fiori Version Options'.
+    title4    = 'Dynamic Where Clause'.
+
+    t_db      = icon_database_table && 'Database Table'.
+    t_file    = icon_xls && 'Table from Excel File'.
+    t_excel   = icon_open_folder && 'Excel Filepath'.
+    t_sheet   = icon_xls && 'Sheet Name'.
+    t_hdesc   = 'Bases on First Row of Excel Table'.
+    t_head    = 'Dynamic Column Name'.
+    t_status  = icon_wd_toolbar_caption && 'Custom GUI Status'.
+    t_layout  = icon_alv_variants && 'Layout'.
+    t_names   = icon_wd_input_field && 'Display Technical Names'.
+    t_hits    = 'Maximum no. of hits'.
+    t_icon    = icon_status_open && 'Include Icon Column'.
+    t_popup   = icon_wd_window && 'ALV on Popup'.
+    t_check   = icon_checkbox && 'Include Checkbox Column'.
+    t_hotsp   = icon_simple_field && 'Hotspot Field'.
+    t_doc     = icon_wd_view_set_t_layout_90 && 'ALV at Bottom'.
+    t_split   = icon_wd_view_set_t_layout_270 && 'ALV Splitted'.
+    t_cont    = icon_context_menu && 'ALV with Context Menu'.
+    t_table   = icon_table_settings && 'Table'.
+    t_stand   = icon_wd_view_container &&'ALV Standard Position'.
+    t_dial    = icon_wd_window && 'ALV in Dialog Box'.
+    t_r1      = icon_sap_gui_session && 'GUI Version'.
+    t_r2      = icon_wd_web_appl_project && 'Fiori Version'.
+    t_colh    = icon_color && 'Hotspot Color'.
+    t_coll    = icon_color && 'Line Color'.
+    t_event   = icon_wd_toolbar && 'GUI Grid Toolbar'.
+
+    syst-title = gc_report_heading.
+
+
+  ENDMETHOD.
+
+  METHOD screen_pbo.
+
+    LOOP AT SCREEN INTO DATA(ls_screen).
+
+      ls_screen-request = COND #( WHEN ls_screen-name EQ 'T_HITS' THEN '1' ).
+
+      ls_screen-display_3d = COND #( WHEN ls_screen-name EQ 'T_HITS' THEN '1' ).
+
+      ls_screen-active = COND #( WHEN r1   EQ abap_true AND  ls_screen-group1 EQ 'ID2' THEN  /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                                 WHEN r2   EQ abap_true AND  ls_screen-group1 EQ 'ID1' THEN  /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                                 WHEN db   EQ abap_true AND  ls_screen-group1 EQ 'ID3' THEN  /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                                 WHEN file EQ abap_true AND  ls_screen-group1 EQ 'ID4' THEN  /accgo/if_cck_dpqs_constants=>gc_screen_input_visible ).
+
+      MODIFY SCREEN FROM ls_screen.
+
+    ENDLOOP.
+
+    IF p_table IS NOT INITIAL.
+
+      SELECT SINGLE FROM dd02t
+        FIELDS ddtext
+        WHERE tabname EQ @p_table AND
+              ddlanguage EQ @syst-langu
+        INTO @t_descr.
+
+      IF syst-subrc NE /accgo/if_cas_constants=>gc_sysubrc_success.
+        CLEAR:t_descr.
+      ENDIF.
+
+    ENDIF.
+
+    IF p_hotsp IS NOT INITIAL AND p_table IS NOT INITIAL.
+
+      DATA(lv_field_exists) = lcl_utilities=>check_field_exists_in_table( EXPORTING im_field = CONV #( p_hotsp ) im_table = p_table ).
+
+      IF lv_field_exists EQ abap_true.
+
+        DATA(lv_data_element) = CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_name( |{ p_table CASE = UPPER }-{ p_hotsp CASE = UPPER }| ) )->get_ddic_field( )-rollname.
+
+        SELECT SINGLE FROM dd04t
+          FIELDS ddtext
+          WHERE rollname   EQ @lv_data_element
+            AND ddlanguage EQ @syst-langu
+          INTO @h_descr.
+
+      ELSE.
+
+        CLEAR: h_descr.
+
+      ENDIF.
+
+    ENDIF.
+
+    IF p_coll IS NOT INITIAL.
+
+      TRY.
+          t_descl = t_color[ color = p_coll ]-color_descr.
+        CATCH cx_sy_itab_line_not_found.
+      ENDTRY.
+
+    ELSE.
+      CLEAR:t_descl.
+    ENDIF.
+
+    IF p_colh IS NOT INITIAL.
+
+      TRY.
+          t_desch = t_color[ color = p_colh ]-color_descr.
+        CATCH cx_sy_itab_line_not_found.
+      ENDTRY.
+    ELSE.
+      CLEAR:t_desch.
+    ENDIF.
+
+    IF p_layout IS NOT INITIAL.
+
+      DATA(lt_layout) = cl_salv_layout_service=>get_layouts( EXPORTING s_key =  VALUE salv_s_layout_key( report = syst-repid ) ).
+      TRY.
+          t_ldescr  = lt_layout[ layout = p_layout ]-text.
+        CATCH cx_sy_itab_line_not_found.
+      ENDTRY.
+
+    ELSE.
+      CLEAR:t_ldescr.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD screen_pai.
+
+    CASE sscrfields-ucomm.
+      WHEN 'BUT1'.
+
+    ENDCASE.
+
+  ENDMETHOD.
+
+ENDCLASS.
 
 *&----------------------------------------------------------------------*
 *&CLASS LCX_EXCEPTION IMPLEMENTATION
