@@ -75,8 +75,8 @@ CLASS lcl_sel_screen DEFINITION CREATE PRIVATE FINAL.
 
     METHODS:
       screen_pbo,
-      color_f4,
-      fields_f4,
+      color_f4 IMPORTING im_fieldname TYPE help_info-dynprofld,
+      fields_f4 IMPORTING im_fieldname TYPE help_info-dynprofld,
       screen_pai,
       screen_initialization.
 
@@ -489,16 +489,16 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_layout.
   lcl_utilities=>f4_salv( CHANGING cv_layout = p_layout ).
 
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_hotsp.
-  lcl_sel_screen=>get_instance( )->fields_f4( ).
+  lcl_sel_screen=>get_instance( )->fields_f4( 'P_HOTSP' ).
 
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_fiel.
-  lcl_sel_screen=>get_instance( )->fields_f4( ).
+  lcl_sel_screen=>get_instance( )->fields_f4( 'P_FIEL' ).
 
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_coll.
-  lcl_sel_screen=>get_instance( )->color_f4( ).
+  lcl_sel_screen=>get_instance( )->color_f4( 'P_COLL' ).
 
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_colh.
-  lcl_sel_screen=>get_instance( )->color_f4( ).
+  lcl_sel_screen=>get_instance( )->color_f4( 'P_COLH' ).
 
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_excel.
   p_excel = lcl_utilities=>open_dialog_excel( ).
@@ -2585,7 +2585,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
         retfield      = 'COLOR'
         dynpprog      = syst-repid
         dynpnr        = syst-dynnr
-        dynprofield   = 'P_COLL'
+        dynprofield   = to_upper( im_fieldname )
         window_title  = 'Table Fields'
         value_org     = 'S'
       TABLES
@@ -2623,7 +2623,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
         retfield      = 'FIELD'
         dynpprog      = syst-repid
         dynpnr        = syst-dynnr
-        dynprofield   = 'P_HOTSP'
+        dynprofield   = to_upper( im_fieldname )
         window_title  = 'Table Fields'
         value_org     = 'S'
       TABLES
