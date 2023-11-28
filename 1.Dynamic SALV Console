@@ -42,20 +42,24 @@ TYPES:BEGIN OF ty_color,
 
 DATA t_color TYPE tt_color.
 
-*----------------------------------------------------------------------*
-*       CLASS LCX_EXCEPTION
-*----------------------------------------------------------------------*
-CLASS lcx_exception DEFINITION INHERITING FROM cx_static_check.
+*&----------------------------------------------------------------------*
+*&CLASS LCX_EXCEPTION DEFINITION
+*&----------------------------------------------------------------------*
+CLASS lcx_exception DEFINITION INHERITING FROM cx_static_check FINAL CREATE PUBLIC.
 
   PUBLIC SECTION.
 
     METHODS:
-      constructor IMPORTING text TYPE string,
-      get_text REDEFINITION.
+      constructor IMPORTING im_text     TYPE bapiret2-message OPTIONAL
+                            im_textid   TYPE texid OPTIONAL
+                            im_previous TYPE REF TO  cx_root OPTIONAL,
+      get_text            REDEFINITION,
+      get_longtext        REDEFINITION.
 
   PRIVATE SECTION.
 
-    DATA: local_text TYPE string.
+    DATA:
+         mv_message TYPE bapiret2-message.
 
 ENDCLASS.
 
@@ -519,7 +523,7 @@ START-OF-SELECTION.
 
       go_lcl_main->get_data( im_data_source     = COND #( WHEN db   EQ abap_true THEN lcl_main_salv=>database
                                                           WHEN file EQ abap_true THEN lcl_main_salv=>excel
-                                                          ELSE THROW lcx_exception( text = 'Invalid Data Source Selection' )  )
+                                                          ELSE THROW lcx_exception( im_text = 'Invalid Data Source Selection' )  )
                              im_filepath        = p_excel
                              im_sheet_name      = p_sheet
                              im_head            = p_head
@@ -843,7 +847,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
                                p_table_kind = cl_abap_tabledescr=>tablekind_std
                                p_unique     = abap_false ).
         CATCH cx_sy_struct_attributes cx_sy_struct_comp_name INTO DATA(lo_exception). "#EC NO_HANDLER
-          RAISE EXCEPTION TYPE lcx_exception EXPORTING text = lo_exception->get_text( ).
+          RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = CONV #( lo_exception->get_text( ) ).
       ENDTRY.
 
       "Data to handle the new table type
@@ -897,7 +901,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
                              p_table_kind = cl_abap_tabledescr=>tablekind_std
                              p_unique     = abap_false ).
         CATCH cx_sy_struct_attributes cx_sy_struct_comp_name INTO DATA(lo_exception2). "#EC NO_HANDLER
-          RAISE EXCEPTION TYPE lcx_exception EXPORTING text = lo_exception2->get_text( ).
+          RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = CONV #( lo_exception2->get_text( ) ).
       ENDTRY.
 
       "Data to handle the new table type
@@ -920,15 +924,15 @@ CLASS lcl_main_salv IMPLEMENTATION.
         WHERE (lt_select_clause).
 
         IF <fs_table> IS INITIAL.
-          RAISE EXCEPTION TYPE lcx_exception EXPORTING text = | No value Retrieved from Table: { im_table } |.
+          RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = | No value Retrieved from Table: { im_table } |.
         ENDIF.
 
       ELSE.
-        RAISE EXCEPTION TYPE lcx_exception EXPORTING text = 'Error while Creating Dynamic Table'.
+        RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error while Creating Dynamic Table'.
       ENDIF.
 
     ELSE.
-      RAISE EXCEPTION TYPE lcx_exception EXPORTING text = 'Missing Parameters for Data Retrieval'.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Missing Parameters for Data Retrieval'.
     ENDIF.
 
   ENDMETHOD.
@@ -1198,7 +1202,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
     ENDIF.
 
     IF lo_salv_alv IS NOT BOUND.
-      RAISE EXCEPTION TYPE lcx_exception EXPORTING text = 'Error while creating ALV Reference'.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error while creating ALV Reference'.
     ENDIF.
 
   ENDMETHOD.
@@ -1714,7 +1718,7 @@ CLASS lcl_utilities IMPLEMENTATION.
         OTHERS                  = 19 ).
 
     IF syst-subrc IS NOT INITIAL.
-      RAISE EXCEPTION TYPE lcx_exception EXPORTING text = | Error while Uploading Excel File |.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = | Error while Uploading Excel File |.
     ENDIF.
 
     CALL FUNCTION 'SCMS_BINARY_TO_XSTRING'
@@ -1730,7 +1734,7 @@ CLASS lcl_utilities IMPLEMENTATION.
         OTHERS        = 3.
 
     IF syst-subrc IS NOT INITIAL.
-      RAISE EXCEPTION TYPE lcx_exception EXPORTING text = | Error while Uploading Excel File |.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = | Error while Uploading Excel File |.
     ENDIF.
 
     TRY.
@@ -1738,9 +1742,8 @@ CLASS lcl_utilities IMPLEMENTATION.
                                 document_name = CONV #( im_filepath )
                                 xdocument     = lv_headerxstring ) .
       CATCH cx_fdt_excel_core INTO DATA(ex_ref).
-        RAISE EXCEPTION TYPE lcx_exception EXPORTING text = ex_ref->get_text( ).
+        RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = CONV #( ex_ref->get_text( ) ).
     ENDTRY.
-
 
     lo_excel_ref->if_fdt_doc_spreadsheet~get_worksheet_names( IMPORTING worksheet_names = DATA(t_worksheets) ).
 
@@ -2305,33 +2308,22 @@ CLASS lcl_event_handler IMPLEMENTATION.
           mt_toolbar TYPE ttb_button,
           ls_toolbar LIKE LINE OF mt_toolbar.
 
-*... Toolbar Seperator
-    CLEAR ls_toolbar.
-    ls_toolbar-function   = cl_gui_alv_grid=>mc_fc_separator.
-    ls_toolbar-butn_type  = 3.
-    APPEND ls_toolbar TO mt_toolbar.
+    "Toolbar Seperator
+    APPEND VALUE #( function   = cl_gui_alv_grid=>mc_fc_separator
+                    butn_type  = 3 ) TO e_object->mt_toolbar.
 
-*... Toolbar Separator
-    CLEAR ls_toolbar.
-    ls_toolbar-function   = cl_gui_alv_grid=>mc_fc_separator.
-    ls_toolbar-butn_type  = 3.
-    APPEND ls_toolbar TO mt_toolbar.
+    "Toolbar Button APPEND ROW
+    APPEND VALUE #( function   = cl_gui_alv_grid=>mc_fc_loc_append_row
+                    quickinfo  = 'Append Row'
+                    icon       = icon_create
+                    disabled   = space ) TO e_object->mt_toolbar.
 
-*... Toolbar Button APPEND ROW
-    CLEAR ls_toolbar.
-    ls_toolbar-function   = cl_gui_alv_grid=>mc_fc_loc_append_row.
-    ls_toolbar-quickinfo  = 'Append Row'.
-    ls_toolbar-icon       = icon_create.
-    ls_toolbar-disabled   = space.
-    APPEND ls_toolbar TO mt_toolbar.
+    "Toolbar Button INSERT ROW
+    APPEND VALUE #( function   = cl_gui_alv_grid=>mc_fc_loc_insert_row
+                    quickinfo  = 'Insert Row'
+                    icon       = icon_insert_row
+                    disabled   = space ) TO e_object->mt_toolbar.
 
-*... Toolbar Button INSERT ROW
-    CLEAR ls_toolbar.
-    ls_toolbar-function   = cl_gui_alv_grid=>mc_fc_loc_insert_row.
-    ls_toolbar-quickinfo  =  'Insert Row'.
-    ls_toolbar-icon       = icon_insert_row.
-    ls_toolbar-disabled   = space.
-    APPEND ls_toolbar TO mt_toolbar.
 
 *... Toolbar Button DELETE ROW
     CLEAR ls_toolbar.
@@ -2363,7 +2355,6 @@ CLASS lcl_event_handler IMPLEMENTATION.
     ls_toolbar-butn_type  = 3.
     APPEND ls_toolbar TO mt_toolbar.
 
-    APPEND LINES OF mt_toolbar TO e_object->mt_toolbar.
 
   ENDMETHOD.                    "on_toolbar
 
@@ -2646,20 +2637,38 @@ CLASS lcl_event_handler IMPLEMENTATION.
 ENDCLASS."lcl_event_handler IMPLEMENTATION
 
 *&----------------------------------------------------------------------*
-*& CLASS LCX_EXCEPTION IMPLEMENTATION
+*&CLASS LCX_EXCEPTION IMPLEMENTATION
 *&----------------------------------------------------------------------*
 CLASS lcx_exception IMPLEMENTATION.
 
   METHOD constructor.
 
-    super->constructor( textid = CONV #( text ) ).
-    local_text = text.
+    super->constructor( textid = CONV #( im_textid )
+                        previous = CONV #( im_previous ) ) ##OPERATOR[REFERENCE].
+
+    mv_message = COND #( WHEN im_text IS SUPPLIED AND im_text IS NOT INITIAL THEN im_text ).
 
   ENDMETHOD.
 
   METHOD get_text.
 
-    result = me->local_text.
+    result = super->get_text( ).
+
+    IF me->mv_message IS NOT INITIAL.
+      result = COND #( WHEN result IS INITIAL THEN  me->mv_message
+                       WHEN result IS NOT INITIAL THEN |{ result }-{ me->mv_message } | ).
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD get_longtext.
+
+    result = super->get_longtext( ).
+
+    IF me->mv_message IS NOT INITIAL.
+      result = COND #( WHEN result IS INITIAL THEN  me->mv_message
+                       WHEN result IS NOT INITIAL THEN |{ result }-{ me->mv_message } | ).
+    ENDIF.
 
   ENDMETHOD.
 
