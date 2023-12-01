@@ -1443,15 +1443,16 @@ CLASS lcl_main_salv IMPLEMENTATION.
   METHOD event_handling.
 
     "Handler for Double Click Event and User Command(Button) and Hotspot Handling
-    SET HANDLER: lcl_event_handler=>handle_double_click    FOR lo_salv_alv->get_event( ),
-                 lcl_event_handler=>on_user_command        FOR lo_salv_alv->get_event( ),
-                 lcl_event_handler=>handle_hotspot         FOR lo_salv_alv->get_event( ),
-                 lcl_event_handler=>on_end_of_page         FOR lo_salv_alv->get_event( ),
-                 lcl_event_handler=>on_top_of_page         FOR lo_salv_alv->get_event( ),
-                 lcl_event_handler=>on_after_salv_function FOR lo_salv_alv->get_event( ).
+    SET HANDLER: lcl_event_handler=>handle_double_click    FOR lo_salv_alv->get_event( ) ACTIVATION abap_true,
+                 lcl_event_handler=>on_user_command        FOR lo_salv_alv->get_event( ) ACTIVATION abap_true,
+                 lcl_event_handler=>handle_hotspot         FOR lo_salv_alv->get_event( ) ACTIVATION abap_true,
+                 lcl_event_handler=>on_end_of_page         FOR lo_salv_alv->get_event( ) ACTIVATION abap_true,
+                 lcl_event_handler=>on_top_of_page         FOR lo_salv_alv->get_event( ) ACTIVATION abap_true,
+                 lcl_event_handler=>on_after_salv_function FOR lo_salv_alv->get_event( ) ACTIVATION abap_true.
 
     "Set Desired Field Hotspot Enabled
-    lcl_event_handler=>set_hotspot( EXPORTING im_alv = lo_salv_alv im_field = lv_hotspot_field ).
+    lcl_event_handler=>set_hotspot( im_alv   = lo_salv_alv
+                                    im_field = lv_hotspot_field ).
 
   ENDMETHOD.
 
@@ -1465,7 +1466,6 @@ CLASS lcl_main_salv IMPLEMENTATION.
     ENDIF.
 
   ENDMETHOD.
-
 
 ENDCLASS.
 
@@ -1730,17 +1730,17 @@ CLASS lcl_utilities IMPLEMENTATION.
 
   METHOD check_field_exists_in_table.
 
-    SELECT SINGLE @abap_true
-      FROM dd03l
-      INTO @re_exists
+    SELECT SINGLE FROM dd03l
+      FIELDS @abap_true
       WHERE tabname   EQ @im_table
-        AND fieldname EQ @im_field.
+        AND fieldname EQ @im_field
+      INTO @re_exists.
 
   ENDMETHOD.
 
   METHOD convert_to_internal_alpha.
 
-    DATA:wf_data      TYPE REF TO data.
+    DATA:wf_data TYPE REF TO data.
 
 *   Determine the mask(Conversion Exit) and Output Length of the Field
     DATA(lv_edit_mask) = CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_data( im_external ) )->edit_mask.
@@ -1865,8 +1865,8 @@ CLASS lcl_utilities IMPLEMENTATION.
 
   ENDMETHOD.
 
-
 ENDCLASS.
+
 *----------------------------------------------------------------------*
 *       CLASS lcl_salv_edit IMPLEMENTATION
 *----------------------------------------------------------------------*
@@ -1919,7 +1919,7 @@ CLASS lcl_salv_edit IMPLEMENTATION.
 
     ENDCASE.
 
-  ENDMETHOD.                    "get_control_internal
+  ENDMETHOD.
 
   METHOD get_control_rtti.
 
@@ -1943,14 +1943,14 @@ CLASS lcl_salv_edit IMPLEMENTATION.
       e_control_rtti = cl_abap_typedescr=>describe_by_object_ref( lo_control ).
     ENDIF.
 
-  ENDMETHOD.                    "get_control_rtti
+  ENDMETHOD.
 
   METHOD get_control.
 
     CHECK r_control IS REQUESTED.
     get_control_internal( EXPORTING i_salv = i_salv IMPORTING e_control = r_control ).
 
-  ENDMETHOD.                    "get_control
+  ENDMETHOD.
 
   METHOD set_editable.
 
@@ -1971,9 +1971,9 @@ CLASS lcl_salv_edit IMPLEMENTATION.
 
     CHECK i_refresh = abap_true.
     i_salv_table->refresh( ).
-  ENDMETHOD.                    "set_editable
+  ENDMETHOD.
 
-ENDCLASS.                    "lcl_salv_edit IMPLEMENTATION
+ENDCLASS.
 
 *&----------------------------------------------------------------------*
 *& CLASS lcl_event_handler IMPLEMENTATION
@@ -2146,7 +2146,6 @@ CLASS lcl_event_handler IMPLEMENTATION.
     ls_toolbar-butn_type  = 3.
     APPEND ls_toolbar TO mt_toolbar.
 
-
   ENDMETHOD.                    "on_toolbar
 
   METHOD display_details_of_selection.
@@ -2254,7 +2253,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
         error_message  = 2
         OTHERS         = 3.
 
-    IF syst-subrc <> 0.
+    IF syst-subrc IS NOT INITIAL.
       MESSAGE 'Error while Reading Document Object' TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
     ENDIF.
 
@@ -2329,15 +2328,20 @@ CLASS lcl_event_handler IMPLEMENTATION.
   METHOD handle_double_click.
 
     CASE column.
+
       WHEN '&&MARK&&'.
+
         lcl_event_handler=>display_details_of_selection( ).
+
       WHEN OTHERS.
 
         "Flip Toggle TRUE-FALSE
         gv_editable = xsdbool( gv_editable EQ abap_false ).
 
         "OPEN EDIT FOR SPECIFIC COLUMN THAT THE USER DOUBLE CLICKED
-        lcl_salv_edit=>set_editable( i_fieldname = column i_salv_table = go_lcl_main->lo_salv_alv i_editable = gv_editable ).
+        lcl_salv_edit=>set_editable( i_fieldname  = column
+                                     i_salv_table = go_lcl_main->lo_salv_alv
+                                     i_editable   = gv_editable ).
 
     ENDCASE.
 
@@ -2349,11 +2353,9 @@ CLASS lcl_event_handler IMPLEMENTATION.
 
       WHEN 'EDIT'."BUTTON THAT THE USER PRESSES.
 
-        "Flip Toggle TRUE-FALSE
-        gv_editable = xsdbool( gv_editable EQ abap_false ).
-
-        "OPEN ALV EDIT FOR WHOLE TABLE
-        lcl_salv_edit=>set_editable( i_salv_table = go_lcl_main->lo_salv_alv i_editable = gv_editable ).
+        gv_editable = xsdbool( gv_editable EQ abap_false )."Flip Toggle TRUE-FALSE
+        lcl_salv_edit=>set_editable( i_salv_table = go_lcl_main->lo_salv_alv
+                                     i_editable   = gv_editable )."OPEN ALV EDIT FOR WHOLE TABLE
 
       WHEN 'COLUMNS'.
 
@@ -2375,23 +2377,15 @@ CLASS lcl_event_handler IMPLEMENTATION.
 
   METHOD set_hotspot." SET HOTSPOT CLICK FOR A SPECIFIC TABLE COLUMNS
 
-    "Get Column
     TRY.
-        DATA(lo_hotspot_column) = CAST cl_salv_column_table( go_lcl_main->lo_salv_alv->get_columns( )->get_column( im_field ) )."CHANGE HOTSPOT COLUMN DEPENDING ON TABLE
-      CATCH cx_salv_not_found.                          "#EC NO_HANDLER
+        CAST cl_salv_column_table( go_lcl_main->lo_salv_alv->get_columns( )->get_column( im_field ) )->set_cell_type( EXPORTING value = if_salv_c_cell_type=>hotspot ).
+      CATCH cx_salv_not_found cx_salv_data_error cx_sy_ref_is_initial. "#EC NO_HANDLER
     ENDTRY.
 
-    "Set Hotspot
-    TRY.
-        lo_hotspot_column->set_cell_type( EXPORTING value = if_salv_c_cell_type=>hotspot ).
-      CATCH cx_salv_data_error cx_sy_ref_is_initial .   "#EC NO_HANDLER
-    ENDTRY.
+  ENDMETHOD."SET_HOTSPOT
 
-  ENDMETHOD.   "SET_HOTSPOT
+  METHOD handle_hotspot.
 
-  METHOD handle_hotspot." HANDLE THE CLICK ON A SPECIFIC HOTSPOT
-
-    "Get the line of the table that the user Clicked
     ASSIGN <fs_table>[ row ]  TO FIELD-SYMBOL(<fs_structure>).
     CHECK syst-subrc IS INITIAL.
 
@@ -2402,11 +2396,8 @@ CLASS lcl_event_handler IMPLEMENTATION.
 
       WHEN lcl_main_salv=>lc_checkbox .
 
-        IF <fs_field_value> IS INITIAL.
-          <fs_field_value> = abap_true.
-        ELSE.
-          CLEAR <fs_field_value>.
-        ENDIF.
+        <fs_field_value> = COND #( WHEN <fs_field_value> IS INITIAL THEN abap_true
+                                   ELSE abap_false ).
 
         go_lcl_main->lo_salv_alv->refresh( ).
 
@@ -2422,10 +2413,10 @@ CLASS lcl_event_handler IMPLEMENTATION.
 
     ENDCASE.
 
-
   ENDMETHOD.  "HANDLE_HOTSPOT
 
 ENDCLASS."lcl_event_handler IMPLEMENTATION
+
 *----------------------------------------------------------------------*
 * CLASS lcl_sel_screen IMPLEMENTATION
 *----------------------------------------------------------------------*
@@ -2458,34 +2449,33 @@ CLASS lcl_sel_screen IMPLEMENTATION.
     title3    = 'Fiori Version Options'.
     title4    = 'Dynamic Where Clause'.
 
-    t_db      = icon_database_table && 'Database Table'.
-    t_file    = icon_xls && 'Table from Excel File'.
-    t_excel   = icon_open_folder && 'Excel Filepath'.
-    t_sheet   = icon_xls && 'Sheet Name'.
+    t_db      = icon_database_table           && 'Database Table'.
+    t_file    = icon_xls                      && 'Table from Excel File'.
+    t_excel   = icon_open_folder              && 'Excel Filepath'.
+    t_sheet   = icon_xls                      && 'Sheet Name'.
     t_hdesc   = 'Bases on First Row of Excel Table'.
     t_head    = 'Dynamic Column Name'.
-    t_status  = icon_wd_toolbar_caption && 'Custom GUI Status'.
-    t_layout  = icon_alv_variants && 'Layout'.
-    t_names   = icon_wd_input_field && 'Display Technical Names'.
+    t_status  = icon_wd_toolbar_caption       && 'Custom GUI Status'.
+    t_layout  = icon_alv_variants             && 'Layout'.
+    t_names   = icon_wd_input_field           && 'Display Technical Names'.
     t_hits    = 'Maximum no. of hits'.
-    t_icon    = icon_status_open && 'Include Icon Column'.
-    t_popup   = icon_wd_window && 'ALV on Popup'.
-    t_check   = icon_checkbox && 'Include Checkbox Column'.
-    t_hotsp   = icon_simple_field && 'Hotspot Field'.
-    t_doc     = icon_wd_view_set_t_layout_90 && 'ALV at Bottom'.
+    t_icon    = icon_status_open              && 'Include Icon Column'.
+    t_popup   = icon_wd_window                && 'ALV on Popup'.
+    t_check   = icon_checkbox                 && 'Include Checkbox Column'.
+    t_hotsp   = icon_simple_field             && 'Hotspot Field'.
+    t_doc     = icon_wd_view_set_t_layout_90  && 'ALV at Bottom'.
     t_split   = icon_wd_view_set_t_layout_270 && 'ALV Splitted'.
-    t_cont    = icon_context_menu && 'ALV with Context Menu'.
-    t_table   = icon_table_settings && 'Table'.
-    t_stand   = icon_wd_view_container &&'ALV Standard Position'.
-    t_dial    = icon_wd_window && 'ALV in Dialog Box'.
-    t_r1      = icon_sap_gui_session && 'GUI Version'.
-    t_r2      = icon_wd_web_appl_project && 'Fiori Version'.
-    t_colh    = icon_color && 'Hotspot Color'.
-    t_coll    = icon_color && 'Line Color'.
-    t_event   = icon_wd_toolbar && 'GUI Grid Toolbar'.
+    t_cont    = icon_context_menu             && 'ALV with Context Menu'.
+    t_table   = icon_table_settings           && 'Table'.
+    t_stand   = icon_wd_view_container        &&'ALV Standard Position'.
+    t_dial    = icon_wd_window                && 'ALV in Dialog Box'.
+    t_r1      = icon_sap_gui_session          && 'GUI Version'.
+    t_r2      = icon_wd_web_appl_project      && 'Fiori Version'.
+    t_colh    = icon_color                    && 'Hotspot Color'.
+    t_coll    = icon_color                    && 'Line Color'.
+    t_event   = icon_wd_toolbar               && 'GUI Grid Toolbar'.
 
     syst-title = gc_report_heading.
-
 
   ENDMETHOD.
 
@@ -2597,39 +2587,43 @@ CLASS lcl_sel_screen IMPLEMENTATION.
 
   METHOD fields_f4.
 
-    DATA(lt_fields) = VALUE smt_wd_t_field_description( ).
-    DATA(lo_struct_def) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_name( p_table ) ).
+    IF p_table IS NOT INITIAL.
 
-    LOOP AT lo_struct_def->components ASSIGNING FIELD-SYMBOL(<fs_line>).
+      DATA(lt_fields)     = VALUE smt_wd_t_field_description( ).
+      DATA(lo_struct_def) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_name( p_table ) ).
 
-      "GET DATA ELEMENT OF THE COMPONENT
-      DATA(lo_element_def) = CAST cl_abap_elemdescr( lo_struct_def->get_component_type( <fs_line>-name ) ).
-      DATA(lw_field_info) = lo_element_def->get_ddic_field( ).
+      LOOP AT lo_struct_def->components ASSIGNING FIELD-SYMBOL(<fs_line>).
 
-      "GET DESCRIPTION OF THE DATA ELEMENT
-      SELECT SINGLE scrtext_l
-      FROM  dd04t
-      INTO  @DATA(scrtext_l)
-      WHERE rollname EQ @lw_field_info-rollname AND
-            ddlanguage  EQ @syst-langu.
+        "GET DATA ELEMENT OF THE COMPONENT
+        DATA(lo_element_def) = CAST cl_abap_elemdescr( lo_struct_def->get_component_type( <fs_line>-name ) ).
+        DATA(lw_field_info) = lo_element_def->get_ddic_field( ).
 
-      APPEND VALUE #( field = <fs_line>-name description = scrtext_l ) TO lt_fields.
+        "GET DESCRIPTION OF THE DATA ELEMENT
+        SELECT SINGLE FROM  dd04t
+        FIELDS scrtext_l
+        WHERE rollname    EQ @lw_field_info-rollname AND
+              ddlanguage  EQ @syst-langu
+        INTO  @DATA(scrtext_l).
 
-    ENDLOOP.
+        APPEND VALUE #( field = <fs_line>-name description = scrtext_l ) TO lt_fields.
 
-    CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
-      EXPORTING
-        retfield      = 'FIELD'
-        dynpprog      = syst-repid
-        dynpnr        = syst-dynnr
-        dynprofield   = im_fieldname
-        window_title  = 'Table Fields'
-        value_org     = 'S'
-      TABLES
-        value_tab     = lt_fields
-      EXCEPTIONS
-        error_message = 1
-        OTHERS        = 2.
+      ENDLOOP.
+
+      CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+        EXPORTING
+          retfield      = 'FIELD'
+          dynpprog      = syst-repid
+          dynpnr        = syst-dynnr
+          dynprofield   = im_fieldname
+          window_title  = 'Table Fields'
+          value_org     = 'S'
+        TABLES
+          value_tab     = lt_fields
+        EXCEPTIONS
+          error_message = 1
+          OTHERS        = 2.
+
+    ENDIF.
 
   ENDMETHOD.
 
