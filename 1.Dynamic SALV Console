@@ -150,7 +150,8 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
 
   PRIVATE SECTION.
 
-    DATA: lv_layout                 TYPE disvariant-variant,
+    DATA: lr_table                  TYPE REF TO data,
+          lv_layout                 TYPE disvariant-variant,
           lv_technical_names        TYPE flag,
           lv_hotspot_field          TYPE lvc_fname,
           lv_hotspot_color          TYPE lvc_col,
@@ -642,11 +643,10 @@ CLASS lcl_main_salv IMPLEMENTATION.
       ENDTRY.
 
       "Data to handle the new table type
-      DATA:lo_data_table TYPE REF TO data.
-      CREATE DATA lo_data_table TYPE HANDLE lo_new_table.
+      CREATE DATA me->lr_table TYPE HANDLE lo_new_table.
 
       "New internal table in fieldsymbol
-      ASSIGN lo_data_table->* TO <fs_table>.
+      ASSIGN me->lr_table->* TO <fs_table>.
 
       "MAP VALUE TABLE TO STRUCTURED TABLE
       lcl_utilities=>get_structured_table_from_gen(
@@ -665,7 +665,6 @@ CLASS lcl_main_salv IMPLEMENTATION.
       lv_data_source = lcl_main_salv=>database.
 
       "Build Components of Dynamic Table
-      DATA:lo_data  TYPE REF TO data.
 
       DATA(lt_tot_comp) = VALUE cl_abap_structdescr=>component_table(
                             ( name = lc_cell_style  type = CAST #( cl_abap_elemdescr=>describe_by_name( 'salv_t_int4_column' ) ) )
@@ -696,10 +695,10 @@ CLASS lcl_main_salv IMPLEMENTATION.
       ENDTRY.
 
       "Data to handle the new table type
-      CREATE DATA lo_data TYPE HANDLE lo_new_tab.
+      CREATE DATA me->lr_table TYPE HANDLE lo_new_tab.
 
       "New internal table in fieldsymbol
-      ASSIGN lo_data->* TO <fs_table>.
+      ASSIGN me->lr_table->* TO <fs_table>.
 
       "Build Dynamic Where Clause
       IF ( im_field IS NOT INITIAL ) AND ( im_comp IS NOT INITIAL ) AND ( im_val IS NOT INITIAL ) .
@@ -738,31 +737,34 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
       "Color Hotspot Field
       IF lv_hotspot_field IS NOT INITIAL AND lv_hotspot_color IS NOT INITIAL AND <lv_color_value> IS ASSIGNED.
-        <lv_color_value> = VALUE lvc_t_scol( ( fname = lv_hotspot_field color-col = lv_hotspot_color color-int = 0 color-inv = 0 ) ).
+        <lv_color_value> = VALUE lvc_t_scol( ( fname = lv_hotspot_field
+                                               color-col = lv_hotspot_color
+                                               color-int = 0
+                                               color-inv = 0 ) ).
       ENDIF.
 
       "Color of Lines
       IF lv_line_color IS NOT INITIAL AND <lv_color_value> IS ASSIGNED .
-        <lv_color_value> = VALUE lvc_t_scol( ( color-col = lv_line_color color-int = 0 color-inv = 0 ) ).
+        <lv_color_value> = VALUE lvc_t_scol( ( color-col = lv_line_color
+                                               color-int = 0
+                                               color-inv = 0 ) ).
       ENDIF.
 
       "Set Cell Style
       IF <lv_cell_style> IS ASSIGNED.
-        <lv_cell_style> = VALUE salv_t_int4_column( ( columnname = 'COLUMN_NAME'  value = if_salv_c_cell_type=>button ) ).
+        <lv_cell_style> = VALUE salv_t_int4_column( ( columnname = 'COLUMN_NAME'
+                                                      value      = if_salv_c_cell_type=>button ) ).
       ENDIF.
 
       "Icons
       IF <lv_icon_value> IS ASSIGNED.
-        CASE syst-tabix MOD 4.
-          WHEN 1.
-            <lv_icon_value> =  icon_green_light.
-          WHEN 2.
-            <lv_icon_value> =  icon_cancel.
-          WHEN 3.
-            <lv_icon_value> = icon_locked.
-          WHEN OTHERS.
-            <lv_icon_value> = icon_address.
-        ENDCASE.
+
+        <lv_icon_value> = switch #( syst-tabix mod 4
+                                    when 1 then icon_green_light
+                                    when 2 then icon_cancel
+                                    when 3 then icon_locked
+                                    else icon_address ).
+
       ENDIF.
 
     ENDLOOP.
@@ -803,8 +805,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
         WHEN lcl_main_salv=>bottom."ALV IN DOCKING CONTAINER
 
           DATA(o_docking_container) = NEW cl_gui_docking_container( no_autodef_progid_dynnr = abap_true
-                                                       side = cl_gui_docking_container=>dock_at_bottom
-                                                       ratio = 90 ).
+                                                                    side                    = cl_gui_docking_container=>dock_at_bottom
+                                                                    ratio                   = 90 ).
           TRY.
               cl_salv_table=>factory( EXPORTING
                                        r_container    = o_docking_container
@@ -1250,8 +1252,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
         lo_salv_alv->get_functional_settings( )->get_specific_groups(:
                                                                 )->add_specific_group( id   = 'AMOU' text = 'Amounts' ),
                                                                 )->add_specific_group( id   = 'DATE' text = 'Dates' ),
-                                                                )->add_specific_group( id   = 'NCHA'  text = 'Numerical Characters' ),
-                                                                )->add_specific_group( id   = 'CHAR'  text = 'Character Fields' ).
+                                                                )->add_specific_group( id   = 'NCHA' text = 'Numerical Characters' ),
+                                                                )->add_specific_group( id   = 'CHAR' text = 'Character Fields' ).
 
       CATCH cx_salv_existing.                           "#EC NO_HANDLER
     ENDTRY.
@@ -1313,29 +1315,30 @@ CLASS lcl_main_salv IMPLEMENTATION.
                                       )->set_vertical_lines( abap_true ).
     "Layout Settings
     lo_salv_alv->get_layout(:
-                            )->set_key( value = VALUE salv_s_layout_key( report = syst-repid ) ),"Save the Layout Key.Unique key identifies the Differenet ALVs
-                            )->set_default( abap_true )," Set usage of default layouts
-                            )->set_save_restriction( if_salv_c_layout=>restrict_none ),"Remove Save layout Restriction
-                            )->set_initial_layout( lv_layout )."Set Initial Layout.If Layout doesnt exist it will display the default
+                            )->set_key( value = VALUE salv_s_layout_key( report = syst-repid ) ),
+                            )->set_default( abap_true ),
+                            )->set_save_restriction( if_salv_c_layout=>restrict_none ),
+                            )->set_initial_layout( COND #( WHEN lv_layout IS NOT INITIAL THEN lv_layout ) ).
 
 
   ENDMETHOD.
 
   METHOD header_creation.
 
-    IF lv_version EQ lcl_main_salv=>gui."ALV Header for Container
+    IF lv_version EQ lcl_main_salv=>gui.
 
       lo_salv_alv->get_display_settings( :
           )->set_list_header_size( cl_salv_display_settings=>c_header_size_medium ),
           )->set_list_header( |The List Generated by { syst-uname  } at { syst-datum  DATE = USER } { syst-uzeit  TIME = USER }.Entries:{ lines( <fs_table> ) } | ).
 
-    ELSEIF lv_version EQ lcl_main_salv=>fiori." ALV Header for Fiori Version
+    ELSEIF lv_version EQ lcl_main_salv=>fiori.
 
       lo_salv_alv->get_display_settings(:
       )->set_list_header_size( cl_salv_display_settings=>c_header_size_medium ),
       )->set_list_header( |Number of Retrieved Entries: { lines( <fs_table> ) } | ).
 
       me->header_creation_fiori( ).
+
     ENDIF.
 
   ENDMETHOD.
