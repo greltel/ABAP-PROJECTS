@@ -36,7 +36,7 @@ you can use it as a utility to display any table of the system plus display your
 
 Upload XML file and map it directly to Internal Table.
 
-## Project 3: Count Unique-Multiple Values of Internal Table Dynamically
+## Project 3: Dynamic Count of Unique-Multiple Values of Internal Table
 
 Use the Static Class Method to Retrieve Unique and Multiple values of Any Table.
 
