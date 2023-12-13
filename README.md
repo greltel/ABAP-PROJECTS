@@ -32,7 +32,7 @@ hide/show empty columns of table and edit button. The whole point of this projec
 cl_salv_table based ALV even though there are limitations compared to cl_gui_alv_grid. We call this project Console because
 you can use it as a utility to display any table of the system plus display your own Excel file.
 
-## Project 2: XML to Internal Table
+## Project 2: Dynamic XML To Internal Table
 
 Upload XML file and map it directly to Internal Table.
 
