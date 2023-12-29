@@ -478,23 +478,23 @@ PARAMETERS: p_popup AS CHECKBOX DEFAULT space MODIF ID id2.
 SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_col_s FOR FIELD p_col_s MODIF ID id5.
-PARAMETERS: p_col_s TYPE i DEFAULT 1 MODIF ID id5.
+SELECTION-SCREEN COMMENT 1(26) t_col_s FOR FIELD p_col_s MODIF ID id2.
+PARAMETERS: p_col_s TYPE i DEFAULT 1 MODIF ID id2.
 SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_col_e FOR FIELD p_col_e MODIF ID id5.
-PARAMETERS: p_col_e TYPE i DEFAULT 140 MODIF ID id5.
+SELECTION-SCREEN COMMENT 1(26) t_col_e FOR FIELD p_col_e MODIF ID id2.
+PARAMETERS: p_col_e TYPE i DEFAULT 140 MODIF ID id2.
 SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_lin_s FOR FIELD p_lin_s MODIF ID id5.
-PARAMETERS: p_lin_s TYPE i DEFAULT 1 MODIF ID id5.
+SELECTION-SCREEN COMMENT 1(26) t_lin_s FOR FIELD p_lin_s MODIF ID id2.
+PARAMETERS: p_lin_s TYPE i DEFAULT 1 MODIF ID id2.
 SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(26) t_lin_e FOR FIELD p_lin_e MODIF ID id5.
-PARAMETERS: p_lin_e TYPE i DEFAULT 30 MODIF ID id5.
+SELECTION-SCREEN COMMENT 1(26) t_lin_e FOR FIELD p_lin_e MODIF ID id2.
+PARAMETERS: p_lin_e TYPE i DEFAULT 30 MODIF ID id2.
 SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN BEGIN OF LINE.
@@ -2093,13 +2093,9 @@ CLASS lcl_event_handler IMPLEMENTATION.
         error  = 1
         OTHERS = 2 ).
 
-    sender->register_delayed_event(
-      EXPORTING
-        i_event_id =  sender->mc_evt_delayed_change_select
-      EXCEPTIONS
-        error      = 1
-        OTHERS     = 2 ).
-
+    sender->register_delayed_event( EXPORTING  i_event_id = sender->mc_evt_delayed_change_select
+                                    EXCEPTIONS error      = 1
+                                               OTHERS     = 2 ).
 
     sender->get_frontend_fieldcatalog(
       IMPORTING
@@ -2477,43 +2473,42 @@ CLASS lcl_sel_screen IMPLEMENTATION.
                            ( color = 6  color_descr = 'Red'        )
                            ( color = 7  color_descr = 'Orange'     ) ).
 
-    title0    = 'Table Selection'.
-    title05   = 'Excel Options'.
-    title1    = 'ALV General Options'.
-    title2    = 'GUI Version Options'.
-    title3    = 'Fiori Version Options'.
-    title4    = 'Dynamic Where Clause'.
+    title0     = 'Table Selection'.
+    title05    = 'Excel Options'.
+    title1     = 'ALV General Options'.
+    title2     = 'GUI Version Options'.
+    title3     = 'Fiori Version Options'.
+    title4     = 'Dynamic Where Clause'.
 
-    t_col_s   = icon_draw_linear              && 'Column Start'.
-    t_col_e   = icon_draw_linear              && 'Column End'.
-    t_lin_s   = icon_draw_linear              && 'Line Start'.
-    t_lin_e   = icon_draw_linear              && 'Line End'.
-    t_db      = icon_database_table           && 'Database Table'.
-    t_file    = icon_xls                      && 'Table from Excel File'.
-    t_excel   = icon_open_folder              && 'Excel Filepath'.
-    t_sheet   = icon_xls                      && 'Sheet Name'.
-    t_hdesc   = 'Bases on First Row of Excel Table'.
-    t_head    = 'Dynamic Column Name'.
-    t_status  = icon_wd_toolbar_caption       && 'Custom GUI Status'.
-    t_layout  = icon_alv_variants             && 'Layout'.
-    t_names   = icon_wd_input_field           && 'Display Technical Names'.
-    t_hits    = 'Maximum no. of hits'.
-    t_icon    = icon_status_open              && 'Include Icon Column'.
-    t_popup   = icon_wd_window                && 'ALV on Popup'.
-    t_check   = icon_checkbox                 && 'Include Checkbox Column'.
-    t_hotsp   = icon_simple_field             && 'Hotspot Field'.
-    t_doc     = icon_wd_view_set_t_layout_90  && 'ALV at Bottom'.
-    t_split   = icon_wd_view_set_t_layout_270 && 'ALV Splitted'.
-    t_cont    = icon_context_menu             && 'ALV with Context Menu'.
-    t_table   = icon_table_settings           && 'Table'.
-    t_stand   = icon_wd_view_container        &&'ALV Standard Position'.
-    t_dial    = icon_wd_window                && 'ALV in Dialog Box'.
-    t_r1      = icon_sap_gui_session          && 'GUI Version'.
-    t_r2      = icon_wd_web_appl_project      && 'Fiori Version'.
-    t_colh    = icon_color                    && 'Hotspot Color'.
-    t_coll    = icon_color                    && 'Line Color'.
-    t_event   = icon_wd_toolbar               && 'GUI Grid Toolbar'.
-
+    t_col_s    = icon_draw_linear              && 'Column Start'.
+    t_col_e    = icon_draw_linear              && 'Column End'.
+    t_lin_s    = icon_draw_linear              && 'Line Start'.
+    t_lin_e    = icon_draw_linear              && 'Line End'.
+    t_db       = icon_database_table           && 'Database Table'.
+    t_file     = icon_xls                      && 'Table from Excel File'.
+    t_excel    = icon_open_folder              && 'Excel Filepath'.
+    t_sheet    = icon_xls                      && 'Sheet Name'.
+    t_hdesc    = 'Bases on First Row of Excel Table'.
+    t_head     = 'Dynamic Column Name'.
+    t_status   = icon_wd_toolbar_caption       && 'Custom GUI Status'.
+    t_layout   = icon_alv_variants             && 'Layout'.
+    t_names    = icon_wd_input_field           && 'Display Technical Names'.
+    t_hits     = 'Maximum no. of hits'.
+    t_icon     = icon_status_open              && 'Include Icon Column'.
+    t_popup    = icon_wd_window                && 'ALV on Popup'.
+    t_check    = icon_checkbox                 && 'Include Checkbox Column'.
+    t_hotsp    = icon_simple_field             && 'Hotspot Field'.
+    t_doc      = icon_wd_view_set_t_layout_90  && 'ALV at Bottom'.
+    t_split    = icon_wd_view_set_t_layout_270 && 'ALV Splitted'.
+    t_cont     = icon_context_menu             && 'ALV with Context Menu'.
+    t_table    = icon_table_settings           && 'Table'.
+    t_stand    = icon_wd_view_container        &&'ALV Standard Position'.
+    t_dial     = icon_wd_window                && 'ALV in Dialog Box'.
+    t_r1       = icon_sap_gui_session          && 'GUI Version'.
+    t_r2       = icon_wd_web_appl_project      && 'Fiori Version'.
+    t_colh     = icon_color                    && 'Hotspot Color'.
+    t_coll     = icon_color                    && 'Line Color'.
+    t_event    = icon_wd_toolbar               && 'GUI Grid Toolbar'.
     syst-title = gc_report_heading.
 
   ENDMETHOD.
@@ -2526,11 +2521,10 @@ CLASS lcl_sel_screen IMPLEMENTATION.
 
       ls_screen-display_3d = COND #( WHEN ls_screen-name EQ 'T_HITS' THEN '1' ).
 
-      ls_screen-active     = COND #( WHEN r1   EQ abap_true AND ls_screen-group1   EQ 'ID2' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
-*                                    WHEN r2   EQ abap_true AND ls_screen-group1   EQ 'ID5' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
-                                     WHEN r2   EQ abap_true AND ( ls_screen-group1 EQ 'ID1'  ) THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
-                                     WHEN db   EQ abap_true AND ls_screen-group1   EQ 'ID3' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
-                                     WHEN file EQ abap_true AND ls_screen-group1   EQ 'ID4' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible ).
+      ls_screen-active     = COND #( WHEN r1   EQ abap_true AND ls_screen-group1  EQ 'ID2' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                                     WHEN r2   EQ abap_true AND ls_screen-group1  EQ 'ID1' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                                     WHEN db   EQ abap_true AND ls_screen-group1  EQ 'ID3' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                                     WHEN file EQ abap_true AND ls_screen-group1  EQ 'ID4' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible ).
 
       MODIFY SCREEN FROM ls_screen.
 
