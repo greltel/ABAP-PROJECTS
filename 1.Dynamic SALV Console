@@ -2143,11 +2143,6 @@ CLASS lcl_event_handler IMPLEMENTATION.
 
   METHOD on_toolbar.
 
-    DATA: lo_grid    TYPE REF TO cl_gui_alv_grid,
-          ls_layout  TYPE lvc_s_layo,
-          mt_toolbar TYPE ttb_button,
-          ls_toolbar LIKE LINE OF mt_toolbar.
-
     "Toolbar Seperator
     APPEND VALUE #( function   = cl_gui_alv_grid=>mc_fc_separator
                     butn_type  = 3 ) TO e_object->mt_toolbar.
@@ -2165,37 +2160,29 @@ CLASS lcl_event_handler IMPLEMENTATION.
                     disabled   = space ) TO e_object->mt_toolbar.
 
 
-*... Toolbar Button DELETE ROW
-    CLEAR ls_toolbar.
-    ls_toolbar-function   = cl_gui_alv_grid=>mc_fc_loc_delete_row.
-    ls_toolbar-quickinfo  = 'Delete Row'.
-    ls_toolbar-icon       = icon_delete_row.
-    ls_toolbar-disabled   = space.
-    APPEND ls_toolbar TO mt_toolbar.
+    "Toolbar Button DELETE ROW
+    APPEND VALUE #( function   = cl_gui_alv_grid=>mc_fc_loc_delete_row
+                    quickinfo  = 'Delete Row'
+                    icon       = icon_delete_row
+                    disabled   = space ) TO e_object->mt_toolbar.
 
-*... Toolbar Button COPY ROW
-    CLEAR ls_toolbar.
-    ls_toolbar-function   = cl_gui_alv_grid=>mc_fc_loc_copy_row.
-    ls_toolbar-quickinfo  =  'Copy Row'.
-    ls_toolbar-icon       = icon_copy_object.
-    ls_toolbar-disabled   = space.
-    APPEND ls_toolbar TO mt_toolbar.
+    "Toolbar Button COPY ROW
+    APPEND VALUE #( function   = cl_gui_alv_grid=>mc_fc_loc_copy_row
+                    quickinfo  =  'Copy Row'
+                    icon       = icon_copy_object
+                    disabled   = space ) TO e_object->mt_toolbar.
 
-*... Toolbar Button UNDO
-    CLEAR ls_toolbar.
-    ls_toolbar-function   = cl_gui_alv_grid=>mc_fc_loc_undo.
-    ls_toolbar-quickinfo  = 'Undo'.
-    ls_toolbar-icon       = icon_system_undo.
-    ls_toolbar-disabled   = space.
-    APPEND ls_toolbar TO mt_toolbar.
+    "Toolbar Button UNDO
+    APPEND VALUE #( function   = cl_gui_alv_grid=>mc_fc_loc_undo
+                    quickinfo  = 'Undo'
+                    icon       = icon_system_undo
+                    disabled   = space ) TO e_object->mt_toolbar.
 
-*... Toolbar Separator
-    CLEAR ls_toolbar.
-    ls_toolbar-function   = cl_gui_alv_grid=>mc_fc_separator.
-    ls_toolbar-butn_type  = 3.
-    APPEND ls_toolbar TO mt_toolbar.
+    "Toolbar Separator
+    APPEND VALUE #( function   = cl_gui_alv_grid=>mc_fc_separator
+                    butn_type  = 3 ) TO e_object->mt_toolbar.
 
-  ENDMETHOD.                    "on_toolbar
+  ENDMETHOD."on_toolbar
 
   METHOD display_details_of_selection.
 
