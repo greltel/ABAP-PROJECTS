@@ -2573,32 +2573,24 @@ CLASS lcl_sel_screen IMPLEMENTATION.
 
     IF p_coll IS NOT INITIAL.
 
-      TRY.
-          t_descl = me->t_color[ color = p_coll ]-color_descr.
-        CATCH cx_sy_itab_line_not_found.
-      ENDTRY.
+      t_descl = COND #( WHEN line_exists( me->t_color[ color = p_coll ] )
+                        THEN me->t_color[ color = p_coll ]-color_descr
+                        ELSE space ).
 
-    ELSE.
-      CLEAR t_descl.
     ENDIF.
 
     IF p_colh IS NOT INITIAL.
 
-      TRY.
-          t_desch = me->t_color[ color = p_colh ]-color_descr.
-        CATCH cx_sy_itab_line_not_found.
-      ENDTRY.
-    ELSE.
-      CLEAR t_desch.
+      t_desch = COND #( WHEN line_exists( me->t_color[ color = p_colh ] )
+                        THEN me->t_color[ color = p_colh ]-color_descr
+                        ELSE space ).
+
     ENDIF.
 
     IF p_layout IS NOT INITIAL.
 
-      DATA(lt_layout) = cl_salv_layout_service=>get_layouts( EXPORTING s_key =  VALUE salv_s_layout_key( report = syst-repid ) ).
-      TRY.
-          t_ldescr  = lt_layout[ layout = p_layout ]-text.
-        CATCH cx_sy_itab_line_not_found.
-      ENDTRY.
+      DATA(lt_layout) = cl_salv_layout_service=>get_layouts( EXPORTING s_key = VALUE salv_s_layout_key( report = syst-repid ) ).
+      t_ldescr  = VALUE #( lt_layout[ layout = p_layout ]-text OPTIONAL ).
 
     ELSE.
       CLEAR t_ldescr.
