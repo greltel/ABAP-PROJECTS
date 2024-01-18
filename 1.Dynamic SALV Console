@@ -485,27 +485,27 @@ SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE title3.
 
   SELECTION-SCREEN BEGIN OF LINE.
     SELECTION-SCREEN COMMENT 1(26) t_popup FOR FIELD p_popup MODIF ID id2.
-    PARAMETERS: p_popup AS CHECKBOX DEFAULT space MODIF ID id2.
+    PARAMETERS: p_popup AS CHECKBOX DEFAULT space MODIF ID id2 USER-COMMAND dummy.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_col_s FOR FIELD p_col_s MODIF ID id2.
-    PARAMETERS: p_col_s TYPE i DEFAULT 1 MODIF ID id2.
+    SELECTION-SCREEN COMMENT 1(26) t_col_s FOR FIELD p_col_s MODIF ID id5.
+    PARAMETERS: p_col_s TYPE i DEFAULT 1 MODIF ID id5.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_col_e FOR FIELD p_col_e MODIF ID id2.
-    PARAMETERS: p_col_e TYPE i DEFAULT 140 MODIF ID id2.
+    SELECTION-SCREEN COMMENT 1(26) t_col_e FOR FIELD p_col_e MODIF ID id5.
+    PARAMETERS: p_col_e TYPE i DEFAULT 140 MODIF ID id5.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_lin_s FOR FIELD p_lin_s MODIF ID id2.
-    PARAMETERS: p_lin_s TYPE i DEFAULT 1 MODIF ID id2.
+    SELECTION-SCREEN COMMENT 1(26) t_lin_s FOR FIELD p_lin_s MODIF ID id5.
+    PARAMETERS: p_lin_s TYPE i DEFAULT 1 MODIF ID id5.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_lin_e FOR FIELD p_lin_e MODIF ID id2.
-    PARAMETERS: p_lin_e TYPE i DEFAULT 30 MODIF ID id2.
+    SELECTION-SCREEN COMMENT 1(26) t_lin_e FOR FIELD p_lin_e MODIF ID id5.
+    PARAMETERS: p_lin_e TYPE i DEFAULT 30 MODIF ID id5.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
@@ -2526,10 +2526,10 @@ CLASS lcl_sel_screen IMPLEMENTATION.
 
       ls_screen-display_3d = COND #( WHEN ls_screen-name EQ 'T_HITS' THEN '1' ).
 
-      ls_screen-active     = COND #( WHEN r1   EQ abap_true AND ls_screen-group1  EQ 'ID2' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
-                                     WHEN r2   EQ abap_true AND ls_screen-group1  EQ 'ID1' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
-                                     WHEN db   EQ abap_true AND ls_screen-group1  EQ 'ID3' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
-                                     WHEN file EQ abap_true AND ls_screen-group1  EQ 'ID4' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible ).
+      ls_screen-active     = COND #( WHEN r1   EQ abap_true AND ( ls_screen-group1 EQ 'ID2' OR ls_screen-group1 EQ 'ID5' ) THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                                     WHEN r2   EQ abap_true AND   ls_screen-group1 EQ 'ID1' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                                     WHEN db   EQ abap_true AND   ls_screen-group1 EQ 'ID3' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                                     WHEN file EQ abap_true AND   ls_screen-group1 EQ 'ID4' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible ).
 
       MODIFY SCREEN FROM ls_screen.
 
@@ -2544,7 +2544,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
         INTO @t_descr.
 
       IF syst-subrc NE /accgo/if_cas_constants=>gc_sysubrc_success.
-        CLEAR:t_descr.
+        CLEAR t_descr.
       ENDIF.
 
     ENDIF.
@@ -2565,7 +2565,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
 
       ELSE.
 
-        CLEAR: h_descr.
+        CLEAR h_descr.
 
       ENDIF.
 
@@ -2579,7 +2579,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
       ENDTRY.
 
     ELSE.
-      CLEAR:t_descl.
+      CLEAR t_descl.
     ENDIF.
 
     IF p_colh IS NOT INITIAL.
@@ -2589,7 +2589,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
         CATCH cx_sy_itab_line_not_found.
       ENDTRY.
     ELSE.
-      CLEAR:t_desch.
+      CLEAR t_desch.
     ENDIF.
 
     IF p_layout IS NOT INITIAL.
@@ -2601,7 +2601,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
       ENDTRY.
 
     ELSE.
-      CLEAR:t_ldescr.
+      CLEAR t_ldescr.
     ENDIF.
 
   ENDMETHOD.
