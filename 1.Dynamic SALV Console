@@ -178,6 +178,10 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_event_handler lcl
 
     METHODS:
       create_alv              RAISING lcx_exception,
+      get_docking_container   RETURNING VALUE(re_container) TYPE REF TO cl_gui_docking_container,
+      get_splitter_container  RETURNING VALUE(re_container) TYPE REF TO cl_gui_container,
+      get_dialog_container    RETURNING VALUE(re_container) TYPE REF TO cl_gui_dialogbox_container,
+      get_context_menu_container RETURNING VALUE(re_container) TYPE REF TO cl_gui_container,
       field_catalog           RAISING lcx_exception,
       column_properties       RAISING lcx_exception,
       display_settings_header RAISING lcx_exception,
@@ -835,230 +839,174 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD display_data.
 
-*----------------------------INSTANTIATE ALV OBJECT----------------------------*
     me->create_alv( ).
-*----------------------FIELD CATALOG-FIELD LABELS------------------------------*
     me->field_catalog( ).
-*-------------------COLUMN MANIPULATION-SORT-AGGREGATION-COLOUR----------------*
     me->column_properties( ).
-*--------------------LAYOUTSETTINGS-DISPLAY SETTINGS-------------------*
     me->display_settings_header( ).
-*--------------------------------HEADER----------------------------------------*
     me->header_creation( ).
-*--------------------------------FOOTER----------------------------------------*
     me->footer_creation( ).
-*------------------------FUNCTIONS-TOOLBAR-CUSTOM STATUS-----------------------*
     me->toolbar_status( ).
-*----------------------------Handle GUI Grid Events----------------------------*
     me->handle_gui_grid_events( ).
-*---------------------------------EVENT HANDLING-------------------------------*
     me->event_handling( ).
-*--------------------------------ALV DISPLAY-----------------------------------*
     me->display_alv( ).
 
   ENDMETHOD.
 
   METHOD create_alv.
 
-    IF me->lv_version EQ lcl_main_salv=>gui."GUI VERSION.
+    CASE me->lv_version.
 
-      CASE me->lv_container.
+      WHEN lcl_main_salv=>gui.
 
-        WHEN lcl_main_salv=>bottom."ALV IN DOCKING CONTAINER
+        TRY.
+            cl_salv_table=>factory( EXPORTING r_container   = SWITCH #( me->lv_container
+                                                                        WHEN lcl_main_salv=>bottom   THEN me->get_docking_container( )
+                                                                        WHEN lcl_main_salv=>standard THEN cl_gui_container=>default_screen
+                                                                        WHEN lcl_main_salv=>splitter THEN me->get_splitter_container( )
+                                                                        WHEN lcl_main_salv=>dialog   THEN me->get_dialog_container( )
+                                                                        WHEN lcl_main_salv=>context  THEN me->get_context_menu_container( ) )
+                                              list_display  = if_salv_c_bool_sap=>false
+                                    IMPORTING r_salv_table  = me->lo_salv_alv
+                                    CHANGING  t_table       = <fs_table> ).
+          CATCH cx_salv_msg.                            "#EC NO_HANDLER
+        ENDTRY.
 
-          DATA(o_docking_container) = NEW cl_gui_docking_container( no_autodef_progid_dynnr = abap_true
-                                                                    side                    = cl_gui_docking_container=>dock_at_bottom
-                                                                    ratio                   = 90 ).
-          TRY.
-              cl_salv_table=>factory( EXPORTING
-                                       r_container    = o_docking_container
-                                     IMPORTING
-                                       r_salv_table   = me->lo_salv_alv
-                                     CHANGING
-                                       t_table        = <fs_table> ).
-            CATCH cx_salv_msg.                          "#EC NO_HANDLER
-          ENDTRY.
+      WHEN lcl_main_salv=>fiori.
 
-        WHEN lcl_main_salv=>standard ."ALV IN CUSTOM CONTAINER
+        TRY.
+            cl_salv_table=>factory( EXPORTING list_display  = if_salv_c_bool_sap=>false
+                                    IMPORTING r_salv_table  = me->lo_salv_alv
+                                    CHANGING  t_table       = <fs_table> ).
+          CATCH cx_salv_msg.                            "#EC NO_HANDLER
+        ENDTRY.
 
-          TRY.
-              cl_salv_table=>factory(
-                  EXPORTING
-                    r_container    = cl_gui_container=>default_screen
-                    list_display   = if_salv_c_bool_sap=>false
-                  IMPORTING
-                    r_salv_table   = me->lo_salv_alv
-                  CHANGING
-                    t_table        = <fs_table> ).
-            CATCH cx_salv_msg.                          "#EC NO_HANDLER
-          ENDTRY.
+        IF me->lv_popup EQ abap_true.
 
+          me->lo_salv_alv->set_screen_popup( start_column = me->ls_popup_dimensions-column_start
+                                             end_column   = me->ls_popup_dimensions-column_end
+                                             start_line   = me->ls_popup_dimensions-line_start
+                                             end_line     = me->ls_popup_dimensions-line_end ).
 
-        WHEN lcl_main_salv=>splitter."ALV IN SPLITTER CONTAINER
+        ENDIF.
 
-          DATA(o_splitter_container) = NEW cl_gui_splitter_container( parent                  = cl_gui_container=>default_screen
-                                                                      no_autodef_progid_dynnr = abap_true
-                                                                      rows                    = 1
-                                                                      columns                 = 2 ).
-
-          DATA(o_spl_left) = o_splitter_container->get_container( row = 1 column = 1 ).
-
-          TRY.
-              cl_salv_table=>factory(
-                  EXPORTING
-                    r_container    = o_spl_left
-                    list_display   = if_salv_c_bool_sap=>false
-                  IMPORTING
-                    r_salv_table   = me->lo_salv_alv
-                  CHANGING
-                    t_table        = <fs_table> ).
-            CATCH cx_salv_msg.                          "#EC NO_HANDLER
-          ENDTRY.
-
-        WHEN lcl_main_salv=>dialog."ALV IN DIALOG BOX
-
-          DATA(o_gui_cnt) = NEW cl_gui_dialogbox_container( no_autodef_progid_dynnr = abap_true
-                                                            caption = 'ALV in Dialog Box'
-                                                            top = 20
-                                                            left = 20
-                                                            width = 1280
-                                                            height = 400 ).
-
-          TRY.
-              cl_salv_table=>factory(
-                  EXPORTING
-                    r_container    = o_gui_cnt
-                    list_display   = if_salv_c_bool_sap=>false
-                  IMPORTING
-                    r_salv_table   = me->lo_salv_alv
-                  CHANGING
-                    t_table        = <fs_table> ).
-            CATCH cx_salv_msg.                          "#EC NO_HANDLER
-          ENDTRY.
-
-        WHEN lcl_main_salv=>context."ALV WITH CONTEXT MENU
-
-          "CREATE SPLITTER
-          DATA(o_splitter) = NEW cl_gui_splitter_container( parent = cl_gui_container=>default_screen
-                                                  no_autodef_progid_dynnr = abap_true
-                                                  rows = 2
-                                                  columns = 1 ).
-
-          "ABSOLUTE ROW HEIGHT
-          o_splitter->set_row_mode( mode = cl_gui_splitter_container=>mode_absolute ).
-
-          "ABSOLUTE HEIGHT 24 PIXELS FOR SPLITTER ABOVE
-          o_splitter->set_row_height( id = 1 height = 24 ).
-
-          "Splitter for top container fixed and hidden
-          o_splitter->set_row_sash( id    = 1
-                                    type  = cl_gui_splitter_container=>type_movable
-                                    value = cl_gui_splitter_container=>false ).
-
-          o_splitter->set_row_sash( id    = 1
-                                    type  = cl_gui_splitter_container=>type_sashvisible
-                                    value = cl_gui_splitter_container=>false ).
-
-          "Create Top and Bottom Custom Container
-          DATA(o_container_top)    = o_splitter->get_container( row = 1 column = 1 ).
-          DATA(o_container_bottom) = o_splitter->get_container( row = 2 column = 1 ).
-
-          "Horizontal Toolbar
-          DATA(o_tool) = NEW cl_gui_toolbar( parent       = o_container_top
-                                             display_mode = cl_gui_toolbar=>m_mode_horizontal ).
-
-          "Register of Event Types.Must be registered Separately
-          TYPES: ty_it_events TYPE STANDARD TABLE OF cntl_simple_event WITH DEFAULT KEY.
-          DATA(it_events) = VALUE ty_it_events( ( eventid = cl_gui_toolbar=>m_id_function_selected
-                                        appl_event = abap_true ) ).
-
-          o_tool->set_registered_events( events = it_events ).
-
-          "Add toolbar buttons. Button types are defined in type group CNTB
-          o_tool->add_button( fcode       = 'BTN_MENU'
-                              icon        = icon_activate
-                              butn_type   = cntb_btype_menu
-                              text        = 'Menu'
-                              quickinfo   = 'Menu'
-                              is_checked  = abap_false
-                              is_disabled = abap_false ).
-
-          DATA(o_menu) = NEW cl_ctmenu( ).
-          o_menu->add_function( fcode    = 'F1'
-                                 checked = abap_false
-                                 text    = 'Function1' ).
-
-          o_menu->add_function( fcode     = 'F2'
-                                  checked = abap_false
-                                  text    = 'Function2' ).
-
-
-          DATA(it_ctxmenu) = VALUE ttb_btnmnu( ( function = 'BTN_MENU'
-                                                 ctmenu   = o_menu ) ).
-
-          o_tool->assign_static_ctxmenu_table( it_ctxmenu ).
-
-          "Separator
-          o_tool->add_button( fcode       = ''
-                              icon        = ''
-                              butn_type   = cntb_btype_sep
-                              text        = ''
-                              quickinfo   = ''
-                              is_checked  = abap_false
-                              is_disabled = abap_false ).
-
-          "Add Exit Button
-          o_tool->add_button( fcode       = 'BTN_CLOSE'
-                              icon        = icon_close
-                              butn_type   = cntb_btype_button
-                              text        = 'Close'
-                              quickinfo   = 'Close'
-                              is_checked  = abap_false
-                              is_disabled = abap_false ).
-
-          "Event Handler Registration for Buttons
-          SET HANDLER lcl_event_handler=>on_function_selected FOR o_tool.
-
-          TRY.
-              cl_salv_table=>factory(
-                  EXPORTING
-                    r_container   = o_container_bottom
-                  IMPORTING
-                    r_salv_table   = lo_salv_alv
-                  CHANGING
-                    t_table        = <fs_table> ).
-            CATCH cx_salv_msg.                          "#EC NO_HANDLER
-          ENDTRY.
-
-      ENDCASE.
-
-    ELSEIF lv_version EQ lcl_main_salv=>fiori."FIORI VERSION.
-
-      TRY.
-          cl_salv_table=>factory(
-              EXPORTING
-                list_display   = if_salv_c_bool_sap=>false
-              IMPORTING
-                r_salv_table   = me->lo_salv_alv
-              CHANGING
-                t_table        = <fs_table> ).
-        CATCH cx_salv_msg.                              "#EC NO_HANDLER
-      ENDTRY.
-
-      IF me->lv_popup EQ abap_true.
-
-        me->lo_salv_alv->set_screen_popup( start_column = me->ls_popup_dimensions-column_start
-                                           end_column   = me->ls_popup_dimensions-column_end
-                                           start_line   = me->ls_popup_dimensions-line_start
-                                           end_line     = me->ls_popup_dimensions-line_end ).
-
-      ENDIF.
-
-    ENDIF.
+    ENDCASE.
 
     IF me->lo_salv_alv IS NOT BOUND.
       RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error while creating ALV Reference'.
     ENDIF.
+
+  ENDMETHOD.
+
+  METHOD get_docking_container.
+
+    re_container = NEW #( no_autodef_progid_dynnr = abap_true
+                          side                    = cl_gui_docking_container=>dock_at_bottom
+                          ratio                   = 90 ).
+
+  ENDMETHOD.
+
+  METHOD get_splitter_container.
+
+    DATA(o_splitter_container) = NEW cl_gui_splitter_container( parent                  = cl_gui_container=>default_screen
+                                                                no_autodef_progid_dynnr = abap_true
+                                                                rows                    = 1
+                                                                columns                 = 2 ).
+
+    re_container = o_splitter_container->get_container( row = 1 column = 1 ).
+
+  ENDMETHOD.
+
+  METHOD get_dialog_container.
+
+    re_container = NEW #( no_autodef_progid_dynnr = abap_true
+                            caption = 'ALV in Dialog Box'
+                            top = 20
+                            left = 20
+                            width = 1280
+                            height = 400 ).
+
+  ENDMETHOD.
+
+  METHOD get_context_menu_container.
+
+    "CREATE SPLITTER
+    DATA(o_splitter) = NEW cl_gui_splitter_container( parent = cl_gui_container=>default_screen
+                                            no_autodef_progid_dynnr = abap_true
+                                            rows = 2
+                                            columns = 1 ).
+
+    "ABSOLUTE ROW HEIGHT
+    o_splitter->set_row_mode( mode = cl_gui_splitter_container=>mode_absolute ).
+
+    "ABSOLUTE HEIGHT 24 PIXELS FOR SPLITTER ABOVE
+    o_splitter->set_row_height( id = 1 height = 24 ).
+
+    "Splitter for top container fixed and hidden
+    o_splitter->set_row_sash( id    = 1
+                              type  = cl_gui_splitter_container=>type_movable
+                              value = cl_gui_splitter_container=>false ).
+
+    o_splitter->set_row_sash( id    = 1
+                              type  = cl_gui_splitter_container=>type_sashvisible
+                              value = cl_gui_splitter_container=>false ).
+
+    "Create Top and Bottom Custom Container
+    DATA(o_container_top)    = o_splitter->get_container( row = 1 column = 1 ).
+    re_container = o_splitter->get_container( row = 2 column = 1 ).
+
+    "Horizontal Toolbar
+    DATA(o_tool) = NEW cl_gui_toolbar( parent       = o_container_top
+                                       display_mode = cl_gui_toolbar=>m_mode_horizontal ).
+
+    "Register of Event Types.Must be registered Separately
+    TYPES: ty_it_events TYPE STANDARD TABLE OF cntl_simple_event WITH DEFAULT KEY.
+    DATA(it_events) = VALUE ty_it_events( ( eventid = cl_gui_toolbar=>m_id_function_selected
+                                  appl_event = abap_true ) ).
+
+    o_tool->set_registered_events( events = it_events ).
+
+    "Add toolbar buttons. Button types are defined in type group CNTB
+    o_tool->add_button( fcode       = 'BTN_MENU'
+                        icon        = icon_activate
+                        butn_type   = cntb_btype_menu
+                        text        = 'Menu'
+                        quickinfo   = 'Menu'
+                        is_checked  = abap_false
+                        is_disabled = abap_false ).
+
+    DATA(o_menu) = NEW cl_ctmenu( ).
+    o_menu->add_function( fcode    = 'F1'
+                           checked = abap_false
+                           text    = 'Function1' ).
+
+    o_menu->add_function( fcode     = 'F2'
+                            checked = abap_false
+                            text    = 'Function2' ).
+
+
+    DATA(it_ctxmenu) = VALUE ttb_btnmnu( ( function = 'BTN_MENU'
+                                           ctmenu   = o_menu ) ).
+
+    o_tool->assign_static_ctxmenu_table( it_ctxmenu ).
+
+    "Separator
+    o_tool->add_button( fcode       = ''
+                        icon        = ''
+                        butn_type   = cntb_btype_sep
+                        text        = ''
+                        quickinfo   = ''
+                        is_checked  = abap_false
+                        is_disabled = abap_false ).
+
+    "Add Exit Button
+    o_tool->add_button( fcode       = 'BTN_CLOSE'
+                        icon        = icon_close
+                        butn_type   = cntb_btype_button
+                        text        = 'Close'
+                        quickinfo   = 'Close'
+                        is_checked  = abap_false
+                        is_disabled = abap_false ).
+
 
   ENDMETHOD.
 
