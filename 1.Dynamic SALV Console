@@ -188,7 +188,7 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_utilities lcl_sal
           lt_empty_columns          TYPE STANDARD TABLE OF t_empty_column WITH EMPTY KEY,
           lo_struct_def             TYPE REF TO cl_abap_structdescr,
           lv_show_hide              TYPE abap_bool VALUE abap_false,
-          gv_editable               TYPE abap_bool VALUE abap_false.
+          lv_editable               TYPE abap_bool VALUE abap_false.
 
     METHODS:
       create_alv              RAISING lcx_exception,
@@ -223,9 +223,9 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_utilities lcl_sal
 
     "GUI GRID EVENTS
     METHODS:
-      on_function_selected FOR EVENT function_selected OF cl_gui_toolbar IMPORTING fcode sender,
-      event_after_refresh FOR EVENT after_refresh OF cl_gui_alv_grid IMPORTING sender,
-      on_toolbar      FOR EVENT toolbar      OF cl_gui_alv_grid IMPORTING e_object e_interactive sender.
+      on_function_selected FOR EVENT function_selected OF cl_gui_toolbar  IMPORTING fcode sender,
+      event_after_refresh  FOR EVENT after_refresh     OF cl_gui_alv_grid IMPORTING sender,
+      on_toolbar           FOR EVENT toolbar           OF cl_gui_alv_grid IMPORTING e_object e_interactive sender.
 
 ENDCLASS.
 
@@ -707,7 +707,6 @@ CLASS lcl_main_salv IMPLEMENTATION.
       me->lv_data_source = lcl_main_salv=>database.
 
       "Build Components of Dynamic Table
-
       DATA(lt_tot_comp) = VALUE cl_abap_structdescr=>component_table(
                             ( name = lc_cell_style  type = CAST #( cl_abap_elemdescr=>describe_by_name( 'salv_t_int4_column' ) ) )
                             ( name = lc_color_column type = CAST #( cl_abap_elemdescr=>describe_by_name( 'lvc_t_scol' ) ) ) ).
@@ -785,7 +784,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
       "Color Hotspot Field
       IF me->lv_hotspot_field IS NOT INITIAL AND
          me->lv_hotspot_color IS NOT INITIAL AND
-        <lv_color_value> IS ASSIGNED.
+          <lv_color_value>    IS ASSIGNED.
 
         <lv_color_value> = VALUE lvc_t_scol( ( fname     = lv_hotspot_field
                                                color-col = lv_hotspot_color
@@ -796,7 +795,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
       "Color of Lines
       IF me->lv_line_color IS NOT INITIAL AND
-        <lv_color_value> IS ASSIGNED.
+         <lv_color_value>  IS ASSIGNED.
 
         <lv_color_value> = VALUE lvc_t_scol( ( color-col = lv_line_color
                                                color-int = 0
@@ -807,7 +806,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
       "Set Cell Style
       IF <lv_cell_style> IS ASSIGNED.
         <lv_cell_style> = VALUE salv_t_int4_column( ( columnname = 'COLUMN_NAME'
-                                                      value      = if_salv_c_cell_type=>button ) ).
+                                                     value      = if_salv_c_cell_type=>button ) ).
       ENDIF.
 
       "Icons
@@ -1356,11 +1355,14 @@ CLASS lcl_main_salv IMPLEMENTATION.
             pfstatus      = lv_status
             report        = syst-cprog
             set_functions = lo_salv_alv->c_functions_all ).
-        CATCH cx_salv_method_not_supported cx_salv_object_not_found.
-
+        CATCH cx_salv_method_not_supported cx_salv_object_not_found. "#EC NO_HANDLER
       ENDTRY.
 
-    ELSE.
+    ELSEIF lv_version EQ lcl_main_salv=>fiori.
+
+      lo_salv_alv->get_functions( )->set_all( if_salv_c_bool_sap=>true ).
+
+    ELSEIF lv_version EQ lcl_main_salv=>gui.
 
       lo_salv_alv->get_functions( )->set_all( if_salv_c_bool_sap=>true ).
 
@@ -1404,9 +1406,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     IF lv_handle_gui_grid_events EQ abap_true.
 
-*      DATA(lo_gui_grid_event) = NEW lcl_event_handler( ).
-*      SET HANDLER lo_gui_grid_event->event_after_refresh FOR ALL INSTANCES.
-*      lo_salv_alv->refresh( ).
+      SET HANDLER me->event_after_refresh FOR ALL INSTANCES.
+      lo_salv_alv->refresh( ).
 
     ENDIF.
 
@@ -1423,8 +1424,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
                  me->on_after_salv_function FOR lo_salv_alv->get_event( ) ACTIVATION abap_true.
 
     "Set Desired Field Hotspot Enabled
-    me->set_hotspot( im_alv   = lo_salv_alv
-                                    im_field = lv_hotspot_field ).
+    me->set_hotspot( im_alv   = me->lo_salv_alv
+                     im_field = me->lv_hotspot_field ).
 
   ENDMETHOD.
 
@@ -1460,52 +1461,52 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD on_after_salv_function.
 
-*    CHECK e_salv_function EQ '&ILT' OR  " Apply Filter
-*          e_salv_function EQ '&ILD'.    " Delete Filter
-*
-*    "STATIC FILTERS.CHECK FOR FILTER CHANGE OR DELETION.IF THE FILTER
-*    "IS NOT THE SAME AS WHAT WE HAVE APPLIED INITIALLY THEN PUT BACK THE FILTER
-*
-*    TRY.
-*
-*        DATA(lo_filters) = lo_salv_alv->get_filters( ).
-*        DATA(lo_filter)  = lo_filters->get_filter( 'FILTER' ).
-*
-*        "filter still there, check for the values
-*        DATA(lt_selopt) = lo_filter->get( ).
-*        IF lt_selopt NE go_lcl_main->t_filter_selopt.
-*
-*          TRY.
-*              lo_filters->add_filter(
-*                EXPORTING
-*                  columnname = 'CHANGE'
-*                  sign       = 'I'
-*                  option     = 'EQ'
-*                  low        = 'VALUE').
-*
-*            CATCH cx_salv_not_found cx_salv_data_error  cx_salv_existing. "#EC NO_HANDLER
-*
-*          ENDTRY.
-*
-*        ENDIF.
-*
-*      CATCH cx_salv_not_found.
-*
-*        "when Filter is removed, this exception would be raised.
-*        "set it back
-*        TRY.
-*            lo_filters->add_filter(
-*              EXPORTING
-*                columnname = 'CHANGE'
-*                sign       = 'I'
-*                option     = 'EQ'
-*                low        = 'VALUE').
-*
-*          CATCH cx_salv_not_found cx_salv_data_error  cx_salv_existing. "#EC NO_HANDLER
-*
-*        ENDTRY.
-*
-*    ENDTRY.
+    CHECK e_salv_function EQ '&ILT' OR  " Apply Filter
+          e_salv_function EQ '&ILD'.    " Delete Filter
+
+    "STATIC FILTERS.CHECK FOR FILTER CHANGE OR DELETION.IF THE FILTER
+    "IS NOT THE SAME AS WHAT WE HAVE APPLIED INITIALLY THEN PUT BACK THE FILTER
+
+    TRY.
+
+        DATA(lo_filters) = lo_salv_alv->get_filters( ).
+        DATA(lo_filter)  = lo_filters->get_filter( 'FILTER' ).
+
+        "filter still there, check for the values
+        DATA(lt_selopt) = lo_filter->get( ).
+        IF lt_selopt NE me->lt_filter_selopt.
+
+          TRY.
+              lo_filters->add_filter(
+                EXPORTING
+                  columnname = 'CHANGE'
+                  sign       = 'I'
+                  option     = 'EQ'
+                  low        = 'VALUE').
+
+            CATCH cx_salv_not_found cx_salv_data_error  cx_salv_existing. "#EC NO_HANDLER
+
+          ENDTRY.
+
+        ENDIF.
+
+      CATCH cx_salv_not_found.
+
+        "when Filter is removed, this exception would be raised.
+        "set it back
+        TRY.
+            lo_filters->add_filter(
+              EXPORTING
+                columnname = 'CHANGE'
+                sign       = 'I'
+                option     = 'EQ'
+                low        = 'VALUE').
+
+          CATCH cx_salv_not_found cx_salv_data_error  cx_salv_existing. "#EC NO_HANDLER
+
+        ENDTRY.
+
+    ENDTRY.
 
   ENDMETHOD.
 
@@ -1710,20 +1711,25 @@ CLASS lcl_main_salv IMPLEMENTATION.
   METHOD show_hide_empty_columns.
 
     "Find Empty Columns of ALV
-    REFRESH:lt_empty_columns.
+    REFRESH lt_empty_columns.
     LOOP AT me->lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<column>).
 
       DATA(lv_empty_indicator) = abap_true.
       LOOP AT <fs_table> ASSIGNING FIELD-SYMBOL(<fs_structure>).
+
         ASSIGN COMPONENT <column>-columnname OF STRUCTURE <fs_structure> TO  FIELD-SYMBOL(<fs_value>).
+
         IF <fs_value> IS ASSIGNED.
+
           IF <fs_value> IS INITIAL."EMPTY VALUE
             CONTINUE.
           ELSE."FILLED CELL
             lv_empty_indicator = abap_false.
             EXIT.
           ENDIF.
+
         ENDIF.
+
       ENDLOOP.
 
       IF lv_empty_indicator = abap_true.
@@ -1732,33 +1738,32 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     ENDLOOP.
 
-
     IF lv_show_hide EQ abap_false.
 
-      lv_show_hide = abap_true.
+      me->lv_show_hide = abap_true.
 
       "Hide Empty Columns
       LOOP AT lt_empty_columns ASSIGNING FIELD-SYMBOL(<fs_empty_column>).
 
         TRY.
-            DATA(o_column_hide) = CAST cl_salv_column_table( me->lo_salv_alv->get_columns( )->get_column( <fs_empty_column>-column_name ) ).
-            o_column_hide->set_visible( if_salv_c_bool_sap=>false ).
+            CAST cl_salv_column_table( me->lo_salv_alv->get_columns( )->get_column( <fs_empty_column>-column_name ) )->set_visible( if_salv_c_bool_sap=>false ).
           CATCH cx_salv_not_found.                      "#EC NO_HANDLER
         ENDTRY.
+
       ENDLOOP.
 
     ELSE.
 
-      lv_show_hide = abap_false.
+      me->lv_show_hide = abap_false.
 
       "Show Empty Columns
-      LOOP AT lt_empty_columns ASSIGNING FIELD-SYMBOL(<fs_empty_column1>).
+      LOOP AT lt_empty_columns ASSIGNING <fs_empty_column>.
 
         TRY.
-            DATA(o_column_show) = CAST cl_salv_column_table( me->lo_salv_alv->get_columns( )->get_column( <fs_empty_column1>-column_name ) ).
-            o_column_show->set_visible( if_salv_c_bool_sap=>true ).
+            CAST cl_salv_column_table( me->lo_salv_alv->get_columns( )->get_column( <fs_empty_column>-column_name ) )->set_visible( if_salv_c_bool_sap=>true ).
           CATCH cx_salv_not_found.                      "#EC NO_HANDLER
         ENDTRY.
+
       ENDLOOP.
 
     ENDIF.
@@ -1784,12 +1789,12 @@ CLASS lcl_main_salv IMPLEMENTATION.
       WHEN OTHERS.
 
         "Flip Toggle TRUE-FALSE
-        gv_editable = xsdbool( gv_editable EQ abap_false ).
+        me->lv_editable = xsdbool( me->lv_editable EQ abap_false ).
 
         "OPEN EDIT FOR SPECIFIC COLUMN THAT THE USER DOUBLE CLICKED
         lcl_salv_edit=>set_editable( i_fieldname  = column
                                      i_salv_table = me->lo_salv_alv
-                                     i_editable   = gv_editable ).
+                                     i_editable   = me->lv_editable ).
 
     ENDCASE.
 
@@ -1801,9 +1806,9 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
       WHEN 'EDIT'."BUTTON THAT THE USER PRESSES.
 
-        gv_editable = xsdbool( gv_editable EQ abap_false )."Flip Toggle TRUE-FALSE
+        me->lv_editable = xsdbool( me->lv_editable EQ abap_false )."Flip Toggle TRUE-FALSE
         lcl_salv_edit=>set_editable( i_salv_table = me->lo_salv_alv
-                                     i_editable   = gv_editable )."OPEN ALV EDIT FOR WHOLE TABLE
+                                     i_editable   = me->lv_editable )."OPEN ALV EDIT FOR WHOLE TABLE
 
       WHEN 'COLUMNS'.
 
@@ -1823,7 +1828,9 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   ENDMETHOD. "on_user_command
 
-  METHOD set_hotspot." SET HOTSPOT CLICK FOR A SPECIFIC TABLE COLUMNS
+  METHOD set_hotspot.
+
+    CHECK im_field IS NOT INITIAL.
 
     TRY.
         CAST cl_salv_column_table( me->lo_salv_alv->get_columns( )->get_column( im_field ) )->set_cell_type( EXPORTING value = if_salv_c_cell_type=>hotspot ).
@@ -1851,12 +1858,13 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
       WHEN OTHERS.
 
-        "Get the Desired Value
-        IF <fs_field_value> IS ASSIGNED .
-          DATA(popup) = cl_demo_output=>new( mode = cl_demo_output=>text_mode ).
-          popup->write_text( |You have clicked on column { column } of row { row } | ).
-          popup->write_text( |The value is { <fs_field_value> } | ).
-          popup->display( ).
+        IF <fs_field_value> IS ASSIGNED.
+
+          cl_demo_output=>new( mode = cl_demo_output=>text_mode
+          )->write_text( |You have clicked on column { column } of row { row } |
+          )->write_text( |The value is { <fs_field_value> } |
+          )->display( ).
+
         ENDIF.
 
     ENDCASE.
