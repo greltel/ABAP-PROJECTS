@@ -1631,7 +1631,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
           "Check that <fs_value> is not structure or table
           DATA(lo_type) = cl_abap_typedescr=>describe_by_data( <fs_value> ).
-          IF lo_type->type_kind EQ cl_abap_typedescr=>typekind_struct1 OR lo_type->type_kind EQ cl_abap_typedescr=>typekind_table .
+          IF lo_type->type_kind EQ cl_abap_typedescr=>typekind_struct1 OR
+             lo_type->type_kind EQ cl_abap_typedescr=>typekind_table.
             CONTINUE.
           ENDIF.
 
@@ -1833,10 +1834,10 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD set_hotspot.
 
-    CHECK im_field IS NOT INITIAL.
+    CHECK im_field IS NOT INITIAL AND im_alv IS BOUND.
 
     TRY.
-        CAST cl_salv_column_table( me->lo_salv_alv->get_columns( )->get_column( im_field ) )->set_cell_type( EXPORTING value = if_salv_c_cell_type=>hotspot ).
+        CAST cl_salv_column_table( im_alv->get_columns( )->get_column( im_field ) )->set_cell_type( EXPORTING value = if_salv_c_cell_type=>hotspot ).
       CATCH cx_salv_not_found cx_salv_data_error cx_sy_ref_is_initial. "#EC NO_HANDLER
     ENDTRY.
 
