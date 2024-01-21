@@ -195,7 +195,7 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_utilities lcl_sal
           lt_filter_selopt          TYPE salv_t_selopt_ref,
           lo_salv_alv               TYPE REF TO cl_salv_table,
           handler_added             TYPE abap_bool VALUE abap_false,
-          lt_empty_columns          TYPE STANDARD TABLE OF t_empty_column WITH EMPTY KEY,
+          lt_empty_columns          TYPE STANDARD TABLE OF t_empty_column WITH DEFAULT KEY,
           lo_struct_def             TYPE REF TO cl_abap_structdescr,
           lv_show_hide              TYPE abap_bool VALUE abap_false,
           lv_editable               TYPE abap_bool VALUE abap_false.
@@ -220,7 +220,9 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_utilities lcl_sal
       show_hide_empty_columns,
       display_documentation,
       display_details_of_selection,
-      set_hotspot IMPORTING im_field TYPE lvc_fname im_alv TYPE REF TO cl_salv_table.
+      set_hotspot IMPORTING im_field TYPE lvc_fname
+                            im_alv   TYPE REF TO cl_salv_table
+                  RAISING   lcx_exception.
 
     "SALV EVENTS
     METHODS:
@@ -1607,7 +1609,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     TRY.
 
-        DATA(lv_row_index) = lt_selected_rows[ 1 ].
+        DATA(lv_row_index) = VALUE #( lt_selected_rows[ 1 ] OPTIONAL ).
         ASSIGN <fs_table>[ lv_row_index ] TO FIELD-SYMBOL(<ls_data>).
 
         IF <ls_data> IS ASSIGNED AND lo_struct_def IS NOT BOUND.
@@ -1714,63 +1716,61 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD show_hide_empty_columns.
 
-    "Find Empty Columns of ALV
-    REFRESH lt_empty_columns.
-    LOOP AT me->lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<column>).
+    "Get Empty Columns of ALV
+    IF me->lt_empty_columns IS INITIAL.
 
-      DATA(lv_empty_indicator) = abap_true.
-      LOOP AT <fs_table> ASSIGNING FIELD-SYMBOL(<fs_structure>).
+      LOOP AT me->lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<column>).
 
-        ASSIGN COMPONENT <column>-columnname OF STRUCTURE <fs_structure> TO  FIELD-SYMBOL(<fs_value>).
+        DATA(lv_empty_indicator) = CONV abap_bool( abap_true ) ##OPERATOR[ABAP_BOOL].
+        LOOP AT <fs_table> ASSIGNING FIELD-SYMBOL(<fs_structure>).
 
-        IF <fs_value> IS ASSIGNED.
+          ASSIGN COMPONENT <column>-columnname OF STRUCTURE <fs_structure> TO  FIELD-SYMBOL(<fs_value>).
 
-          IF <fs_value> IS INITIAL."EMPTY VALUE
-            CONTINUE.
-          ELSE."FILLED CELL
-            lv_empty_indicator = abap_false.
-            EXIT.
+          IF <fs_value> IS ASSIGNED AND syst-subrc IS INITIAL.
+
+            IF <fs_value> IS INITIAL."EMPTY VALUE
+              CONTINUE.
+            ELSE."FILLED CELL
+              lv_empty_indicator = abap_false.
+              EXIT.
+            ENDIF.
+
           ENDIF.
 
+        ENDLOOP.
+
+        IF lv_empty_indicator EQ abap_true.
+          APPEND <column>-columnname TO me->lt_empty_columns.
         ENDIF.
 
       ENDLOOP.
 
-      IF lv_empty_indicator = abap_true.
-        APPEND <column>-columnname TO lt_empty_columns.
-      ENDIF.
+    ENDIF.
+
+    "Hide/Show Empty Columns
+    LOOP AT me->lt_empty_columns ASSIGNING FIELD-SYMBOL(<fs_empty_column>).
+
+      CASE lv_show_hide.
+
+        WHEN abap_false.
+
+          TRY.
+              CAST cl_salv_column_table( me->lo_salv_alv->get_columns( )->get_column( <fs_empty_column>-column_name ) )->set_visible( if_salv_c_bool_sap=>false ).
+            CATCH cx_salv_not_found.                    "#EC NO_HANDLER
+          ENDTRY.
+
+        WHEN abap_true.
+
+          TRY.
+              CAST cl_salv_column_table( me->lo_salv_alv->get_columns( )->get_column( <fs_empty_column>-column_name ) )->set_visible( if_salv_c_bool_sap=>true ).
+            CATCH cx_salv_not_found.                    "#EC NO_HANDLER
+          ENDTRY.
+
+      ENDCASE.
 
     ENDLOOP.
 
-    IF lv_show_hide EQ abap_false.
-
-      me->lv_show_hide = abap_true.
-
-      "Hide Empty Columns
-      LOOP AT lt_empty_columns ASSIGNING FIELD-SYMBOL(<fs_empty_column>).
-
-        TRY.
-            CAST cl_salv_column_table( me->lo_salv_alv->get_columns( )->get_column( <fs_empty_column>-column_name ) )->set_visible( if_salv_c_bool_sap=>false ).
-          CATCH cx_salv_not_found.                      "#EC NO_HANDLER
-        ENDTRY.
-
-      ENDLOOP.
-
-    ELSE.
-
-      me->lv_show_hide = abap_false.
-
-      "Show Empty Columns
-      LOOP AT lt_empty_columns ASSIGNING <fs_empty_column>.
-
-        TRY.
-            CAST cl_salv_column_table( me->lo_salv_alv->get_columns( )->get_column( <fs_empty_column>-column_name ) )->set_visible( if_salv_c_bool_sap=>true ).
-          CATCH cx_salv_not_found.                      "#EC NO_HANDLER
-        ENDTRY.
-
-      ENDLOOP.
-
-    ENDIF.
+    me->lv_show_hide = xsdbool( me->lv_show_hide EQ abap_false )."Flip Toggle TRUE-FALSE
 
   ENDMETHOD.
 
@@ -1817,6 +1817,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
       WHEN 'COLUMNS'.
 
         me->show_hide_empty_columns( ).
+        me->lo_salv_alv->refresh( s_stable     = VALUE #( col = abap_true row = abap_true )
+                                  refresh_mode = if_salv_c_refresh=>soft ).
 
       WHEN 'DETAILS'.
 
