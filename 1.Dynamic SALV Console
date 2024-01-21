@@ -196,7 +196,6 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_utilities lcl_sal
           lo_salv_alv               TYPE REF TO cl_salv_table,
           handler_added             TYPE abap_bool VALUE abap_false,
           lt_empty_columns          TYPE STANDARD TABLE OF t_empty_column WITH DEFAULT KEY,
-          lo_struct_def             TYPE REF TO cl_abap_structdescr,
           lv_show_hide              TYPE abap_bool VALUE abap_false,
           lv_editable               TYPE abap_bool VALUE abap_false.
 
@@ -1606,23 +1605,18 @@ CLASS lcl_main_salv IMPLEMENTATION.
   METHOD display_details_of_selection.
 
     DATA(lt_selected_rows) = me->lo_salv_alv->get_selections( )->get_selected_rows( ).
+    CHECK lt_selected_rows IS NOT INITIAL.
 
     TRY.
 
-        DATA(lv_row_index) = VALUE #( lt_selected_rows[ 1 ] OPTIONAL ).
-        ASSIGN <fs_table>[ lv_row_index ] TO FIELD-SYMBOL(<ls_data>).
+        ASSIGN <fs_table>[ VALUE #( lt_selected_rows[ 1 ] OPTIONAL ) ] TO FIELD-SYMBOL(<fs_data>).
+        CHECK <fs_data> IS ASSIGNED.
 
-        IF <ls_data> IS ASSIGNED AND lo_struct_def IS NOT BOUND.
-          " Using RTTS to get the runtime type information of the internal table
-          DATA(lo_type_def)  = CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( <fs_table> ) ).
-          lo_struct_def = CAST cl_abap_structdescr( lo_type_def->get_table_line_type( ) ).
-          "WHEN TYPE IS DEEP,YOU CAN USE GET_INCLUDED_VIEW TO GET ALL THE COMPONENTS.
-          "DATA(LT_COMPONENTS_C) = lo_struct_def->get_included_view( ).
-        ENDIF.
+        DATA(lo_struct) = CAST cl_abap_structdescr( CAST cl_abap_tabledescr( cl_abap_tabledescr=>describe_by_data( <fs_table> ) )->get_table_line_type( ) ).
 
         "Populate LT_DETAILS Table with the Values from the Row Selected
         DATA(lt_details) = VALUE se16n_selfields_t_in( ).
-        LOOP AT lo_struct_def->components INTO DATA(wa_components).
+        LOOP AT lo_struct->components INTO DATA(wa_components).
 
           "Check if Column is Displayed in ALV
           TRY.
@@ -1633,7 +1627,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
           ENDTRY.
 
           "FIELD VALUE AS PREVIEWED AND UNCONVERTED
-          ASSIGN COMPONENT wa_components-name OF STRUCTURE <ls_data> TO FIELD-SYMBOL(<fs_value>).
+          ASSIGN COMPONENT wa_components-name OF STRUCTURE <fs_data> TO FIELD-SYMBOL(<fs_value>).
 
           "Check that <fs_value> is not structure or table
           DATA(lo_type) = cl_abap_typedescr=>describe_by_data( <fs_value> ).
@@ -1651,7 +1645,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
           "FIELD NAME DESCRIPTION
           "Get Data Dictionary Type of the Component
-          DATA(lo_element_def) = CAST cl_abap_elemdescr( lo_struct_def->get_component_type( wa_components-name ) ).
+          DATA(lo_element_def) = CAST cl_abap_elemdescr( lo_struct->get_component_type( wa_components-name ) ).
 
           IF NOT lo_element_def->is_ddic_type( ) ."Field is not Dictionary Data Type
             DATA(scrtext_l) = wa_components-name.
@@ -1676,7 +1670,10 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
           ENDIF.
 
-          APPEND VALUE #( low = value_out  low_noconv = value_in  scrtext_l = scrtext_l  fieldname = fieldname  ) TO lt_details.
+          APPEND VALUE #( low        = value_out
+                          low_noconv = value_in
+                          scrtext_l  = scrtext_l
+                          fieldname  = fieldname  ) TO lt_details.
 
         ENDLOOP.
 
