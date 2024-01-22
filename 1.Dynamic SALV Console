@@ -61,9 +61,50 @@ ENDCLASS.
 *----------------------------------------------------------------------*
 INTERFACE lif_data.
 
+  TYPES:
+
+    BEGIN OF ENUM en_alv_version,
+      gui,
+      fiori,
+    END OF ENUM en_alv_version,
+
+    BEGIN OF ENUM en_alv_container,
+      standard,
+      bottom,
+      splitter,
+      dialog,
+      context,
+    END OF ENUM en_alv_container,
+
+    BEGIN OF ENUM en_data_source,
+      excel,
+      database,
+    END OF ENUM en_data_source,
+
+    BEGIN OF ty_popup_dimensions,
+      column_start TYPE i,
+      column_end   TYPE i,
+      line_start   TYPE i,
+      line_end     TYPE i,
+    END OF ty_popup_dimensions.
+
   METHODS:
-    get_data,
-    process_data.
+    get_data IMPORTING im_data_source               TYPE en_data_source
+                       im_table                     TYPE tabname             OPTIONAL
+                       im_filepath                  TYPE file_table-filename OPTIONAL
+                       im_sheet_name                TYPE char20              OPTIONAL
+                       im_number_of_lines           TYPE syst_tabix          DEFAULT 100
+                       im_field                     TYPE char5               OPTIONAL
+                       im_comp                      TYPE ddoption            OPTIONAL
+                       im_val                       TYPE string              OPTIONAL
+                       im_checkbox_column           TYPE abap_bool           DEFAULT abap_true
+                       im_icon_column               TYPE abap_bool           DEFAULT abap_true
+                       im_head                      TYPE abap_bool           DEFAULT abap_false
+             RETURNING VALUE(re_main_salv_instance) TYPE REF TO lif_data
+             RAISING   lcx_exception,
+
+    process_data RETURNING VALUE(re_main_salv_instance) TYPE REF TO lif_output
+                 RAISING   lcx_exception.
 
 ENDINTERFACE.
 
@@ -74,7 +115,7 @@ ENDINTERFACE.
 INTERFACE lif_output.
 
   METHODS:
-    display_data.
+    display_data RAISING lcx_exception.
 
 ENDINTERFACE.
 
@@ -125,40 +166,20 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_utilities lcl_sal
 
   PUBLIC SECTION.
 
-    INTERFACES if_alv_rm_grid_friend.
+    INTERFACES:
+      if_alv_rm_grid_friend,
+      lif_output,
+      lif_data.
 
-    TYPES:
-
-      BEGIN OF ENUM en_alv_version,
-        gui,
-        fiori,
-      END OF ENUM en_alv_version,
-
-      BEGIN OF ENUM en_alv_container,
-        standard,
-        bottom,
-        splitter,
-        dialog,
-        context,
-      END OF ENUM en_alv_container,
-
-      BEGIN OF ENUM en_data_source,
-        excel,
-        database,
-      END OF ENUM en_data_source,
-
-      BEGIN OF ty_popup_dimensions,
-        column_start TYPE i,
-        column_end   TYPE i,
-        line_start   TYPE i,
-        line_end     TYPE i,
-      END OF ty_popup_dimensions.
+    ALIASES display_data FOR lif_output~display_data.
+    ALIASES get_data     FOR lif_data~get_data.
+    ALIASES process_data FOR lif_data~process_data.
 
     METHODS:
 
-      constructor IMPORTING im_version                TYPE en_alv_version
+      constructor IMPORTING im_version                TYPE lif_data~en_alv_version
                             im_popup                  TYPE abap_bool          OPTIONAL
-                            im_container              TYPE en_alv_container   OPTIONAL
+                            im_container              TYPE lif_data~en_alv_container   OPTIONAL
                             im_layout                 TYPE disvariant-variant OPTIONAL
                             im_status                 TYPE rsmpe-status       OPTIONAL
                             im_technical_names        TYPE flag               OPTIONAL
@@ -166,26 +187,7 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_utilities lcl_sal
                             im_hotspot_color          TYPE lvc_col            OPTIONAL
                             im_line_color             TYPE lvc_col            OPTIONAL
                             im_handle_gui_grid_events TYPE flag               DEFAULT abap_false
-                            im_popup_dimensions       TYPE lcl_main_salv=>ty_popup_dimensions OPTIONAL,
-
-      get_data    IMPORTING im_data_source               TYPE en_data_source
-                            im_table                     TYPE tabname             OPTIONAL
-                            im_filepath                  TYPE file_table-filename OPTIONAL
-                            im_sheet_name                TYPE char20              OPTIONAL
-                            im_number_of_lines           TYPE syst_tabix          DEFAULT 100
-                            im_field                     TYPE char5               OPTIONAL
-                            im_comp                      TYPE ddoption            OPTIONAL
-                            im_val                       TYPE string              OPTIONAL
-                            im_checkbox_column           TYPE abap_bool           DEFAULT abap_true
-                            im_icon_column               TYPE abap_bool           DEFAULT abap_true
-                            im_head                      TYPE abap_bool           DEFAULT abap_false
-                  RETURNING VALUE(re_main_salv_instance) TYPE REF TO lcl_main_salv
-                  RAISING   lcx_exception,
-
-      process_data RETURNING VALUE(re_main_salv_instance) TYPE REF TO lcl_main_salv
-                   RAISING   lcx_exception,
-
-      display_data RAISING lcx_exception.
+                            im_popup_dimensions       TYPE lif_data~ty_popup_dimensions OPTIONAL.
 
   PROTECTED SECTION.
 
@@ -208,11 +210,11 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_utilities lcl_sal
           lv_hotspot_color          TYPE lvc_col,
           lv_line_color             TYPE lvc_col,
           lv_status                 TYPE rsmpe-status,
-          lv_version                TYPE en_alv_version,
+          lv_version                TYPE lif_data~en_alv_version,
           lv_handle_gui_grid_events TYPE flag,
-          lv_data_source            TYPE en_data_source,
-          lv_container              TYPE en_alv_container,
-          ls_popup_dimensions       TYPE lcl_main_salv=>ty_popup_dimensions,
+          lv_data_source            TYPE lif_data~en_data_source,
+          lv_container              TYPE lif_data~en_alv_container,
+          ls_popup_dimensions       TYPE lif_data~ty_popup_dimensions,
           lv_popup                  TYPE abap_bool,
           lt_filter_selopt          TYPE salv_t_selopt_ref,
           lo_salv_alv               TYPE REF TO cl_salv_table,
@@ -576,16 +578,16 @@ AT SELECTION-SCREEN.
 START-OF-SELECTION.
 
   TRY.
-      NEW lcl_main_salv( im_version                 = COND #( WHEN r1 EQ abap_true THEN lcl_main_salv=>gui
-                                                              WHEN r2 EQ abap_true THEN lcl_main_salv=>fiori
-                                                              ELSE lcl_main_salv=>fiori )
+      NEW lcl_main_salv( im_version                 = COND #( WHEN r1 EQ abap_true THEN lcl_main_salv=>lif_data~gui
+                                                              WHEN r2 EQ abap_true THEN lcl_main_salv=>lif_data~fiori
+                                                              ELSE lcl_main_salv=>lif_data~fiori )
                          im_popup                   = p_popup
-                         im_container               = COND #( WHEN p_stand EQ abap_true THEN lcl_main_salv=>standard
-                                                              WHEN p_doc   EQ abap_true THEN lcl_main_salv=>bottom
-                                                              WHEN p_split EQ abap_true THEN lcl_main_salv=>splitter
-                                                              WHEN p_dial  EQ abap_true THEN lcl_main_salv=>dialog
-                                                              WHEN p_cont  EQ abap_true THEN lcl_main_salv=>context
-                                                              ELSE lcl_main_salv=>standard )
+                         im_container               = COND #( WHEN p_stand EQ abap_true THEN lcl_main_salv=>lif_data~standard
+                                                              WHEN p_doc   EQ abap_true THEN lcl_main_salv=>lif_data~bottom
+                                                              WHEN p_split EQ abap_true THEN lcl_main_salv=>lif_data~splitter
+                                                              WHEN p_dial  EQ abap_true THEN lcl_main_salv=>lif_data~dialog
+                                                              WHEN p_cont  EQ abap_true THEN lcl_main_salv=>lif_data~context
+                                                              ELSE lcl_main_salv=>lif_data~standard )
                          im_layout                  = p_layout
                          im_technical_names         = p_names
                          im_status                  = p_status
@@ -597,8 +599,8 @@ START-OF-SELECTION.
                                                                column_end   = p_col_e
                                                                line_start   = p_lin_s
                                                                line_end     = p_lin_e )
-                       )->get_data( im_data_source     = COND #( WHEN db   EQ abap_true THEN lcl_main_salv=>database
-                                                                 WHEN file EQ abap_true THEN lcl_main_salv=>excel
+                       )->get_data( im_data_source     = COND #( WHEN db   EQ abap_true THEN lcl_main_salv=>lif_data~database
+                                                                 WHEN file EQ abap_true THEN lcl_main_salv=>lif_data~excel
                                                                  ELSE THROW lcx_exception( im_text = 'Invalid Data Source Selection' )  )
                                     im_filepath        = p_excel
                                     im_sheet_name      = p_sheet
@@ -652,9 +654,9 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     re_main_salv_instance = me.
 
-    IF im_data_source EQ lcl_main_salv=>excel AND im_filepath IS NOT INITIAL.
+    IF im_data_source EQ lcl_main_salv=>lif_data~excel AND im_filepath IS NOT INITIAL.
 
-      me->lv_data_source = lcl_main_salv=>excel.
+      me->lv_data_source = lcl_main_salv=>lif_data~excel.
 
       lcl_utilities=>upload_excel(
         EXPORTING
@@ -728,9 +730,9 @@ CLASS lcl_main_salv IMPLEMENTATION.
           ex_table            = <fs_table> ).
 
 
-    ELSEIF im_data_source EQ lcl_main_salv=>database AND im_table IS NOT INITIAL.
+    ELSEIF im_data_source EQ lcl_main_salv=>lif_data~database AND im_table IS NOT INITIAL.
 
-      me->lv_data_source = lcl_main_salv=>database.
+      me->lv_data_source = lcl_main_salv=>lif_data~database.
 
       "Build Components of Dynamic Table
       DATA(lt_tot_comp) = VALUE cl_abap_structdescr=>component_table(
@@ -869,22 +871,22 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     CASE me->lv_version.
 
-      WHEN lcl_main_salv=>gui.
+      WHEN lcl_main_salv=>lif_data~gui.
 
         TRY.
             cl_salv_table=>factory( EXPORTING r_container   = SWITCH #( me->lv_container
-                                                                        WHEN lcl_main_salv=>bottom   THEN me->get_docking_container( )
-                                                                        WHEN lcl_main_salv=>standard THEN cl_gui_container=>default_screen
-                                                                        WHEN lcl_main_salv=>splitter THEN me->get_splitter_container( )
-                                                                        WHEN lcl_main_salv=>dialog   THEN me->get_dialog_container( )
-                                                                        WHEN lcl_main_salv=>context  THEN me->get_context_menu_container( ) )
+                                                                        WHEN lcl_main_salv=>lif_data~bottom   THEN me->get_docking_container( )
+                                                                        WHEN lcl_main_salv=>lif_data~standard THEN cl_gui_container=>default_screen
+                                                                        WHEN lcl_main_salv=>lif_data~splitter THEN me->get_splitter_container( )
+                                                                        WHEN lcl_main_salv=>lif_data~dialog   THEN me->get_dialog_container( )
+                                                                        WHEN lcl_main_salv=>lif_data~context  THEN me->get_context_menu_container( ) )
                                               list_display  = if_salv_c_bool_sap=>false
                                     IMPORTING r_salv_table  = me->lo_salv_alv
                                     CHANGING  t_table       = <fs_table> ).
           CATCH cx_salv_msg.                            "#EC NO_HANDLER
         ENDTRY.
 
-      WHEN lcl_main_salv=>fiori.
+      WHEN lcl_main_salv=>lif_data~fiori.
 
         TRY.
             cl_salv_table=>factory( EXPORTING list_display  = if_salv_c_bool_sap=>false
@@ -1025,7 +1027,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD field_catalog.
 
-    IF me->lv_data_source EQ lcl_main_salv=>database.
+    IF me->lv_data_source EQ lcl_main_salv=>lif_data~database.
 
       "Set information regarding currency and quantity.It is not set automatically
       TRY.
@@ -1074,7 +1076,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
         CATCH cx_salv_not_found .                       "#EC NO_HANDLER
       ENDTRY.
 
-    ELSEIF me->lv_data_source EQ lcl_main_salv=>excel.
+    ELSEIF me->lv_data_source EQ lcl_main_salv=>lif_data~excel.
 
       LOOP AT me->lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<fs_col>).
 
@@ -1320,13 +1322,13 @@ CLASS lcl_main_salv IMPLEMENTATION.
   METHOD header_creation.
 
     CASE lv_version.
-      WHEN lcl_main_salv=>gui.
+      WHEN lcl_main_salv=>lif_data~gui.
 
         lo_salv_alv->get_display_settings( :
            )->set_list_header_size( cl_salv_display_settings=>c_header_size_medium ),
            )->set_list_header( |The List Generated by { syst-uname  } at { syst-datum  DATE = USER } { syst-uzeit  TIME = USER }.Entries:{ lines( <fs_table> ) } | ).
 
-      WHEN lcl_main_salv=>fiori.
+      WHEN lcl_main_salv=>lif_data~fiori.
 
         lo_salv_alv->get_display_settings(:
           )->set_list_header_size( cl_salv_display_settings=>c_header_size_medium ),
@@ -1365,8 +1367,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     DATA(lo_f_flow) = lo_footer->create_flow( row = 2 column = 1 ).
 
-    lo_f_flow->create_text( text = COND #( WHEN lv_data_source EQ lcl_main_salv=>database THEN |Displaying Details of Table |
-                                           WHEN lv_data_source EQ lcl_main_salv=>excel   THEN  |Displaying Details of Excel File |
+    lo_f_flow->create_text( text = COND #( WHEN lv_data_source EQ lcl_main_salv=>lif_data~database THEN |Displaying Details of Table |
+                                           WHEN lv_data_source EQ lcl_main_salv=>lif_data~excel   THEN  |Displaying Details of Excel File |
                                            ELSE |Footer Details | ) ).
     lo_salv_alv->set_end_of_list( lo_footer ).
     lo_salv_alv->set_end_of_list_print( lo_footer ).
@@ -1375,7 +1377,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD toolbar_status.
 
-    IF lv_status IS NOT INITIAL AND lv_version EQ lcl_main_salv=>fiori.
+    IF lv_status IS NOT INITIAL AND lv_version EQ lcl_main_salv=>lif_data~fiori.
 
       TRY.
           lo_salv_alv->set_screen_status(
@@ -1385,11 +1387,11 @@ CLASS lcl_main_salv IMPLEMENTATION.
         CATCH cx_salv_method_not_supported cx_salv_object_not_found. "#EC NO_HANDLER
       ENDTRY.
 
-    ELSEIF lv_version EQ lcl_main_salv=>fiori.
+    ELSEIF lv_version EQ lcl_main_salv=>lif_data~fiori.
 
       lo_salv_alv->get_functions( )->set_all( if_salv_c_bool_sap=>true ).
 
-    ELSEIF lv_version EQ lcl_main_salv=>gui.
+    ELSEIF lv_version EQ lcl_main_salv=>lif_data~gui.
 
       lo_salv_alv->get_functions( )->set_all( if_salv_c_bool_sap=>true ).
 
@@ -1461,7 +1463,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
     lo_salv_alv->display( ).
 
     "Force Container Generation
-    IF lv_version EQ lcl_main_salv=>gui.
+    IF lv_version EQ lcl_main_salv=>lif_data~gui.
       WRITE:/ space.
     ENDIF.
 
