@@ -16,8 +16,8 @@ TABLES sscrfields.
 *&---------------------------------------------------------------------*
 *& INTEFACES/CLASSES
 *&---------------------------------------------------------------------*
-*INTERFACE: lif_data   DEFERRED,
-*           lif_output DEFERRED.
+INTERFACE: lif_data   DEFERRED,
+           lif_output DEFERRED.
 
 CLASS: lcl_main_salv       DEFINITION DEFERRED,
        lcl_utilities       DEFINITION DEFERRED,
@@ -36,7 +36,7 @@ CONSTANTS gc_report_heading TYPE syst-title VALUE 'Dynamic SALV Report'.
 FIELD-SYMBOLS <fs_table> TYPE INDEX TABLE.
 
 *&----------------------------------------------------------------------*
-*&CLASS LCX_EXCEPTION DEFINITION
+*& CLASS LCX_EXCEPTION DEFINITION
 *&----------------------------------------------------------------------*
 CLASS lcx_exception DEFINITION INHERITING FROM cx_static_check FINAL CREATE PUBLIC.
 
@@ -57,7 +57,29 @@ CLASS lcx_exception DEFINITION INHERITING FROM cx_static_check FINAL CREATE PUBL
 ENDCLASS.
 
 *----------------------------------------------------------------------*
-*       CLASS LCL_SEL_SCREEN
+* INTEFACE LIF_DATA
+*----------------------------------------------------------------------*
+INTERFACE lif_data.
+
+  METHODS:
+    get_data,
+    process_data.
+
+ENDINTERFACE.
+
+
+*----------------------------------------------------------------------*
+* INTEFACE LIF_OUTPUT
+*----------------------------------------------------------------------*
+INTERFACE lif_output.
+
+  METHODS:
+    display_data.
+
+ENDINTERFACE.
+
+*----------------------------------------------------------------------*
+* CLASS LCL_SEL_SCREEN
 *----------------------------------------------------------------------*
 CLASS lcl_sel_screen DEFINITION CREATE PRIVATE FINAL.
 
@@ -554,27 +576,27 @@ AT SELECTION-SCREEN.
 START-OF-SELECTION.
 
   TRY.
-      NEW lcl_main_salv( im_version               = COND #( WHEN r1 EQ abap_true THEN lcl_main_salv=>gui
-                                                            WHEN r2 EQ abap_true THEN lcl_main_salv=>fiori
-                                                            ELSE lcl_main_salv=>fiori )
-                       im_popup                   = p_popup
-                       im_container               = COND #( WHEN p_stand EQ abap_true THEN lcl_main_salv=>standard
-                                                            WHEN p_doc   EQ abap_true THEN lcl_main_salv=>bottom
-                                                            WHEN p_split EQ abap_true THEN lcl_main_salv=>splitter
-                                                            WHEN p_dial  EQ abap_true THEN lcl_main_salv=>dialog
-                                                            WHEN p_cont  EQ abap_true THEN lcl_main_salv=>context
-                                                            ELSE lcl_main_salv=>standard )
-                       im_layout                  = p_layout
-                       im_technical_names         = p_names
-                       im_status                  = p_status
-                       im_hotspot_field           = p_hotsp
-                       im_hotspot_color           = p_colh
-                       im_line_color              = p_coll
-                       im_handle_gui_grid_events  = p_event
-                       im_popup_dimensions        = VALUE #( column_start = p_col_s
-                                                             column_end   = p_col_e
-                                                             line_start   = p_lin_s
-                                                             line_end     = p_lin_e )
+      NEW lcl_main_salv( im_version                 = COND #( WHEN r1 EQ abap_true THEN lcl_main_salv=>gui
+                                                              WHEN r2 EQ abap_true THEN lcl_main_salv=>fiori
+                                                              ELSE lcl_main_salv=>fiori )
+                         im_popup                   = p_popup
+                         im_container               = COND #( WHEN p_stand EQ abap_true THEN lcl_main_salv=>standard
+                                                              WHEN p_doc   EQ abap_true THEN lcl_main_salv=>bottom
+                                                              WHEN p_split EQ abap_true THEN lcl_main_salv=>splitter
+                                                              WHEN p_dial  EQ abap_true THEN lcl_main_salv=>dialog
+                                                              WHEN p_cont  EQ abap_true THEN lcl_main_salv=>context
+                                                              ELSE lcl_main_salv=>standard )
+                         im_layout                  = p_layout
+                         im_technical_names         = p_names
+                         im_status                  = p_status
+                         im_hotspot_field           = p_hotsp
+                         im_hotspot_color           = p_colh
+                         im_line_color              = p_coll
+                         im_handle_gui_grid_events  = p_event
+                         im_popup_dimensions        = VALUE #( column_start = p_col_s
+                                                               column_end   = p_col_e
+                                                               line_start   = p_lin_s
+                                                               line_end     = p_lin_e )
                        )->get_data( im_data_source     = COND #( WHEN db   EQ abap_true THEN lcl_main_salv=>database
                                                                  WHEN file EQ abap_true THEN lcl_main_salv=>excel
                                                                  ELSE THROW lcx_exception( im_text = 'Invalid Data Source Selection' )  )
