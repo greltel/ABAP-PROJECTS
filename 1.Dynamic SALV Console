@@ -243,6 +243,8 @@ CLASS lcl_main_salv DEFINITION CREATE PUBLIC FINAL FRIENDS lcl_utilities lcl_sal
       show_hide_empty_columns,
       display_documentation,
       display_details_of_selection,
+      get_text_label_of_rollname IMPORTING im_rollname          TYPE rollname
+                                 RETURNING VALUE(re_text_label) TYPE scrtext_l,
       set_hotspot IMPORTING im_field TYPE lvc_fname
                             im_alv   TYPE REF TO cl_salv_table
                   RAISING   lcx_exception.
@@ -267,7 +269,7 @@ ENDCLASS.
 *----------------------------------------------------------------------*
 *       CLASS lcl_utilities DEFINITION
 *----------------------------------------------------------------------*
-CLASS lcl_utilities DEFINITION CREATE PUBLIC.
+CLASS lcl_utilities DEFINITION CREATE PUBLIC FRIENDS lcl_main_salv.
 
   PUBLIC SECTION.
 
@@ -299,7 +301,7 @@ CLASS lcl_utilities DEFINITION CREATE PUBLIC.
                    EXPORTING ex_table        TYPE REF TO data
                    RAISING   lcx_exception.
 
-  PRIVATE SECTION.
+  PROTECTED SECTION.
 
 
     TYPES:
@@ -313,11 +315,8 @@ CLASS lcl_utilities DEFINITION CREATE PUBLIC.
 
 
       alpha_conversion IMPORTING VALUE(iv_input)  TYPE any
-                                 im_alpha         TYPE lcl_utilities=>t_alpha_conversion
+                                 im_alpha         TYPE lcl_utilities=>t_alpha_conversion DEFAULT s_alpha_conversion-in
                        EXPORTING VALUE(ev_output) TYPE any,
-
-      convert_to_internal_alpha IMPORTING im_external        TYPE any
-                                RETURNING VALUE(re_internal) TYPE string,
 
       date_external_to_internal IMPORTING im_date                 TYPE string
                                 RETURNING VALUE(re_date_internal) TYPE tumls_date.
@@ -1640,18 +1639,22 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
         "Populate LT_DETAILS Table with the Values from the Row Selected
         DATA(lt_details) = VALUE se16n_selfields_t_in( ).
-        LOOP AT lo_struct->components INTO DATA(wa_components).
+        LOOP AT lo_struct->components ASSIGNING FIELD-SYMBOL(<fs_component>).
 
           "Check if Column is Displayed in ALV
           TRY.
-              IF NOT me->lo_salv_alv->get_columns( )->get_column( wa_components-name )->is_visible( ).
+              IF NOT me->lo_salv_alv->get_columns( )->get_column( <fs_component>-name )->is_visible( ).
                 CONTINUE.
               ENDIF.
             CATCH cx_salv_not_found.                    "#EC NO_HANDLER
+              CONTINUE.
           ENDTRY.
 
           "FIELD VALUE AS PREVIEWED AND UNCONVERTED
-          ASSIGN COMPONENT wa_components-name OF STRUCTURE <fs_data> TO FIELD-SYMBOL(<fs_value>).
+          ASSIGN COMPONENT <fs_component>-name OF STRUCTURE <fs_data> TO FIELD-SYMBOL(<fs_value>).
+          IF <fs_value> IS NOT ASSIGNED OR syst-subrc IS NOT INITIAL.
+            CONTINUE.
+          ENDIF.
 
           "Check that <fs_value> is not structure or table
           DATA(lo_type) = cl_abap_typedescr=>describe_by_data( <fs_value> ).
@@ -1660,45 +1663,16 @@ CLASS lcl_main_salv IMPLEMENTATION.
             CONTINUE.
           ENDIF.
 
-          IF <fs_value> IS ASSIGNED.
-            DATA(value_out) = |{ <fs_value> ALPHA = OUT   }|.
-            DATA(value_in) =  |{ <fs_value> }|.
-          ENDIF.
-
-          "TECHNICAL FIELD NAME
-          DATA(fieldname) = wa_components-name.
-
-          "FIELD NAME DESCRIPTION
           "Get Data Dictionary Type of the Component
-          DATA(lo_element_def) = CAST cl_abap_elemdescr( lo_struct->get_component_type( wa_components-name ) ).
+          DATA(lo_element_def) = CAST cl_abap_elemdescr( lo_struct->get_component_type( <fs_component>-name ) ).
 
-          IF NOT lo_element_def->is_ddic_type( ) ."Field is not Dictionary Data Type
-            DATA(scrtext_l) = wa_components-name.
-          ELSE."Field is Dictionary Data Type
+          APPEND VALUE #( low        = |{ <fs_value> ALPHA = OUT }|
+                          low_noconv = |{ <fs_value> }|
+                          scrtext_l  = COND #( WHEN NOT lo_element_def->is_ddic_type( ) THEN <fs_component>-name
+                                               ELSE get_text_label_of_rollname( lo_element_def->get_ddic_field( )-rollname ) )
+                          fieldname  = <fs_component>-name  ) TO lt_details.
 
-            DATA(lw_field_info) = lo_element_def->get_ddic_field( ).
-            SELECT SINGLE scrtext_l
-               FROM  dd04t
-               INTO  @scrtext_l
-               WHERE rollname EQ @lw_field_info-rollname AND
-                     ddlanguage  EQ @syst-langu.
-
-            IF scrtext_l IS INITIAL."If no Text Exist take Heading Information
-
-              SELECT SINGLE reptext
-               FROM  dd04t
-               INTO  @scrtext_l
-               WHERE rollname EQ @lw_field_info-rollname AND
-                     ddlanguage  EQ @syst-langu.
-
-            ENDIF.
-
-          ENDIF.
-
-          APPEND VALUE #( low        = value_out
-                          low_noconv = value_in
-                          scrtext_l  = scrtext_l
-                          fieldname  = fieldname  ) TO lt_details.
+          CLEAR: lo_element_def,lo_type.
 
         ENDLOOP.
 
@@ -1709,9 +1683,31 @@ CLASS lcl_main_salv IMPLEMENTATION.
             error_message = 1
             OTHERS        = 2.
 
-      CATCH cx_sy_itab_line_not_found.
-        MESSAGE 'Please Select a Row to Display Details' TYPE cl_cms_common=>con_msg_typ_i.
+      CATCH cx_root INTO DATA(lo_exception).
+        MESSAGE 'Error Displaying Details of Selected Row' TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
     ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD get_text_label_of_rollname.
+
+    CHECK im_rollname IS NOT INITIAL.
+
+    SELECT SINGLE scrtext_l
+     FROM  dd04t
+     INTO  @re_text_label
+     WHERE rollname   EQ @im_rollname AND
+           ddlanguage EQ @syst-langu.
+
+    IF re_text_label IS INITIAL.
+
+      SELECT SINGLE reptext
+       FROM  dd04t
+       INTO  @re_text_label
+       WHERE rollname   EQ @im_rollname AND
+             ddlanguage EQ @syst-langu.
+
+    ENDIF.
 
   ENDMETHOD.
 
@@ -2144,57 +2140,6 @@ CLASS lcl_utilities IMPLEMENTATION.
       WHERE tabname   EQ @im_table
         AND fieldname EQ @im_field
       INTO @re_exists.
-
-  ENDMETHOD.
-
-  METHOD convert_to_internal_alpha.
-
-    DATA:wf_data TYPE REF TO data.
-
-    "Determine the mask(Conversion Exit) and Output Length of the Field
-    DATA(lv_edit_mask) = CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_data( im_external ) )->edit_mask.
-    DATA(lv_output_length) = CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_data( im_external ) )->output_length.
-
-    IF lv_edit_mask IS INITIAL."ALPHA ROUTINE DOES NO EXISTS
-      re_internal = |{ im_external ALPHA = IN }|.
-      RETURN.
-    ENDIF.
-
-    REPLACE '==' IN lv_edit_mask WITH space.
-    CONDENSE lv_edit_mask NO-GAPS.
-
-    CREATE DATA wf_data TYPE c LENGTH lv_output_length.
-    IF wf_data IS BOUND.
-      ASSIGN wf_data->* TO FIELD-SYMBOL(<fs_t>).
-      IF <fs_t> IS NOT ASSIGNED.
-        IF re_internal IS INITIAL.
-          re_internal = im_external.
-        ENDIF.
-        EXIT.
-      ENDIF.
-    ELSE.
-      IF re_internal IS INITIAL.
-        re_internal = im_external.
-      ENDIF.
-      EXIT.
-    ENDIF.
-
-    CONCATENATE 'CONVERSION_EXIT_' lv_edit_mask '_INPUT' INTO DATA(lv_convexit).
-
-    CALL FUNCTION lv_convexit
-      EXPORTING
-        input         = im_external
-      IMPORTING
-        output        = <fs_t>
-      EXCEPTIONS
-        error_message = 1
-        OTHERS        = 2.
-
-    IF syst-subrc IS NOT INITIAL.
-      re_internal = im_external.
-    ELSE.
-      re_internal = <fs_t>.
-    ENDIF.
 
   ENDMETHOD.
 
