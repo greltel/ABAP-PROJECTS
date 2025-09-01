@@ -18,7 +18,7 @@ The repository was created by George Drakos.
 
 ## Design Goals
 
-* Copy-Paste Installation
+* Install via [ABAPGit](http://abapgit.org)
 * Code based on New ABAP Syntax. 7.50 and later
 * Comments throughout the Code(when necessary)
 * Public repository
