@@ -15,10 +15,6 @@ I would be very happy if through this initiative, I could help ABAPers to develo
 I strongly believe that because the number of ABAP Developers is limited, our libraries and code foundings must be shared. 
 Any suggestions are always welcome regarding code optimization, addition of new functions or even ideas for projects.
 
-## Contributors-Developers
-
-The repository was created by George Drakos.
-
 ## Design Goals
 
 * Install via [ABAPGit](http://abapgit.org)
