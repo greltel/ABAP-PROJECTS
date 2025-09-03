@@ -1,6 +1,6 @@
 # ABAP_PROJECTS
 
-*Repository for Projects based on ABAP Programming language.*
+*Repository for Projects based on ABAP.*
 
 ## License
 This project is licensed under the [MIT License](https://github.com/greltel/ABAP-PROJECTS/blob/Main/LICENSE). See the LICENSE file for details.
