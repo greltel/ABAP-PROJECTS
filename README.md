@@ -1,4 +1,4 @@
-# ABAP_PROJECTS
+# ABAP-PROJECTS
 
 Repository for Projects based on ABAP.
 
