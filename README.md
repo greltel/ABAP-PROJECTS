@@ -15,7 +15,7 @@ I would be very happy if through this initiative, I could help ABAPers to develo
 I strongly believe that because the number of ABAP Developers is limited, our libraries and code foundings must be shared. 
 Any suggestions are always welcome regarding code optimization, addition of new functions or even ideas for projects.
 
-## Design Goals
+## Design Goals/Features
 
 * Install via [ABAPGit](http://abapgit.org)
 * Code based on New ABAP Syntax. 7.50 and later
