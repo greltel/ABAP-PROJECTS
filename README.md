@@ -22,6 +22,7 @@ Any suggestions are always welcome regarding code optimization, addition of new 
 * Comments throughout the Code(when necessary)
 * Public repository
 * No Text Elements-Selection Texts must be created.
+* Passes ATC Variant S4HANA_READINESS_2023
 
 ## Project 1: Dynamic SALV Console
 
