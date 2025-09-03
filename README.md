@@ -20,7 +20,6 @@ Any suggestions are always welcome regarding code optimization, addition of new 
 * Install via [ABAPGit](http://abapgit.org)
 * Code based on New ABAP Syntax. 7.50 and later
 * Comments throughout the Code(when necessary)
-* Public repository
 * No Text Elements-Selection Texts must be created.
 * Passed ATC Check Variant S4HANA_READINESS_2023
 
