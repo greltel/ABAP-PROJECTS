@@ -1,6 +1,6 @@
 ************************************************************************
 *   Program name: Z_DYNAMIC_TEXTS_EXPORT
-*   Description : Download Texts to XLSX File
+*   Description : Download Texts to XLSX File Dynamically
 *
 *   Created   by: George Drakos
 *
@@ -216,9 +216,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
 
     CASE im_system_command.
 
-      WHEN /pmg/if_ge_sel_constants=>gc_policy_free_sel.
-
-      WHEN cl_wsti_calc_const=>c_execute.
+      WHEN ''.
 
     ENDCASE.
 
@@ -342,10 +340,13 @@ CLASS lcl_texts IMPLEMENTATION.
     IF im_field_labels_as_header EQ abap_true.
 
       LOOP AT lt_fieldcatalog ASSIGNING FIELD-SYMBOL(<fs_line>).
+
         <fs_line>-fix_column = abap_true.
-        IF <fs_line>-fieldname EQ 'TEXT'.
-          <fs_line>-coltext = 'Text String'.
-        ENDIF.
+        CASE <fs_line>-fieldname.
+          WHEN 'TEXT'.
+            <fs_line>-coltext = 'Text String'.
+        ENDCASE.
+
       ENDLOOP.
 
     ENDIF.

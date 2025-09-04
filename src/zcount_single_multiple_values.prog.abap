@@ -1,6 +1,6 @@
 ************************************************************************
 *   Program name: ZCOUNT_SINGLE_MULTIPLE_VALUES
-*   Description : Count Single and Multiple Values of Internal Table
+*   Description : Count Single and Multiple Values of Internal Table Dynamically
 *
 *   Created   by: George Drakos
 *
@@ -28,10 +28,10 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 START-OF-SELECTION.
 
-  SELECT FROM vbak FIELDS vbak~* INTO TABLE @DATA(lt_table) UP TO 1000 ROWS.
+  SELECT FROM bkpf FIELDS bkpf~* INTO TABLE @DATA(lt_table) UP TO 10000 ROWS.
 
   lcl_count=>count_single_multiple_values( EXPORTING im_table           = lt_table
-                                                     im_column_name     = 'ERNAM'
+                                                     im_column_name     = 'USNAM'
                                            IMPORTING ex_unique_values   = DATA(lo_unique_values)
                                                      ex_multiple_values = DATA(lo_multiple_values) ).
 
@@ -51,17 +51,17 @@ CLASS lcl_count IMPLEMENTATION.
 
   METHOD count_single_multiple_values.
 
-    CONSTANTS lc_count_column TYPE c LENGTH 8 VALUE 'COUNT'.
+    CONSTANTS lc_count_column TYPE name_feld VALUE 'COUNT'.
 
-    DATA:lo_ref         TYPE REF TO data,
-         lo_target_line TYPE REF TO data,
-         lo_temp_table  TYPE REF TO data.
+    DATA lo_ref         TYPE REF TO data.
+    DATA lo_target_line TYPE REF TO data.
+    DATA lo_temp_table  TYPE REF TO data.
 
-    FIELD-SYMBOLS:<fs_temp_values_table>     TYPE SORTED TABLE,
-                  <fs_imported_table>        TYPE STANDARD TABLE,
-                  <fs_unique_values_table>   TYPE HASHED TABLE,
-                  <fs_multiple_values_table> TYPE HASHED TABLE,
-                  <fs_target_line>           TYPE any.
+    FIELD-SYMBOLS <fs_temp_values_table>     TYPE SORTED TABLE.
+    FIELD-SYMBOLS <fs_imported_table>        TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <fs_unique_values_table>   TYPE HASHED TABLE.
+    FIELD-SYMBOLS <fs_multiple_values_table> TYPE HASHED TABLE.
+    FIELD-SYMBOLS <fs_target_line>           TYPE any.
 
     "VALIDATIONS
     CHECK im_table IS NOT INITIAL.
@@ -162,7 +162,7 @@ CLASS lcl_count IMPLEMENTATION.
 
         IF lines( <fs_temp_values_table> ) EQ 1.
 
-          CLEAR:<fs_target_line>.
+          CLEAR <fs_target_line>.
           ASSIGN COMPONENT im_column_name OF STRUCTURE <fs_target_line> TO FIELD-SYMBOL(<fs_target_unique>).
           <fs_target_unique> = <fs_value>.
 
@@ -171,11 +171,11 @@ CLASS lcl_count IMPLEMENTATION.
 
           INSERT <fs_target_line> INTO TABLE <fs_unique_values_table>.
 
-          UNASSIGN: <fs_target_unique>.
+          UNASSIGN <fs_target_unique>.
 
         ELSEIF  lines( <fs_temp_values_table> ) GT 1.
 
-          CLEAR:<fs_target_line>.
+          CLEAR <fs_target_line>.
           ASSIGN COMPONENT im_column_name OF STRUCTURE <fs_target_line> TO FIELD-SYMBOL(<fs_target_multiple>).
           <fs_target_multiple> = <fs_value>.
 
@@ -184,11 +184,13 @@ CLASS lcl_count IMPLEMENTATION.
 
           INSERT <fs_target_line> INTO TABLE <fs_multiple_values_table>.
 
-          UNASSIGN: <fs_target_multiple>.
+          UNASSIGN <fs_target_multiple>.
 
         ENDIF.
 
       ENDIF.
+
+      CLEAR lv_Tabix.
 
     ENDLOOP.
 

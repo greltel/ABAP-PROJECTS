@@ -75,12 +75,14 @@ CLASS lcl_convertion_class IMPLEMENTATION.
     TRY.
         CALL FUNCTION function_conversion
           EXPORTING
-            input         = iv_input
+            input                 = iv_input
           IMPORTING
-            output        = ev_output
+            output                = ev_output
           EXCEPTIONS
-            error_message = 1
-            OTHERS        = 2.
+            communication_failure = 1
+            system_failure        = 2
+            error_message         = 3
+            OTHERS                = 4.
       CATCH cx_sy_dyn_call_illegal_type cx_sy_dyn_call_illegal_func.
     ENDTRY.
 

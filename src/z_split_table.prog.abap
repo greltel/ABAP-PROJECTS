@@ -39,8 +39,6 @@ START-OF-SELECTION.
 
   CHECK lr_sub_tables IS NOT INITIAL.
 
-  BREAK-POINT.
-
   LOOP AT lr_sub_tables ASSIGNING FIELD-SYMBOL(<fs_sub_table>).
 
   ENDLOOP.
