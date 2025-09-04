@@ -32,23 +32,19 @@ hide/show empty columns of table and edit button. The whole point of this projec
 cl_salv_table based ALV even though there are limitations compared to cl_gui_alv_grid. We call this project Console because
 you can use it as a utility to display any table of the system plus display your own Excel file.
 
-## Project 2: Dynamic XML To Internal Table
-
-Upload XML file and map it directly to Internal Table.
-
-## Project 3: Dynamic Count of Unique-Multiple Values of Internal Table
+## Project 2: Dynamic Count of Unique-Multiple Values of Internal Table
 
 Use the Static Class Method to Retrieve Unique and Multiple values of Any Table.
 
-## Project 4: Dynamic Texts Export
+## Project 3: Dynamic Texts Export
 
 Download any Text Object of SAP System into Excel File directly.
 
-## Project 5: Dynamic Input-Output Convertion
+## Project 4: Dynamic Input-Output Convertion
 
 Dynamically convert a DDIC value to Input/Output format.
 
-## Project 6: Dynamic Split of Table into Smaller Ones
+## Project 5: Dynamic Split of Table into Smaller Ones
 
 Split Internal Table into Smaller ones specifying split segments.
 Especially useful for parallel processing tasks.
