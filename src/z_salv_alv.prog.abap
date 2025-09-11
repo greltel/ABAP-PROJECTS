@@ -64,16 +64,16 @@ INTERFACE lif_data.
   TYPES:
 
     BEGIN OF ENUM en_alv_version,
-      gui,
-      fiori,
+      t_gui,
+      t_fiori,
     END OF ENUM en_alv_version,
 
     BEGIN OF ENUM en_alv_container,
-      standard,
-      bottom,
-      splitter,
-      dialog,
-      context,
+      t_standard,
+      t_bottom,
+      t_splitter,
+      t_dialog,
+      t_context,
     END OF ENUM en_alv_container,
 
     BEGIN OF ENUM en_data_source,
@@ -131,18 +131,15 @@ CLASS lcl_sel_screen DEFINITION CREATE PRIVATE FINAL.
 
     METHODS:
 
-      screen_initialization RAISING   lcx_exception,
+      screen_initialization,
 
-      screen_pbo RAISING   lcx_exception,
+      screen_pbo,
 
-      color_f4 IMPORTING im_fieldname TYPE help_info-dynprofld
-               RAISING   lcx_exception,
+      color_f4 IMPORTING im_fieldname TYPE help_info-dynprofld,
 
-      fields_f4 IMPORTING im_fieldname TYPE help_info-dynprofld
-                RAISING   lcx_exception,
+      fields_f4 IMPORTING im_fieldname TYPE help_info-dynprofld,
 
-      screen_pai IMPORTING im_user_command TYPE syst-ucomm
-                 RAISING   lcx_exception.
+      screen_pai IMPORTING im_user_command TYPE syst-ucomm.
 
   PRIVATE SECTION.
 
@@ -348,21 +345,21 @@ ENDCLASS."lcl_salv_edit DEFINITION
 *&---------------------------------------------------------------------*
 *& SELECTION SCREEN DESIGN
 *&---------------------------------------------------------------------*
-SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME TITLE title0.
+SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME TITLE t_title0.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_db FOR FIELD db.
-    PARAMETERS: db RADIOBUTTON GROUP rb0 DEFAULT 'X' USER-COMMAND dummy.
+    SELECTION-SCREEN COMMENT 1(26) t_db FOR FIELD p_db.
+    PARAMETERS: p_db RADIOBUTTON GROUP rb0 DEFAULT 'X' USER-COMMAND dummy.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_file FOR FIELD file.
-    PARAMETERS:file RADIOBUTTON GROUP rb0.
+    SELECTION-SCREEN COMMENT 1(26) t_file FOR FIELD p_file.
+    PARAMETERS:p_file RADIOBUTTON GROUP rb0.
   SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b0.
 
-SELECTION-SCREEN BEGIN OF BLOCK b05 WITH FRAME TITLE title05.
+SELECTION-SCREEN BEGIN OF BLOCK b05 WITH FRAME TITLE t_title5.
 
   SELECTION-SCREEN BEGIN OF LINE.
     SELECTION-SCREEN COMMENT 1(22) t_excel FOR FIELD p_excel MODIF ID id3.
@@ -382,7 +379,7 @@ SELECTION-SCREEN BEGIN OF BLOCK b05 WITH FRAME TITLE title05.
 
 SELECTION-SCREEN END OF BLOCK b05.
 
-SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE t_title1.
 
   SELECTION-SCREEN BEGIN OF LINE.
     SELECTION-SCREEN COMMENT 1(22) t_table FOR FIELD p_table MODIF ID id4.
@@ -439,18 +436,18 @@ SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_r1 FOR FIELD r1.
-    PARAMETERS: r1 RADIOBUTTON GROUP rb1 DEFAULT 'X' USER-COMMAND dummy.
+    SELECTION-SCREEN COMMENT 1(26) t_r1 FOR FIELD p_r1.
+    PARAMETERS: p_r1 RADIOBUTTON GROUP rb1 DEFAULT 'X' USER-COMMAND dummy.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
-    SELECTION-SCREEN COMMENT 1(26) t_r2 FOR FIELD r2.
-    PARAMETERS: r2 RADIOBUTTON GROUP rb1.
+    SELECTION-SCREEN COMMENT 1(26) t_r2 FOR FIELD p_r2.
+    PARAMETERS: p_r2 RADIOBUTTON GROUP rb1.
   SELECTION-SCREEN END OF LINE.
 
 SELECTION-SCREEN END OF BLOCK b1.
 
-SELECTION-SCREEN BEGIN OF BLOCK b4 WITH FRAME TITLE title4.
+SELECTION-SCREEN BEGIN OF BLOCK b4 WITH FRAME TITLE t_title4.
 
   SELECTION-SCREEN BEGIN OF LINE.
 
@@ -462,7 +459,7 @@ SELECTION-SCREEN BEGIN OF BLOCK b4 WITH FRAME TITLE title4.
 
 SELECTION-SCREEN END OF BLOCK b4.
 
-SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE title2.
+SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE t_title2.
 
   SELECTION-SCREEN BEGIN OF LINE.
     SELECTION-SCREEN COMMENT 1(26) t_stand FOR FIELD p_stand MODIF ID id1.
@@ -498,7 +495,7 @@ SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE title2.
 
 SELECTION-SCREEN END OF BLOCK b2.
 
-SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE title3.
+SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE t_title3.
 
   SELECTION-SCREEN BEGIN OF LINE.
     SELECTION-SCREEN COMMENT 1(26) t_popup FOR FIELD p_popup MODIF ID id2.
@@ -577,16 +574,16 @@ AT SELECTION-SCREEN.
 START-OF-SELECTION.
 
   TRY.
-      NEW lcl_main_salv( im_version                 = COND #( WHEN r1 EQ abap_true THEN lcl_main_salv=>lif_data~gui
-                                                              WHEN r2 EQ abap_true THEN lcl_main_salv=>lif_data~fiori
-                                                              ELSE lcl_main_salv=>lif_data~fiori )
+      NEW lcl_main_salv( im_version                 = COND #( WHEN p_r1 EQ abap_true THEN lcl_main_salv=>lif_data~t_gui
+                                                              WHEN p_r2 EQ abap_true THEN lcl_main_salv=>lif_data~t_fiori
+                                                              ELSE lcl_main_salv=>lif_data~t_fiori )
                          im_popup                   = p_popup
-                         im_container               = COND #( WHEN p_stand EQ abap_true THEN lcl_main_salv=>lif_data~standard
-                                                              WHEN p_doc   EQ abap_true THEN lcl_main_salv=>lif_data~bottom
-                                                              WHEN p_split EQ abap_true THEN lcl_main_salv=>lif_data~splitter
-                                                              WHEN p_dial  EQ abap_true THEN lcl_main_salv=>lif_data~dialog
-                                                              WHEN p_cont  EQ abap_true THEN lcl_main_salv=>lif_data~context
-                                                              ELSE lcl_main_salv=>lif_data~standard )
+                         im_container               = COND #( WHEN p_stand EQ abap_true THEN lcl_main_salv=>lif_data~t_standard
+                                                              WHEN p_doc   EQ abap_true THEN lcl_main_salv=>lif_data~t_bottom
+                                                              WHEN p_split EQ abap_true THEN lcl_main_salv=>lif_data~t_splitter
+                                                              WHEN p_dial  EQ abap_true THEN lcl_main_salv=>lif_data~t_dialog
+                                                              WHEN p_cont  EQ abap_true THEN lcl_main_salv=>lif_data~t_context
+                                                              ELSE lcl_main_salv=>lif_data~t_standard )
                          im_layout                  = p_layout
                          im_technical_names         = p_names
                          im_status                  = p_status
@@ -598,8 +595,8 @@ START-OF-SELECTION.
                                                                column_end   = p_col_e
                                                                line_start   = p_lin_s
                                                                line_end     = p_lin_e )
-                       )->get_data( im_data_source     = COND #( WHEN db   EQ abap_true THEN lcl_main_salv=>lif_data~database
-                                                                 WHEN file EQ abap_true THEN lcl_main_salv=>lif_data~excel
+                       )->get_data( im_data_source     = COND #( WHEN p_db   EQ abap_true THEN lcl_main_salv=>lif_data~database
+                                                                 WHEN p_file EQ abap_true THEN lcl_main_salv=>lif_data~excel
                                                                  ELSE THROW lcx_exception( im_text = 'Invalid Data Source Selection' )  )
                                     im_filepath        = p_excel
                                     im_sheet_name      = p_sheet
@@ -870,22 +867,22 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     CASE me->lv_version.
 
-      WHEN lcl_main_salv=>lif_data~gui.
+      WHEN lcl_main_salv=>lif_data~t_gui.
 
         TRY.
             cl_salv_table=>factory( EXPORTING r_container   = SWITCH #( me->lv_container
-                                                                        WHEN lcl_main_salv=>lif_data~bottom   THEN me->get_docking_container( )
-                                                                        WHEN lcl_main_salv=>lif_data~standard THEN cl_gui_container=>default_screen
-                                                                        WHEN lcl_main_salv=>lif_data~splitter THEN me->get_splitter_container( )
-                                                                        WHEN lcl_main_salv=>lif_data~dialog   THEN me->get_dialog_container( )
-                                                                        WHEN lcl_main_salv=>lif_data~context  THEN me->get_context_menu_container( ) )
+                                                                        WHEN lcl_main_salv=>lif_data~t_bottom   THEN me->get_docking_container( )
+                                                                        WHEN lcl_main_salv=>lif_data~t_standard THEN cl_gui_container=>default_screen
+                                                                        WHEN lcl_main_salv=>lif_data~t_splitter THEN me->get_splitter_container( )
+                                                                        WHEN lcl_main_salv=>lif_data~t_dialog   THEN me->get_dialog_container( )
+                                                                        WHEN lcl_main_salv=>lif_data~t_context  THEN me->get_context_menu_container( ) )
                                               list_display  = if_salv_c_bool_sap=>false
                                     IMPORTING r_salv_table  = me->lo_salv_alv
                                     CHANGING  t_table       = <fs_table> ).
           CATCH cx_salv_msg.                            "#EC NO_HANDLER
         ENDTRY.
 
-      WHEN lcl_main_salv=>lif_data~fiori.
+      WHEN lcl_main_salv=>lif_data~t_fiori.
 
         TRY.
             cl_salv_table=>factory( EXPORTING list_display  = if_salv_c_bool_sap=>false
@@ -1235,7 +1232,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
                                                                "OBLIGATORY = IF_SALV_C_BOOL_SAP=>FALSE
                                                                ).
         "SUBTOTALS
-        lr_sort_column->set_subtotal( EXPORTING value = if_salv_c_bool_sap=>true ).
+        lr_sort_column->set_subtotal( value = if_salv_c_bool_sap=>true ).
 
       CATCH cx_salv_existing cx_salv_not_found cx_salv_data_error . "#EC NO_HANDLER
     ENDTRY.
@@ -1321,13 +1318,13 @@ CLASS lcl_main_salv IMPLEMENTATION.
   METHOD header_creation.
 
     CASE lv_version.
-      WHEN lcl_main_salv=>lif_data~gui.
+      WHEN lcl_main_salv=>lif_data~t_gui.
 
         lo_salv_alv->get_display_settings( :
            )->set_list_header_size( cl_salv_display_settings=>c_header_size_medium ),
            )->set_list_header( |The List Generated by { syst-uname  } at { syst-datum  DATE = USER } { syst-uzeit  TIME = USER }.Entries:{ lines( <fs_table> ) } | ).
 
-      WHEN lcl_main_salv=>lif_data~fiori.
+      WHEN lcl_main_salv=>lif_data~t_fiori.
 
         lo_salv_alv->get_display_settings(:
           )->set_list_header_size( cl_salv_display_settings=>c_header_size_medium ),
@@ -1376,7 +1373,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD toolbar_status.
 
-    IF lv_status IS NOT INITIAL AND lv_version EQ lcl_main_salv=>lif_data~fiori.
+    IF lv_status IS NOT INITIAL AND lv_version EQ lcl_main_salv=>lif_data~t_fiori.
 
       TRY.
           lo_salv_alv->set_screen_status(
@@ -1386,11 +1383,11 @@ CLASS lcl_main_salv IMPLEMENTATION.
         CATCH cx_salv_method_not_supported cx_salv_object_not_found. "#EC NO_HANDLER
       ENDTRY.
 
-    ELSEIF lv_version EQ lcl_main_salv=>lif_data~fiori.
+    ELSEIF lv_version EQ lcl_main_salv=>lif_data~t_fiori.
 
       lo_salv_alv->get_functions( )->set_all( if_salv_c_bool_sap=>true ).
 
-    ELSEIF lv_version EQ lcl_main_salv=>lif_data~gui.
+    ELSEIF lv_version EQ lcl_main_salv=>lif_data~t_gui.
 
       lo_salv_alv->get_functions( )->set_all( if_salv_c_bool_sap=>true ).
 
@@ -1462,7 +1459,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
     lo_salv_alv->display( ).
 
     "Force Container Generation
-    IF lv_version EQ lcl_main_salv=>lif_data~gui.
+    IF lv_version EQ lcl_main_salv=>lif_data~t_gui.
       WRITE:/ space.
     ENDIF.
 
@@ -1505,12 +1502,10 @@ CLASS lcl_main_salv IMPLEMENTATION.
         IF lt_selopt NE me->lt_filter_selopt.
 
           TRY.
-              lo_filters->add_filter(
-                EXPORTING
-                  columnname = 'CHANGE'
-                  sign       = 'I'
-                  option     = 'EQ'
-                  low        = 'VALUE').
+              lo_filters->add_filter( columnname = 'CHANGE'
+                                      sign       = 'I'
+                                      option     = 'EQ'
+                                      low        = 'VALUE').
 
             CATCH cx_salv_not_found cx_salv_data_error  cx_salv_existing. "#EC NO_HANDLER
 
@@ -1523,12 +1518,10 @@ CLASS lcl_main_salv IMPLEMENTATION.
         "when Filter is removed, this exception would be raised.
         "set it back
         TRY.
-            lo_filters->add_filter(
-              EXPORTING
-                columnname = 'CHANGE'
-                sign       = 'I'
-                option     = 'EQ'
-                low        = 'VALUE').
+            lo_filters->add_filter( columnname = 'CHANGE'
+                                    sign       = 'I'
+                                    option     = 'EQ'
+                                    low        = 'VALUE').
 
           CATCH cx_salv_not_found cx_salv_data_error  cx_salv_existing. "#EC NO_HANDLER
 
@@ -2111,7 +2104,7 @@ CLASS lcl_utilities IMPLEMENTATION.
     CALL FUNCTION '/SAPDMC/LSM_DATE_CONVERT'
       EXPORTING
         date_in             = lv_convert_date
-        date_format_in      = COND #( WHEN cl_abap_matcher=>create( pattern = '^\d{4}[/|-|.|-]\d{1,2}[/|-|.|-]\d{1,2}$' text = lv_convert_date )->match( ) EQ abap_true
+        date_format_in      = COND #( WHEN cl_abap_matcher=>create( pattern = '^\d{4}[/|-|.|-]\d{1,2}[/|-|.|-]\d{1,2}$' text = lv_convert_date )->match( ) EQ abap_true ##REGEX_POSIX
                                       THEN 'DYMD'"Date Format YYYY/MM/DD
                                       WHEN cl_abap_matcher=>create( pattern = '^\d{1,2}[/|-|.|-]\d{1,2}[/|-|.|-]\d{4}$' text = lv_convert_date )->match( ) EQ abap_true
                                       THEN 'DDMY'"Date Format DD/MM/YYYY
@@ -2346,12 +2339,12 @@ CLASS lcl_sel_screen IMPLEMENTATION.
                            ( color = 6  color_descr = 'Red'        )
                            ( color = 7  color_descr = 'Orange'     ) ).
 
-    title0     = 'Table Selection'.
-    title05    = 'Excel Options'.
-    title1     = 'ALV General Options'.
-    title2     = 'GUI Version Options'.
-    title3     = 'Fiori Version Options'.
-    title4     = 'Dynamic Where Clause'.
+    t_title0   = 'Table Selection'.
+    t_title5   = 'Excel Options'.
+    t_title1   = 'ALV General Options'.
+    t_title2   = 'GUI Version Options'.
+    t_title3   = 'Fiori Version Options'.
+    t_title4   = 'Dynamic Where Clause'.
 
     t_col_s    = icon_draw_linear              && 'Column Start'.
     t_col_e    = icon_draw_linear              && 'Column End'.
@@ -2394,10 +2387,10 @@ CLASS lcl_sel_screen IMPLEMENTATION.
 
       ls_screen-display_3d = COND #( WHEN ls_screen-name EQ 'T_HITS' THEN '1' ).
 
-      ls_screen-active     = COND #( WHEN r1   EQ abap_true AND ( ls_screen-group1 EQ 'ID2' OR ls_screen-group1 EQ 'ID5' ) THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
-                                     WHEN r2   EQ abap_true AND   ls_screen-group1 EQ 'ID1' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
-                                     WHEN db   EQ abap_true AND   ls_screen-group1 EQ 'ID3' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
-                                     WHEN file EQ abap_true AND   ls_screen-group1 EQ 'ID4' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible ).
+      ls_screen-active     = COND #( WHEN p_r1     EQ abap_true AND ( ls_screen-group1 EQ 'ID2' OR ls_screen-group1 EQ 'ID5' ) THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                                     WHEN p_r2     EQ abap_true AND   ls_screen-group1 EQ 'ID1' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                                     WHEN p_db   EQ abap_true AND   ls_screen-group1 EQ 'ID3' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible
+                                     WHEN p_file EQ abap_true AND   ls_screen-group1 EQ 'ID4' THEN /accgo/if_cck_dpqs_constants=>gc_screen_input_visible ).
 
       MODIFY SCREEN FROM ls_screen.
 
