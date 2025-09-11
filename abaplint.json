@@ -68,7 +68,7 @@
       "patternKind": "required",
       "ignoreNames": [],
       "ignorePatterns": [],
-      "parameter": "^[PT]_.+$",
+      "parameter": "^P_.+$",
       "selectOption": "^S_.+$",
       "screenElement": "^(SC|T)_.+$"
     },
