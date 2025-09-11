@@ -108,19 +108,19 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 *& SELECTION SCREEN DESIGN
 *&---------------------------------------------------------------------*
-SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME TITLE title0.
+SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME TITLE t_title0.
   PARAMETERS p_file TYPE file_table-filename OBLIGATORY.
 SELECTION-SCREEN END OF BLOCK b0.
 
-SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE title1.
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE t_title1.
 
   SELECT-OPTIONS: s_obj    FOR stxh-tdobject OBLIGATORY DEFAULT 'TEXT',
                   s_tdname FOR stxh-tdname   OBLIGATORY DEFAULT 'SAPSCRIPT-TEST_01',
                   s_tdid   FOR stxh-tdid     OBLIGATORY DEFAULT 'ST',
                   s_spras  FOR stxh-tdspras  OBLIGATORY DEFAULT syst-langu.
 
-  SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE title2.
-    PARAMETERS c_header AS CHECKBOX DEFAULT abap_true.
+  SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE t_title2.
+    PARAMETERS p_header AS CHECKBOX DEFAULT abap_true.
   SELECTION-SCREEN END OF BLOCK b2.
 
 SELECTION-SCREEN END OF BLOCK b1.
@@ -163,7 +163,7 @@ START-OF-SELECTION.
                           so_tdname = s_tdname[] ).
 
       lo_texts->download_texts( im_filename               = p_file
-                                im_field_labels_as_header = c_header ).
+                                im_field_labels_as_header = p_header ).
 
     CATCH lcx_texts INTO DATA(lo_exception).
       MESSAGE lo_exception->get_text( ) TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
@@ -188,9 +188,9 @@ CLASS lcl_sel_screen IMPLEMENTATION.
 
   METHOD screen_initialization.
 
-    title0                   = 'Export Filepath'.
-    title1                   = 'Texts Selection'.
-    title2                   = 'Properties'.
+    t_title0                   = 'Export Filepath'.
+    t_title1                   = 'Texts Selection'.
+    t_title2                   = 'Properties'.
 
     syst-title               = 'Texts Export'.
     %_p_file_%_app_%-text    = icon_xls         && 'Excel Filepath'.
@@ -198,7 +198,7 @@ CLASS lcl_sel_screen IMPLEMENTATION.
     %_s_tdname_%_app_%-text  = icon_text_field  && 'Text Name'.
     %_s_tdid_%_app_%-text    = icon_text_ina    && 'Text ID'.
     %_s_spras_%_app_%-text   = icon_eu          && 'Language'.
-    %_c_header_%_app_%-text  = 'Field Labels as Excel Header'.
+    %_p_header_%_app_%-text  = 'Field Labels as Excel Header'.
 
   ENDMETHOD.
 

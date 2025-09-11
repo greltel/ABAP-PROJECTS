@@ -77,8 +77,8 @@ INTERFACE lif_data.
     END OF ENUM en_alv_container,
 
     BEGIN OF ENUM en_data_source,
-      excel,
-      database,
+      t_excel,
+      t_database,
     END OF ENUM en_data_source,
 
     BEGIN OF ty_popup_dimensions,
@@ -394,7 +394,7 @@ SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE t_title1.
   SELECTION-SCREEN BEGIN OF LINE.
     SELECTION-SCREEN COMMENT 1(22) t_hotsp FOR FIELD p_hotsp MODIF ID id4.
     PARAMETERS: p_hotsp TYPE lvc_fname MODIF ID id4.
-    SELECTION-SCREEN COMMENT 57(55) h_descr MODIF ID id4.
+    SELECTION-SCREEN COMMENT 57(55) t_descr2 MODIF ID id4.
   SELECTION-SCREEN END OF LINE.
 
   SELECTION-SCREEN BEGIN OF LINE.
@@ -595,8 +595,8 @@ START-OF-SELECTION.
                                                                column_end   = p_col_e
                                                                line_start   = p_lin_s
                                                                line_end     = p_lin_e )
-                       )->get_data( im_data_source     = COND #( WHEN p_db   EQ abap_true THEN lcl_main_salv=>lif_data~database
-                                                                 WHEN p_file EQ abap_true THEN lcl_main_salv=>lif_data~excel
+                       )->get_data( im_data_source     = COND #( WHEN p_db   EQ abap_true THEN lcl_main_salv=>lif_data~t_database
+                                                                 WHEN p_file EQ abap_true THEN lcl_main_salv=>lif_data~t_excel
                                                                  ELSE THROW lcx_exception( im_text = 'Invalid Data Source Selection' )  )
                                     im_filepath        = p_excel
                                     im_sheet_name      = p_sheet
@@ -650,9 +650,9 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     re_main_salv_instance = me.
 
-    IF im_data_source EQ lcl_main_salv=>lif_data~excel AND im_filepath IS NOT INITIAL.
+    IF im_data_source EQ lcl_main_salv=>lif_data~t_excel AND im_filepath IS NOT INITIAL.
 
-      me->lv_data_source = lcl_main_salv=>lif_data~excel.
+      me->lv_data_source = lcl_main_salv=>lif_data~t_excel.
 
       lcl_utilities=>upload_excel(
         EXPORTING
@@ -726,9 +726,9 @@ CLASS lcl_main_salv IMPLEMENTATION.
           ex_table            = <fs_table> ).
 
 
-    ELSEIF im_data_source EQ lcl_main_salv=>lif_data~database AND im_table IS NOT INITIAL.
+    ELSEIF im_data_source EQ lcl_main_salv=>lif_data~t_database AND im_table IS NOT INITIAL.
 
-      me->lv_data_source = lcl_main_salv=>lif_data~database.
+      me->lv_data_source = lcl_main_salv=>lif_data~t_database.
 
       "Build Components of Dynamic Table
       DATA(lt_tot_comp) = VALUE cl_abap_structdescr=>component_table(
@@ -1023,7 +1023,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
   METHOD field_catalog.
 
-    IF me->lv_data_source EQ lcl_main_salv=>lif_data~database.
+    IF me->lv_data_source EQ lcl_main_salv=>lif_data~t_database.
 
       "Set information regarding currency and quantity.It is not set automatically
       TRY.
@@ -1072,7 +1072,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
         CATCH cx_salv_not_found .                       "#EC NO_HANDLER
       ENDTRY.
 
-    ELSEIF me->lv_data_source EQ lcl_main_salv=>lif_data~excel.
+    ELSEIF me->lv_data_source EQ lcl_main_salv=>lif_data~t_excel.
 
       LOOP AT me->lo_salv_alv->get_columns( )->get( ) ASSIGNING FIELD-SYMBOL(<fs_col>).
 
@@ -1363,8 +1363,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     DATA(lo_f_flow) = lo_footer->create_flow( row = 2 column = 1 ).
 
-    lo_f_flow->create_text( text = COND #( WHEN lv_data_source EQ lcl_main_salv=>lif_data~database THEN |Displaying Details of Table |
-                                           WHEN lv_data_source EQ lcl_main_salv=>lif_data~excel   THEN  |Displaying Details of Excel File |
+    lo_f_flow->create_text( text = COND #( WHEN lv_data_source EQ lcl_main_salv=>lif_data~t_database THEN |Displaying Details of Table |
+                                           WHEN lv_data_source EQ lcl_main_salv=>lif_data~t_excel   THEN  |Displaying Details of Excel File |
                                            ELSE |Footer Details | ) ).
     lo_salv_alv->set_end_of_list( lo_footer ).
     lo_salv_alv->set_end_of_list_print( lo_footer ).
@@ -2422,11 +2422,11 @@ CLASS lcl_sel_screen IMPLEMENTATION.
           FIELDS ddtext
           WHERE rollname   EQ @lv_data_element
             AND ddlanguage EQ @syst-langu
-          INTO @h_descr.
+          INTO @t_descr2.
 
       ELSE.
 
-        CLEAR h_descr.
+        CLEAR t_descr2.
 
       ENDIF.
 
