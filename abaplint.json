@@ -70,7 +70,7 @@
       "ignorePatterns": [],
       "parameter": "^[PT]_.+$",
       "selectOption": "^S_.+$",
-      "screenElement": "^SC_.+$"
+      "screenElement": "^(SC|T)_.+$"
     },
     "types_naming": {
       "exclude": [],
