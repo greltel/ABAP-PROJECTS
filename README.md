@@ -3,7 +3,8 @@
 2. [License](#License)
 3. [Contributors-Developers](#Contributors-Developers)
 4. [Motivation for Creating the Repository](#Motivation-for-Creating-the-Repository)
-5. [Design Goals/Features](#Design-Goals-Features)
+5. [Design Goals-Features](#Design-Goals-Features)
+6. [Project 1: Dynamic SALV Console](#Project-1-:-Dynamic-SALV-Console)
 
 
 # ABAP-Projects
@@ -23,7 +24,7 @@ I would be very happy if through this initiative, I could help ABAPers to develo
 I strongly believe that because the number of ABAP Developers is limited, our libraries and code foundings must be shared. 
 Any suggestions are always welcome regarding code optimization, addition of new functions or even ideas for projects.
 
-# Design Goals/Features
+# Design Goals-Features
 
 * Install via [ABAPGit](http://abapgit.org)
 * Code based on New ABAP Syntax. 7.50 and later
