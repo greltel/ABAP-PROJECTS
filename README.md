@@ -3,7 +3,7 @@
 2. [License](#License)
 3. [Contributors-Developers](#Contributors-Developers)
 4. [Motivation for Creating the Repository](#Motivation-for-Creating-the-Repository)
-5. [Design Goals-Features](#Design-Goals-Features)
+5. [Design Goals/Features](#Design-Goals-Features)
 
 
 # ABAP-Projects
