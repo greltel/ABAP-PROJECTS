@@ -19,7 +19,7 @@
 Repository for Projects based on ABAP.It contains a collection of modern, reusable ABAP utilities and dynamic tools designed to streamline daily development tasks.
 
 # License
-This project is licensed under the [MIT License](https://github.com/greltel/ABAP-PROJECTS/blob/Main/LICENSE). See the LICENSE file for details.
+This project is licensed under the [MIT License](https://github.com/greltel/ABAP-PROJECTS/blob/Main/LICENSE).
 
 # Contributors-Developers
 The repository was created by [George Drakos](https://www.linkedin.com/in/george-drakos/).
