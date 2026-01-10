@@ -26,10 +26,9 @@ The repository was created by [George Drakos](https://www.linkedin.com/in/george
 
 # Motivation for Creating the Repository
 
-The motivation for creating the current repository was my desire to share my knowledge and progress in ABAP.
-I would be very happy if through this initiative, I could help ABAPers to develop their skills and increase their productivity.
-I strongly believe that because the number of ABAP Developers is limited, our libraries and code foundings must be shared. 
-Any suggestions are always welcome regarding code optimization, addition of new functions or even ideas for projects.
+The primary motivation behind this repository is to share knowledge and foster growth within the ABAP community. My goal is to help fellow developers boost their productivity by providing reusable, modern, and clean code solutions.
+
+Since the ABAP ecosystem is niche, I strongly believe in the power of open-source sharing to drive our collective progress. Contributions, suggestions for code optimization, or new project ideas are always welcome.
 
 # Design Goals-Features
 
