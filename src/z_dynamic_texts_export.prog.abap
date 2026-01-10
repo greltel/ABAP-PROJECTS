@@ -43,10 +43,11 @@ CLASS lcl_texts DEFINITION CREATE PUBLIC.
 
     METHODS:
 
-      get_data IMPORTING so_object TYPE STANDARD TABLE
-                         so_tdname TYPE STANDARD TABLE
-                         so_tdid   TYPE STANDARD TABLE
-                         so_spras  TYPE STANDARD TABLE
+      get_data IMPORTING so_object          TYPE STANDARD TABLE
+                         so_tdname          TYPE STANDARD TABLE
+                         so_tdid            TYPE STANDARD TABLE
+                         so_spras           TYPE STANDARD TABLE
+               RETURNING VALUE(re_instance) TYPE REF TO lcl_texts
                RAISING   lcx_texts,
 
       download_texts  IMPORTING im_filename               TYPE file_table-filename
@@ -155,15 +156,13 @@ AT SELECTION-SCREEN.
 START-OF-SELECTION.
 
   TRY.
-      DATA(lo_texts) = NEW lcl_texts( ).
 
-      lo_texts->get_data( so_object = s_obj[]
-                          so_spras  = s_spras[]
-                          so_tdid   = s_tdid[]
-                          so_tdname = s_tdname[] ).
+      NEW lcl_texts( )->get_data( so_object = s_obj[]
+                                  so_spras  = s_spras[]
+                                  so_tdid   = s_tdid[]
+                                  so_tdname = s_tdname[] )->download_texts( im_filename               = p_file
+                                                                            im_field_labels_as_header = p_header ).
 
-      lo_texts->download_texts( im_filename               = p_file
-                                im_field_labels_as_header = p_header ).
 
     CATCH lcx_texts INTO DATA(lo_exception).
       MESSAGE lo_exception->get_text( ) TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
@@ -282,6 +281,8 @@ CLASS lcl_texts IMPLEMENTATION.
     ENDIF.
 
     me->populate_texts( ).
+
+    re_instance = me.
 
   ENDMETHOD.
 
