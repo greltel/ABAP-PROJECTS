@@ -35,8 +35,8 @@ Since the ABAP ecosystem is niche, I strongly believe in the power of open-sourc
 * Install via [ABAPGit](http://abapgit.org)
 * Code based on New ABAP Syntax. 7.50 and later
 * Comments throughout the Code(when necessary)
-* No Text Elements-Selection Texts must be created.
 * Passed ATC Check Variant S4HANA_READINESS_2023
+* Unit Tested
 
 # Project 1 Dynamic SALV Console
 
