@@ -1,4 +1,4 @@
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/greltel/ABAP-Cloud-Logger/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/greltel/ABAP-Projects/blob/Main/LICENSE)
 ![ABAP 7.00+](https://img.shields.io/badge/ABAP-7.00%2B-brightgreen)
 [![Code Statistics](https://img.shields.io/badge/CodeStatistics-abaplint-blue)](https://abaplint.app/stats/greltel/ABAP-Cloud-Logger)
 
