@@ -26,11 +26,6 @@ CLASS: lcl_main_salv       DEFINITION DEFERRED,
        lcx_exception       DEFINITION DEFERRED.
 
 *&---------------------------------------------------------------------*
-*& GLOBAL CONSTANTS
-*&---------------------------------------------------------------------*
-CONSTANTS gc_report_heading TYPE syst-title VALUE 'Dynamic SALV Report'.
-
-*&---------------------------------------------------------------------*
 *& GLOBAL DATA DECLARATION
 *&---------------------------------------------------------------------*
 FIELD-SYMBOLS <fs_table> TYPE INDEX TABLE.
@@ -640,9 +635,6 @@ CLASS lcl_main_salv IMPLEMENTATION.
     me->lv_status                 = im_status.
     me->ls_popup_dimensions       = im_popup_dimensions.
     me->lv_popup                  = im_popup.
-
-    "SET TITLE FOR ALV SCREEN
-    syst-title = gc_report_heading.
 
   ENDMETHOD.
 
@@ -1677,7 +1669,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
             OTHERS        = 2.
 
       CATCH cx_root INTO DATA(lo_exception).
-        MESSAGE 'Error Displaying Details of Selected Row' TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
+        MESSAGE TEXT-039 TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
     ENDTRY.
 
   ENDMETHOD.
@@ -1720,7 +1712,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
         OTHERS         = 3.
 
     IF syst-subrc IS NOT INITIAL.
-      MESSAGE 'Error while Reading Document Object' TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
+      MESSAGE TEXT-038 TYPE cl_cms_common=>con_msg_typ_i DISPLAY LIKE cl_cms_common=>con_msg_typ_e.
     ENDIF.
 
   ENDMETHOD.
@@ -1930,7 +1922,7 @@ CLASS lcl_utilities IMPLEMENTATION.
         OTHERS                  = 19 ).
 
     IF syst-subrc IS NOT INITIAL.
-      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = |Error while Uploading Excel File|.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = CONV #( TEXT-037 ).
     ENDIF.
 
     CALL FUNCTION 'SCMS_BINARY_TO_XSTRING'
@@ -1946,7 +1938,7 @@ CLASS lcl_utilities IMPLEMENTATION.
         OTHERS        = 3.
 
     IF syst-subrc IS NOT INITIAL.
-      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = |Error while Uploading Excel File|.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = CONV #( TEXT-037 ).
     ENDIF.
 
     TRY.
@@ -2234,7 +2226,7 @@ CLASS lcl_utilities IMPLEMENTATION.
     CLEAR:lt_file_table.
     cl_gui_frontend_services=>file_open_dialog(
       EXPORTING
-        window_title            = 'File System of Presentation Server'
+        window_title            = CONV #( TEXT-036 )
         default_extension       = cl_gui_frontend_services=>filetype_excel
         file_filter             = 'All Files(*.*)|*.*|' && 'Excel Files (*.xlsx)|*.xlsx|' && 'Excel Files (*.xls)|*.xls|'
       CHANGING
@@ -2339,43 +2331,42 @@ CLASS lcl_sel_screen IMPLEMENTATION.
                            ( color = 6  color_descr = 'Red'        )
                            ( color = 7  color_descr = 'Orange'     ) ).
 
-    t_title0   = 'Table Selection'.
-    t_title5   = 'Excel Options'.
-    t_title1   = 'ALV General Options'.
-    t_title2   = 'GUI Version Options'.
-    t_title3   = 'Fiori Version Options'.
-    t_title4   = 'Dynamic Where Clause'.
+    t_title0   = TEXT-001.
+    t_title5   = TEXT-002.
+    t_title1   = TEXT-003.
+    t_title2   = TEXT-004.
+    t_title3   = TEXT-005.
+    t_title4   = TEXT-006.
 
-    t_col_s    = icon_draw_linear              && 'Column Start'.
-    t_col_e    = icon_draw_linear              && 'Column End'.
-    t_lin_s    = icon_draw_linear              && 'Line Start'.
-    t_lin_e    = icon_draw_linear              && 'Line End'.
-    t_db       = icon_database_table           && 'Database Table'.
-    t_file     = icon_xls                      && 'Table from Excel File'.
-    t_excel    = icon_open_folder              && 'Excel Filepath'.
-    t_sheet    = icon_xls                      && 'Sheet Name'.
-    t_hdesc    = 'Bases on First Row of Excel Table'.
-    t_head     = 'Dynamic Column Name'.
-    t_status   = icon_wd_toolbar_caption       && 'Custom GUI Status'.
-    t_layout   = icon_alv_variants             && 'Layout'.
-    t_names    = icon_wd_input_field           && 'Display Technical Names'.
-    t_hits     = 'Maximum no. of hits'.
-    t_icon     = icon_status_open              && 'Include Icon Column'.
-    t_popup    = icon_wd_window                && 'ALV on Popup'.
-    t_check    = icon_checkbox                 && 'Include Checkbox Column'.
-    t_hotsp    = icon_simple_field             && 'Hotspot Field'.
-    t_doc      = icon_wd_view_set_t_layout_90  && 'ALV at Bottom'.
-    t_split    = icon_wd_view_set_t_layout_270 && 'ALV Splitted'.
-    t_cont     = icon_context_menu             && 'ALV with Context Menu'.
-    t_table    = icon_table_settings           && 'Table'.
-    t_stand    = icon_wd_view_container        &&'ALV Standard Position'.
-    t_dial     = icon_wd_window                && 'ALV in Dialog Box'.
-    t_r1       = icon_sap_gui_session          && 'GUI Version'.
-    t_r2       = icon_wd_web_appl_project      && 'Fiori Version'.
-    t_colh     = icon_color                    && 'Hotspot Color'.
-    t_coll     = icon_color                    && 'Line Color'.
-    t_event    = icon_wd_toolbar               && 'GUI Grid Toolbar'.
-    syst-title = gc_report_heading.
+    t_col_s    = icon_draw_linear              && text-007.
+    t_col_e    = icon_draw_linear              && text-008.
+    t_lin_s    = icon_draw_linear              && text-009.
+    t_lin_e    = icon_draw_linear              && text-010.
+    t_db       = icon_database_table           && text-011.
+    t_file     = icon_xls                      && text-012.
+    t_excel    = icon_open_folder              && text-013.
+    t_sheet    = icon_xls                      && text-014.
+    t_hdesc    = text-015.
+    t_head     = text-016.
+    t_status   = icon_wd_toolbar_caption       && text-017.
+    t_layout   = icon_alv_variants             && text-018.
+    t_names    = icon_wd_input_field           && text-019.
+    t_hits     = text-020.
+    t_icon     = icon_status_open              && text-021.
+    t_popup    = icon_wd_window                && TEXT-022.
+    t_check    = icon_checkbox                 && TEXT-023.
+    t_hotsp    = icon_simple_field             && TEXT-024.
+    t_doc      = icon_wd_view_set_t_layout_90  && TEXT-025.
+    t_split    = icon_wd_view_set_t_layout_270 && TEXT-026.
+    t_cont     = icon_context_menu             && TEXT-027.
+    t_table    = icon_table_settings           && TEXT-028.
+    t_stand    = icon_wd_view_container        && TEXT-029.
+    t_dial     = icon_wd_window                && TEXT-030.
+    t_r1       = icon_sap_gui_session          && TEXT-031.
+    t_r2       = icon_wd_web_appl_project      && TEXT-032.
+    t_colh     = icon_color                    && TEXT-033.
+    t_coll     = icon_color                    && TEXT-034.
+    t_event    = icon_wd_toolbar               && TEXT-035.
 
   ENDMETHOD.
 

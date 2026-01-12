@@ -187,17 +187,17 @@ CLASS lcl_sel_screen IMPLEMENTATION.
 
   METHOD screen_initialization.
 
-    t_title0                   = 'Export Filepath'.
-    t_title1                   = 'Texts Selection'.
-    t_title2                   = 'Properties'.
+    t_title0                   = TEXT-001.
+    t_title1                   = TEXT-002.
+    t_title2                   = TEXT-003.
 
-    syst-title               = 'Texts Export'.
-    %_p_file_%_app_%-text    = icon_xls         && 'Excel Filepath'.
-    %_s_obj_%_app_%-text     = icon_object_list && 'Text Object'.
-    %_s_tdname_%_app_%-text  = icon_text_field  && 'Text Name'.
-    %_s_tdid_%_app_%-text    = icon_text_ina    && 'Text ID'.
-    %_s_spras_%_app_%-text   = icon_eu          && 'Language'.
-    %_p_header_%_app_%-text  = 'Field Labels as Excel Header'.
+    syst-title               = TEXT-004.
+    %_p_file_%_app_%-text    = icon_xls         && TEXT-005.
+    %_s_obj_%_app_%-text     = icon_object_list && TEXT-006.
+    %_s_tdname_%_app_%-text  = icon_text_field  && TEXT-007.
+    %_s_tdid_%_app_%-text    = icon_text_ina    && TEXT-008.
+    %_s_spras_%_app_%-text   = icon_eu          && TEXT-009.
+    %_p_header_%_app_%-text  = TEXT-010.
 
   ENDMETHOD.
 
@@ -237,7 +237,7 @@ CLASS lcl_utilities IMPLEMENTATION.
 
     cl_gui_frontend_services=>file_save_dialog(
       EXPORTING
-        window_title              = 'File System of Presentation Server'
+        window_title              = CONV #( TEXT-011 )
         default_extension         = cl_gui_frontend_services=>filetype_excel
         prompt_on_overwrite       = abap_true
         default_file_name         = 'Exported_Texts.XLSX'
@@ -277,7 +277,7 @@ CLASS lcl_texts IMPLEMENTATION.
         INTO CORRESPONDING FIELDS OF TABLE @me->lt_texts.
 
     IF syst-subrc IS NOT INITIAL OR lt_texts IS INITIAL.
-      RAISE EXCEPTION TYPE lcx_texts EXPORTING text = 'No Texts Found for the Specified Criteria'.
+      RAISE EXCEPTION TYPE lcx_texts EXPORTING text = CONV #( TEXT-012 ).
     ENDIF.
 
     me->populate_texts( ).
@@ -345,7 +345,7 @@ CLASS lcl_texts IMPLEMENTATION.
         <fs_line>-fix_column = abap_true.
         CASE <fs_line>-fieldname.
           WHEN 'TEXT'.
-            <fs_line>-coltext = 'Text String'.
+            <fs_line>-coltext = CONV #( TEXT-013 ).
         ENDCASE.
 
       ENDLOOP.
@@ -407,7 +407,7 @@ CLASS lcl_texts IMPLEMENTATION.
         OTHERS                  = 24 ).
 
     IF syst-subrc IS NOT INITIAL.
-      RAISE EXCEPTION TYPE lcx_texts EXPORTING text = 'Error Downloading Texts'.
+      RAISE EXCEPTION TYPE lcx_texts EXPORTING text = CONV #( TEXT-014 ).
     ENDIF.
 
   ENDMETHOD.

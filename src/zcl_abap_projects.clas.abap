@@ -12,7 +12,7 @@ public section.
         other VALUE IS INITIAL,
       END OF ENUM t_alpha_conversion STRUCTURE s_alpha_conversion .
   types:
-    t_splitted_table TYPE STANDARD TABLE OF REF TO data .
+    t_splitted_table TYPE STANDARD TABLE OF REF TO data with EMPTY KEY .
 
   class-methods COUNT_SINGLE_MULTIPLE_VALUES
     importing
@@ -31,8 +31,8 @@ public section.
     importing
       !IM_TABLE type ANY TABLE
       !IM_SPLIT_SEGMENT type I default 100
-    exporting
-      value(EX_SPLITTED_TABLE) type ZCL_ABAP_PROJECTS=>T_SPLITTED_TABLE .
+    returning
+      value(RE_SPLITTED_TABLE) type ZCL_ABAP_PROJECTS=>T_SPLITTED_TABLE .
   PROTECTED SECTION.
   PRIVATE SECTION.
 ENDCLASS.
@@ -242,7 +242,7 @@ CLASS ZCL_ABAP_PROJECTS IMPLEMENTATION.
         CREATE DATA lr_sub_table TYPE HANDLE lo_table_descr.
         CHECK lr_sub_table       IS BOUND.
 
-        APPEND lr_sub_table      TO ex_splitted_table.
+        APPEND lr_sub_table      TO re_splitted_table.
         ASSIGN lr_sub_table->*   TO <fs_target_table>.
         CHECK <fs_target_table>  IS ASSIGNED.
 

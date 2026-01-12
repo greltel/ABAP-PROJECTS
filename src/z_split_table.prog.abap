@@ -12,13 +12,12 @@ REPORT z_split_table.
 *&----------------------------------------------------------------------*
 START-OF-SELECTION.
 
-  SELECT FROM t001
-    FIELDS t001~*
+  SELECT FROM i_companycode
+    FIELDS i_companycode~*
     INTO TABLE @DATA(lt_data).
 
-  zcl_abap_projects=>split_table( EXPORTING im_table          = lt_data
-                                            im_split_segment  = 25
-                                  IMPORTING ex_splitted_table = DATA(lr_sub_tables) ).
+  DATA(lr_sub_tables) = zcl_abap_projects=>split_table( EXPORTING im_table          = lt_data
+                                                                  im_split_segment  = 25 ).
 
   CHECK lr_sub_tables IS NOT INITIAL.
 
