@@ -16,8 +16,8 @@ START-OF-SELECTION.
     FIELDS i_companycode~*
     INTO TABLE @DATA(lt_data).
 
-  DATA(lr_sub_tables) = zcl_abap_projects=>split_table( EXPORTING im_table          = lt_data
-                                                                  im_split_segment  = 25 ).
+  DATA(lr_sub_tables) = zcl_abap_projects=>split_table( im_table          = lt_data
+                                                        im_split_segment  = 25 ).
 
   CHECK lr_sub_tables IS NOT INITIAL.
 
