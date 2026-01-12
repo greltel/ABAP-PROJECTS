@@ -51,6 +51,20 @@ you can use it as a utility to display any table of the system plus display your
 
 Use the Static Class Method to Retrieve Unique and Multiple values of Any Table.
 
+```abap
+  SELECT FROM i_journalentry FIELDS i_journalentry~* INTO TABLE @DATA(lt_table) UP TO 10000 ROWS.
+
+  zcl_abap_projects=>count_single_multiple_values( EXPORTING im_table           = lt_table
+                                                             im_column_name     = 'ACCOUNTINGDOCCREATEDBYUSER'
+                                                   IMPORTING ex_unique_values   = DATA(lo_unique_values)
+                                                             ex_multiple_values = DATA(lo_multiple_values) ).
+
+  CHECK lo_unique_values IS NOT INITIAL AND lo_multiple_values IS NOT INITIAL.
+
+  ASSIGN lo_unique_values->* TO FIELD-SYMBOL(<fs_table_unique>).
+  ASSIGN lo_multiple_values->* TO FIELD-SYMBOL(<fs_table_multiple>).
+```
+
 # Project 3 Dynamic Texts Export
 
 Download any Text Object of SAP System into Excel File directly.
