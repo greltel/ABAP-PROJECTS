@@ -1,4 +1,4 @@
-<img width="927" height="873" alt="image" src="https://github.com/user-attachments/assets/986a9cd1-f140-4fb4-b38d-fac4e0cced75" />[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/greltel/ABAP-Projects/blob/Main/LICENSE)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/greltel/ABAP-Projects/blob/Main/LICENSE)
 ![ABAP 7.00+](https://img.shields.io/badge/ABAP-7.00%2B-brightgreen)
 [![Code Statistics](https://img.shields.io/badge/CodeStatistics-abaplint-blue)](https://abaplint.app/stats/greltel/ABAP-Projects)
 
