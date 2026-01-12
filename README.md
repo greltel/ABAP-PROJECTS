@@ -59,7 +59,7 @@ Use the Static Class Method to Retrieve Unique and Multiple values of Any Table.
                                                    IMPORTING ex_unique_values   = DATA(lo_unique_values)
                                                              ex_multiple_values = DATA(lo_multiple_values) ).
 
-  CHECK lo_unique_values IS NOT INITIAL AND lo_multiple_values IS NOT INITIAL.
+  CHECK lo_unique_values IS BOUND AND lo_multiple_values IS BOUND.
 
   ASSIGN lo_unique_values->* TO FIELD-SYMBOL(<fs_table_unique>).
   ASSIGN lo_multiple_values->* TO FIELD-SYMBOL(<fs_table_multiple>).
@@ -72,6 +72,18 @@ Download any Text Object of SAP System into Excel File directly.
 # Project 4 Dynamic Input-Output Convertion
 
 Dynamically convert a DDIC value to Input/Output format.
+
+```abap
+  DATA(vbeln) = CONV vbak-vbeln('12345').
+
+  zcl_abap_projects=>alpha_conversion( EXPORTING iv_input  = vbeln
+                                                 im_alpha  = zcl_abap_projects=>s_alpha_conversion-in
+                                       IMPORTING ev_output = vbeln ).
+
+  zcl_abap_projects=>alpha_conversion( EXPORTING iv_input  = vbeln
+                                                 im_alpha  = zcl_abap_projects=>s_alpha_conversion-out
+                                       IMPORTING ev_output = vbeln ).
+```
 
 # Project 5 Dynamic Split of Table into Smaller Ones
 
