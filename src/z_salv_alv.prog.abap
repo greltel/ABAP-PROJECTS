@@ -592,7 +592,7 @@ START-OF-SELECTION.
                                                                line_end     = p_lin_e )
                        )->get_data( im_data_source     = COND #( WHEN p_db   EQ abap_true THEN lcl_main_salv=>lif_data~t_database
                                                                  WHEN p_file EQ abap_true THEN lcl_main_salv=>lif_data~t_excel
-                                                                 ELSE THROW lcx_exception( im_text = 'Invalid Data Source Selection' )  )
+                                                                 ELSE THROW lcx_exception( im_text = CONV #( TEXT-057 ) )  )
                                     im_filepath        = p_excel
                                     im_sheet_name      = p_sheet
                                     im_head            = p_head
@@ -774,15 +774,15 @@ CLASS lcl_main_salv IMPLEMENTATION.
         WHERE (lt_select_clause).
 
         IF <fs_table> IS INITIAL.
-          RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = | No values Retrieved from Table: { im_table } |.
+          RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = | { TEXT-040 } { im_table } |.
         ENDIF.
 
       ELSE.
-        RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error while Creating Dynamic Table'.
+        RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = CONV #( TEXT-041 ).
       ENDIF.
 
     ELSE.
-      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Missing Parameters for Data Retrieval'.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = CONV #( TEXT-042 ).
     ENDIF.
 
   ENDMETHOD.
@@ -895,7 +895,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
     ENDCASE.
 
     IF me->lo_salv_alv IS NOT BOUND.
-      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = 'Error while creating ALV Reference'.
+      RAISE EXCEPTION TYPE lcx_exception EXPORTING im_text = CONV #( TEXT-043 ).
     ENDIF.
 
   ENDMETHOD.
@@ -922,11 +922,11 @@ CLASS lcl_main_salv IMPLEMENTATION.
   METHOD get_dialog_container.
 
     re_container = NEW #( no_autodef_progid_dynnr = abap_true
-                            caption = 'ALV in Dialog Box'
-                            top = 20
-                            left = 20
-                            width = 1280
-                            height = 400 ).
+                          caption = TEXT-058
+                          top     = 20
+                          left    = 20
+                          width   = 1280
+                          height  = 400 ).
 
   ENDMETHOD.
 
@@ -972,19 +972,19 @@ CLASS lcl_main_salv IMPLEMENTATION.
     o_tool->add_button( fcode       = 'BTN_MENU'
                         icon        = icon_activate
                         butn_type   = cntb_btype_menu
-                        text        = 'Menu'
-                        quickinfo   = 'Menu'
+                        text        = CONV text40( TEXT-059 )
+                        quickinfo   = CONV iconquick( TEXT-059 )
                         is_checked  = abap_false
                         is_disabled = abap_false ).
 
     DATA(o_menu) = NEW cl_ctmenu( ).
-    o_menu->add_function( fcode    = 'F1'
-                           checked = abap_false
-                           text    = 'Function1' ).
+    o_menu->add_function( fcode   = 'F1'
+                          checked = abap_false
+                          text    = TEXT-060 ).
 
-    o_menu->add_function( fcode     = 'F2'
-                            checked = abap_false
-                            text    = 'Function2' ).
+    o_menu->add_function( fcode   = 'F2'
+                          checked = abap_false
+                          text    = TEXT-061 ).
 
 
     DATA(it_ctxmenu) = VALUE ttb_btnmnu( ( function = 'BTN_MENU'
@@ -1005,8 +1005,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
     o_tool->add_button( fcode       = 'BTN_CLOSE'
                         icon        = icon_close
                         butn_type   = cntb_btype_button
-                        text        = 'Close'
-                        quickinfo   = 'Close'
+                        text        = TEXT-062
+                        quickinfo   = TEXT-062
                         is_checked  = abap_false
                         is_disabled = abap_false ).
 
@@ -1158,7 +1158,7 @@ CLASS lcl_main_salv IMPLEMENTATION.
     TRY.
         lo_salv_alv->get_functional_settings( )->get_tooltips( )->add_tooltip( type = cl_salv_tooltip=>c_type_icon
                                                                                value = |{ icon_green_light }|
-                                                                               tooltip = 'Text Under Specified Icon' ).
+                                                                               tooltip = CONV #( TEXT-044 ) ).
       CATCH cx_salv_existing.                           "#EC NO_HANDLER
     ENDTRY.
 
@@ -1234,10 +1234,10 @@ CLASS lcl_main_salv IMPLEMENTATION.
     "Create Groups
     TRY.
         lo_salv_alv->get_functional_settings( )->get_specific_groups(:
-                                                                )->add_specific_group( id   = 'AMOU' text = 'Amounts' ),
-                                                                )->add_specific_group( id   = 'DATE' text = 'Dates' ),
-                                                                )->add_specific_group( id   = 'NCHA' text = 'Numerical Characters' ),
-                                                                )->add_specific_group( id   = 'CHAR' text = 'Character Fields' ).
+                                                                )->add_specific_group( id   = 'AMOU' text = TEXT-063 ),
+                                                                )->add_specific_group( id   = 'DATE' text = TEXT-064 ),
+                                                                )->add_specific_group( id   = 'NCHA' text = TEXT-065 ),
+                                                                )->add_specific_group( id   = 'CHAR' text = TEXT-066 ).
 
       CATCH cx_salv_existing.                           "#EC NO_HANDLER
     ENDTRY.
@@ -1314,13 +1314,13 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
         lo_salv_alv->get_display_settings( :
            )->set_list_header_size( cl_salv_display_settings=>c_header_size_medium ),
-           )->set_list_header( |The List Generated by { syst-uname  } at { syst-datum  DATE = USER } { syst-uzeit  TIME = USER }.Entries:{ lines( <fs_table> ) } | ).
+           )->set_list_header( |{ TEXT-045 } { syst-uname  } { TEXT-047 } { syst-datum  DATE = USER } { syst-uzeit  TIME = USER }{ TEXT-048 }{ lines( <fs_table> ) } | ).
 
       WHEN lcl_main_salv=>lif_data~t_fiori.
 
         lo_salv_alv->get_display_settings(:
           )->set_list_header_size( cl_salv_display_settings=>c_header_size_medium ),
-          )->set_list_header( |Number of Retrieved Entries: { lines( <fs_table> ) } | ).
+          )->set_list_header( |{ TEXT-046 } { lines( <fs_table> ) } | ).
 
         me->header_creation_fiori( ).
 
@@ -1333,10 +1333,10 @@ CLASS lcl_main_salv IMPLEMENTATION.
     DATA(lo_header) = NEW cl_salv_form_layout_grid( ).
 
     "Information in Bold
-    lo_header->create_label( row = 1 column = 1 )->set_text('ALV Report').
+    lo_header->create_label( row = 1 column = 1 )->set_text( TEXT-049 ).
 
     "Information in tabular format
-    lo_header->create_flow( row = 2 column = 1 )->create_text( text = |The List was Generated by User { syst-uname } at { syst-datum  DATE = USER } { syst-uzeit  TIME = USER } | ).
+    lo_header->create_flow( row = 2 column = 1 )->create_text( text = |{ TEXT-045 } { syst-uname } { TEXT-047 } { syst-datum  DATE = USER } { syst-uzeit  TIME = USER } | ).
 
     "Set the top of list using the header for Online
     lo_salv_alv->set_top_of_list( lo_header ).
@@ -1351,13 +1351,13 @@ CLASS lcl_main_salv IMPLEMENTATION.
     DATA(lo_footer) = NEW cl_salv_form_layout_grid( ).
 
     DATA(lo_f_label) = lo_footer->create_label( row = 1 column = 1 )  .
-    lo_f_label->set_text( 'Footer').
+    lo_f_label->set_text( TEXT-053 ).
 
     DATA(lo_f_flow) = lo_footer->create_flow( row = 2 column = 1 ).
 
-    lo_f_flow->create_text( text = COND #( WHEN lv_data_source EQ lcl_main_salv=>lif_data~t_database THEN |Displaying Details of Table |
-                                           WHEN lv_data_source EQ lcl_main_salv=>lif_data~t_excel   THEN  |Displaying Details of Excel File |
-                                           ELSE |Footer Details | ) ).
+    lo_f_flow->create_text( text = COND #( WHEN lv_data_source EQ lcl_main_salv=>lif_data~t_database THEN |{ TEXT-050 }|
+                                           WHEN lv_data_source EQ lcl_main_salv=>lif_data~t_excel    THEN  |{ TEXT-051 }|
+                                           ELSE |{ TEXT-052 }| ) ).
     lo_salv_alv->set_end_of_list( lo_footer ).
     lo_salv_alv->set_end_of_list_print( lo_footer ).
 
@@ -1389,23 +1389,23 @@ CLASS lcl_main_salv IMPLEMENTATION.
           lo_salv_alv->get_functions(:
                                )->add_function( name     = 'DETAILS'
                                                 icon     = |{ icon_overview }|
-                                                text     = 'Details'
-                                                tooltip  = 'Detail View'
+                                                text     = CONV #( TEXT-067 )
+                                                tooltip  = CONV #( TEXT-072 )
                                                 position = if_salv_c_function_position=>right_of_salv_functions ),
                                )->add_function( name     = 'EDIT'
                                                 icon     = |{ icon_operation }|
-                                                text     = 'Edit'
-                                                tooltip  = 'Edit ALV Fields'
+                                                text     = CONV #( TEXT-071 )
+                                                tooltip  = CONV #( TEXT-070 )
                                                 position = if_salv_c_function_position=>right_of_salv_functions ),
                                )->add_function( name     = 'COLUMNS'
                                                 icon     = |{ icon_businav_sysorgi }|
                                                 text     = ''
-                                                tooltip  = 'Show/Hide Empty Columns'
+                                                tooltip  = CONV #( TEXT-069 )
                                                 position = if_salv_c_function_position=>right_of_salv_functions ),
                                )->add_function( name     = 'DOCU'
                                                 icon     = |{ icon_message_information_small }|
                                                 text     = ''
-                                                tooltip  = 'End User Documentation'
+                                                tooltip  = CONV #( TEXT-068 )
                                                 position = if_salv_c_function_position=>right_of_salv_functions ).
 
 
@@ -1575,32 +1575,32 @@ CLASS lcl_main_salv IMPLEMENTATION.
 
     "Toolbar Button APPEND ROW
     APPEND VALUE #( function   = cl_gui_alv_grid=>mc_fc_loc_append_row
-                    quickinfo  = 'Append Row'
+                    quickinfo  = TEXT-073
                     icon       = icon_create
                     disabled   = space ) TO e_object->mt_toolbar.
 
     "Toolbar Button INSERT ROW
     APPEND VALUE #( function   = cl_gui_alv_grid=>mc_fc_loc_insert_row
-                    quickinfo  = 'Insert Row'
+                    quickinfo  = TEXT-074
                     icon       = icon_insert_row
                     disabled   = space ) TO e_object->mt_toolbar.
 
 
     "Toolbar Button DELETE ROW
     APPEND VALUE #( function   = cl_gui_alv_grid=>mc_fc_loc_delete_row
-                    quickinfo  = 'Delete Row'
+                    quickinfo  = TEXT-075
                     icon       = icon_delete_row
                     disabled   = space ) TO e_object->mt_toolbar.
 
     "Toolbar Button COPY ROW
     APPEND VALUE #( function   = cl_gui_alv_grid=>mc_fc_loc_copy_row
-                    quickinfo  =  'Copy Row'
+                    quickinfo  = TEXT-076
                     icon       = icon_copy_object
                     disabled   = space ) TO e_object->mt_toolbar.
 
     "Toolbar Button UNDO
     APPEND VALUE #( function   = cl_gui_alv_grid=>mc_fc_loc_undo
-                    quickinfo  = 'Undo'
+                    quickinfo  = TEXT-077
                     icon       = icon_system_undo
                     disabled   = space ) TO e_object->mt_toolbar.
 
@@ -1870,8 +1870,8 @@ CLASS lcl_main_salv IMPLEMENTATION.
         IF <fs_field_value> IS ASSIGNED.
 
           cl_demo_output=>new( mode = cl_demo_output=>text_mode
-          )->write_text( |You have clicked on column { column } of row { row } |
-          )->write_text( |The value is { <fs_field_value> } |
+          )->write_text( |{ TEXT-054 } { column } { TEXT-055 } { row } |
+          )->write_text( |{ TEXT-056 } { <fs_field_value> } |
           )->display( ).
 
         ENDIF.
@@ -2338,21 +2338,21 @@ CLASS lcl_sel_screen IMPLEMENTATION.
     t_title3   = TEXT-005.
     t_title4   = TEXT-006.
 
-    t_col_s    = icon_draw_linear              && text-007.
-    t_col_e    = icon_draw_linear              && text-008.
-    t_lin_s    = icon_draw_linear              && text-009.
-    t_lin_e    = icon_draw_linear              && text-010.
-    t_db       = icon_database_table           && text-011.
-    t_file     = icon_xls                      && text-012.
-    t_excel    = icon_open_folder              && text-013.
-    t_sheet    = icon_xls                      && text-014.
-    t_hdesc    = text-015.
-    t_head     = text-016.
-    t_status   = icon_wd_toolbar_caption       && text-017.
-    t_layout   = icon_alv_variants             && text-018.
-    t_names    = icon_wd_input_field           && text-019.
-    t_hits     = text-020.
-    t_icon     = icon_status_open              && text-021.
+    t_col_s    = icon_draw_linear              && TEXT-007.
+    t_col_e    = icon_draw_linear              && TEXT-008.
+    t_lin_s    = icon_draw_linear              && TEXT-009.
+    t_lin_e    = icon_draw_linear              && TEXT-010.
+    t_db       = icon_database_table           && TEXT-011.
+    t_file     = icon_xls                      && TEXT-012.
+    t_excel    = icon_open_folder              && TEXT-013.
+    t_sheet    = icon_xls                      && TEXT-014.
+    t_hdesc    = TEXT-015.
+    t_head     = TEXT-016.
+    t_status   = icon_wd_toolbar_caption       && TEXT-017.
+    t_layout   = icon_alv_variants             && TEXT-018.
+    t_names    = icon_wd_input_field           && TEXT-019.
+    t_hits     = TEXT-020.
+    t_icon     = icon_status_open              && TEXT-021.
     t_popup    = icon_wd_window                && TEXT-022.
     t_check    = icon_checkbox                 && TEXT-023.
     t_hotsp    = icon_simple_field             && TEXT-024.
