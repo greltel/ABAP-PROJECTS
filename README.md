@@ -111,3 +111,5 @@ Especially useful for parallel processing tasks.
 ```
 
 # Project 6 Dynamic Lock
+
+A dynamic locking mechanism that utilizes RTTI to identify primary keys and the generic ENQUEUE_E_TABLE function to lock records for any given table name.
