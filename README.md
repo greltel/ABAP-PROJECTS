@@ -13,6 +13,7 @@
 8. [Project 3 Dynamic Texts Export](#Project-3-Dynamic-Texts-Export)
 9. [Project 4 Dynamic Input-Output Convertion](#Project-4-Dynamic-Input-Output-Convertion)
 10. [Project 5 Dynamic Split of Table into Smaller Ones](#Project-5-Dynamic-Split-of-Table-into-Smaller-Ones)
+11. [Project 6 Dynamic Lock](#Project-6-Dynamic-Lock)
 
 # ABAP-Projects
 
@@ -108,3 +109,5 @@ Especially useful for parallel processing tasks.
 
   ENDLOOP.
 ```
+
+#Project 6 Dynamic Lock
