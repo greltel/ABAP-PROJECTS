@@ -113,3 +113,14 @@ Especially useful for parallel processing tasks.
 # Project 6 Dynamic Lock
 
 A dynamic locking mechanism that utilizes RTTI to identify primary keys and the generic ENQUEUE_E_TABLE function to lock records for any given table name.
+
+```abap
+  DATA ls_mara TYPE mara.
+  ls_mara-matnr = '000000000000010001'.
+
+  zcl_abap_projects=>lock_table( iv_table_name = 'MARA'
+                                 iv_data       = ls_mara ).
+
+  zcl_abap_projects=>unlock_table( iv_table_name = 'MARA'
+                                   iv_data       = ls_mara ).
+```
